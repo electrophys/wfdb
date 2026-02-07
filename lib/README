@@ -1,5 +1,5 @@
 file: README		G. Moody	 1 July 1989
-			Last revised:    8 June 2005	      wfdblib 10.3.15
+			Last revised:    6 February 2026
 
 _______________________________________________________________________________
 wfdb: a library for reading and writing annotated waveforms (time series data)
@@ -23,40 +23,28 @@ You may contact the author by e-mail (wfdb@physionet.org) or postal mail
 please visit PhysioNet (http://www.physionet.org/).
 _______________________________________________________________________________
 
-This directory contains sources for the WFDB library.  Please look at the
-README file in the directory above this one before installing the WFDB library.
-
-If a `make' utility is available, follow the instructions in 'Makefile' to
-compile and install the WFDB library on your system.  If you do not have a
-`make' utility, you will have to perform the installation manually; the
-comments in 'Makefile' may be helpful in determining how to proceed.
-
-For information about using the library, see the WFDB Programmer's Guide (TeX
-source in the `doc' directory at the same level as this one).
+This directory contains sources for the WFDB library.  The library is built
+using Meson; see the top-level README for build instructions.
 
 The following files will be found in this directory:
 
-COPYING.LIB	the GNU Library General Public License
-Makefile	`make' description file for compiling the WFDB library using
-		 ANSI/ISO standard C compilers on supported platforms
-Makefile.top	Used by ../configure to construct Makefile (comments only)
-Makefile.tpl	Used by ../configure to construct Makefile (portable section)
-README		this file
-annot.c		WFDB library functions for annotations
-calib.c		WFDB library functions for signal calibration
-ecgcodes.h	ECG annotation codes
-ecgmap.h	ECG annotation code mapping macros
-signal.c	WFDB library functions for signals
-wfdb-config.c	mini-app to print WFDB library version and linking information
-wfdb.h		WFDB library constant, structure, and function interface
-		 definitions (public header)
-wfdbinit.c	WFDB library functions wfdbinit, wfdbquit, and wfdbflush
-wfdbio.c	Low-level I/O functions for the WFDB library
-wfdblib.h	External definitions for WFDB library private functions
-
-What next?
-----------
-
-Once you have installed the WFDB library, read the `README' file in the `app'
-directory on the same level as this one for instructions on compiling and
-installing the standard WFDB applications.
+COPYING.LIB		the GNU Library General Public License
+README			this file
+meson.build		Meson build description file
+annot.c			annotation reading/writing
+calib.c			signal calibration
+ecgcodes.h		ECG annotation codes
+ecgmap.h		ECG annotation code mapping macros
+flac.c			FLAC signal encoder/decoder
+header.c		header file parsing
+signal.c		signal I/O (public API, core read/write)
+signal_internal.h	shared internal structs, macros, and function declarations
+sigformat.c		format-specific signal read/write/flush
+sigmap.c		variable-layout multi-segment signal mapping
+timeconv.c		time/date/unit conversion
+wfdb.h			public header (types, constants, function prototypes)
+wfdb_context.c		WFDB_Context lifecycle (new, free, get_default)
+wfdb_context.h		WFDB_Context struct definition
+wfdbinit.c		library initialization (wfdbinit, wfdbquit, wfdbflush)
+wfdbio.c		low-level I/O abstraction (local files, HTTP/FTP via libcurl)
+wfdblib.h		internal library definitions and private function prototypes

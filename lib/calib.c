@@ -36,9 +36,7 @@ This file contains definitions of the following WFDB library functions:
 Beginning with version 6.1, calibration files are written by newcal() with
 \r\n line separators (version 6.0 used \n only).  These are not compatible
 with calopen() version 6.0, although calibration files written by newcal()
-version 6.0 can be read successfully by all versions of calopen().  This change
-was made so that calibration files can be more easily viewed and edited under
-MS-DOS.
+version 6.0 can be read successfully by all versions of calopen().
 
 Beginning with version 8.3, calopen() uses the default calibration file name
 (DEFWFDBCAL, defined in wfdblib.h) if passed a NULL argument and if the WFDBCAL

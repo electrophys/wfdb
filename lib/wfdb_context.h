@@ -216,7 +216,7 @@ struct WFDB_Context {
     /* NETFILES state (from wfdbio.c) */
     int nf_open_files;		/* number of open netfiles */
     long nf_page_size;		/* bytes per http range request */
-    int www_done_init;		/* TRUE once libcurl is initialized */
+    int www_done_init;		/* nonzero once libcurl is initialized */
     CURL *curl_ua;		/* libcurl easy handle */
     char curl_error_buf[CURL_ERROR_SIZE]; /* curl error message buffer */
     char **www_passwords;	/* parsed WFDBPASSWORD credentials */

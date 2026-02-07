@@ -127,9 +127,7 @@ and definitions from <time.h>.
 Beginning with version 6.1, header files are written by newheader() and
 setheader() with \r\n line separators (earlier versions used \n only).  Earlier
 versions of the WFDB library can read header files written by these functions,
-but signal descriptions and info strings will be terminated by \r.  This change
-was made so that header files can be more easily viewed and edited under
-MS-DOS.
+but signal descriptions and info strings will be terminated by \r.
 
 Multifrequency records (i.e., those for which not all signals are digitized at
 the same frequency) are supported by version 9.0 and later versions.  Multi-

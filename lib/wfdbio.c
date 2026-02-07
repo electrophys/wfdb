@@ -150,8 +150,7 @@ is non-zero.  All of these functions are new in version 10.0.1.)
 for database files to be opened for reading.  In most environments, this list
 is obtained from the shell (environment) variable WFDB, which may be set by the
 user (typically as part of the login script).  A default value may be set at
-compile time (DEFWFDB in wfdblib.h); this is necessary for environments that do
-not support the concept of environment variables, such as MacOS9 and earlier.
+compile time (DEFWFDB in wfdblib.h).
 If WFDB or DEFWFDB is of the form '@FILE', getwfdb reads the WFDB path from the
 specified (local) FILE (using wfdb_getiwfdb); such files may be nested up to
 10 levels. */
@@ -678,18 +677,6 @@ void wfdb_addtopath(const char *s)
 }
 
 #include <stdarg.h>
-#ifdef va_copy
-# define VA_COPY(dst, src) va_copy(dst, src)
-# define VA_END2(ap)       va_end(ap)
-#else
-# ifdef __va_copy
-#  define VA_COPY(dst, src) __va_copy(dst, src)
-#  define VA_END2(ap)       va_end(ap)
-# else
-#  define VA_COPY(dst, src) memcpy(&(dst), &(src), sizeof(va_list))
-#  define VA_END2(ap)       (void) (ap)
-# endif
-#endif
 
 /* wfdb_vasprintf formats a string in the same manner as vsprintf, and
 allocates a new buffer that is sufficiently large to hold the result.
@@ -722,18 +709,11 @@ int wfdb_vasprintf(char **buffer, const char *format, va_list arguments)
 	    break;
 	}
 
-	VA_COPY(arguments2, arguments);
+	va_copy(arguments2, arguments);
 	length = vsnprintf(*buffer, bufsize, format, arguments2);
-	VA_END2(arguments2);
+	va_end(arguments2);
 
-	/* some pre-standard versions of 'vsnprintf' return -1 if the
-	   formatted string does not fit in the buffer; in that case,
-	   try again with a larger buffer */
-	if (length < 0)
-	    bufsize *= 2;
-	/* standard 'vsnprintf' returns the actual length of the
-	   formatted string */
-	else if (length >= bufsize)
+	if (length >= bufsize)
 	    bufsize = length + 1;
 	else
 	    break;
@@ -842,9 +822,6 @@ int wfdb_fprintf(WFDB_FILE *wp, const char *format, ...)
 #define spr1(S, RECORD, TYPE)   ((*TYPE == '\0') ? \
 				 wfdb_asprintf(S, "%s", RECORD) : \
 				 wfdb_asprintf(S, "%s.%s", RECORD, TYPE))
-#define spr2(S, RECORD, TYPE)  ((*TYPE == '\0') ? \
-				 wfdb_asprintf(S, "%s.", RECORD) : \
-				 wfdb_asprintf(S, "%s.%.3s", RECORD, TYPE))
 
 /* wfdb_open is used by other WFDB library functions to open a database file
 for reading or writing.  wfdb_open accepts two string arguments and an integer
@@ -872,28 +849,14 @@ using whitespace as a path component separator.
 
 If the WFDB path includes components of the forms 'http://somewhere.net/mydata'
 or 'ftp://somewhere.else/yourdata', the sequence '://' is explicitly recognized
-as part of a URL prefix (under any OS), and the ':' and '/' characters within
-the '://' are not interpreted further.  Note that the MS-DOS '\' is *not*
-acceptable as an alternative to '/' in a URL prefix.  To make WFDB paths
-containing URL prefixes more easily (human) readable, use whitespace for path
-component separators.
+as part of a URL prefix, and the ':' and '/' characters within the '://' are
+not interpreted further.
 
-WFDB file names are usually formed by concatenating the record name, a ".", and
-the file type, using the spr1 macro (above).  If an input file name, as
-constructed by spr1, does not match that of an existing file, wfdb_open uses
-spr2 to construct an alternate file name.  In this form, the file type is
-truncated to no more than 3 characters (as MS-DOS does).  When searching for
-input files, wfdb_open tries both forms with each component of the WFDB path
-before going on to the next path component.
-
-If the record name is empty, wfdb_open swaps the record name and the type
-string.  If the type string (after swapping, if necessary) is empty, spr1 uses
-the record name as the literal file name, and spr2 uses the record name with an
-appended "." as the file name.
-
-Pre-10.0.1 versions of this library that were compiled for environments other
-than MS-DOS used file names in the format TYPE.RECORD.  This file name format
-is no longer supported. */
+WFDB file names are formed by concatenating the record name, a ".", and the
+file type, using the spr1 macro (above).  If the record name is empty,
+wfdb_open swaps the record name and the type string.  If the type string
+(after swapping, if necessary) is empty, spr1 uses the record name as the
+literal file name. */
 
 WFDB_FILE *wfdb_open(const char *s, const char *record, int mode)
 {
@@ -985,8 +948,6 @@ WFDB_FILE *wfdb_open(const char *s, const char *record, int mode)
     }
 
     for (c0 = ctx->wfdb_path_list; c0; c0 = c0->next) {
-	char *long_filename = NULL;
-
 	ireclen = strlen(ctx->irec);
 	bufsize = 64;
 	SALLOC(buf, 1, bufsize);
@@ -1025,12 +986,9 @@ WFDB_FILE *wfdb_open(const char *s, const char *record, int mode)
 	    }
 	    else buf[len++] = *wfdb++;
 	}
-	/* Unless the WFDB component was empty, or it ended with a directory
-	   separator, append a directory separator to wfdb_filename;  then
-	   append the record and type components.  Note that names of remote
-	   files (URLs) are always constructed using '/' separators, even if
-	   the native directory separator is '\' (MS-DOS) or ':' (Macintosh).
-	*/
+	/* Unless the WFDB component was empty, or it ended with a '/',
+	   append a directory separator;  then append the record and type
+	   components. */
 	if (len + 2 >= bufsize) {
 	    bufsize = len + 2;
 	    SREALLOC(buf, bufsize, 1);
@@ -1057,19 +1015,6 @@ WFDB_FILE *wfdb_open(const char *s, const char *record, int mode)
 	    SFREE(r);
 	    return (ifile);
 	}
-	/* Not found -- try again, using an alternate form of the name,
-	   provided that that form is distinct. */
-	SSTRCPY(long_filename, ctx->wfdb_filename);
-	spr2(&ctx->wfdb_filename, buf, s);
-	if (strcmp(ctx->wfdb_filename, long_filename) &&
-	    (ifile = wfdb_fopen(ctx->wfdb_filename, "rb")) != NULL) {
-	    wfdb_addtopath(ctx->wfdb_filename);
-	    SFREE(long_filename);
-	    SFREE(buf);
-	    SFREE(r);
-	    return (ifile);
-	}
-	SFREE(long_filename);
 	SFREE(buf);
     }
     /* If the file was not found in any of the directories listed in wfdb,
@@ -1249,7 +1194,6 @@ typedef struct chunk CHUNK;
 #define chunk_data(x) ((x)->data)
 #define chunk_new curl_chunk_new
 #define chunk_delete curl_chunk_delete
-#define chunk_putb curl_chunk_putb
 
 /* www_parse_passwords parses the WFDBPASSWORD environment variable.
 This environment variable contains a list of URL prefixes and
@@ -1324,7 +1268,7 @@ static void wfdb_wwwquit(void)
 	curl_easy_cleanup(ctx->curl_ua);
 	ctx->curl_ua = NULL;
 	curl_global_cleanup();
-	ctx->www_done_init = FALSE;
+	ctx->www_done_init = 0;
 	for (i = 0; ctx->www_passwords && ctx->www_passwords[i]; i++)
 	    SFREE(ctx->www_passwords[i]);
 	SFREE(ctx->www_passwords);
@@ -1374,7 +1318,7 @@ static void www_init(WFDB_Context *ctx)
 	    curl_easy_setopt(ctx->curl_ua, CURLOPT_VERBOSE, 1L);
 
 	atexit(wfdb_wwwquit);
-	ctx->www_done_init = TRUE;
+	ctx->www_done_init = 1;
     }
 }
 
@@ -1494,16 +1438,10 @@ static size_t curl_chunk_write(void *ptr, size_t size, size_t nmemb,
     return (count);
 }
 
-/* Append data to a chunk. */
-static void curl_chunk_putb(struct chunk *chunk, char *data, size_t len)
-{
-    curl_chunk_write(data, 1, len, chunk);
-}
-
 static CHUNK *www_get_url_range_chunk(WFDB_Context *ctx, const char *url,
 				      long startb, long len)
 {
-    CHUNK *chunk = NULL, *extra_chunk = NULL;
+    CHUNK *chunk = NULL;
     char range_req_str[6*sizeof(long) + 2];
     const char *url2 = NULL;
 
@@ -1799,7 +1737,7 @@ static long nf_get_range(WFDB_Context *ctx, netfile* nf, long startb,
    repositioning the pos in the file. */
 static int nf_feof(netfile *nf)
 {
-    return ((nf->err == NF_EOF_ERR) ? TRUE : FALSE);
+    return ((nf->err == NF_EOF_ERR) ? 1 : 0);
 }
 
 static netfile* nf_fopen(WFDB_Context *ctx, const char *url, const char *mode)
@@ -1898,7 +1836,7 @@ static long nf_ftell(netfile *nf)
 
 static int nf_ferror(netfile *nf)
 {
-    return ((nf->err == NF_REAL_ERR) ? TRUE : FALSE);
+    return ((nf->err == NF_REAL_ERR) ? 1 : 0);
 }
 
 static void nf_clearerr(netfile *nf)
@@ -2074,12 +2012,7 @@ WFDB_FILE *wfdb_fopen(char *fname, const char *mode)
         for (p = fname; *p; p++)
 	    if (*p == '/') {	/* only Unix-style directory separators */
 		*p = '\0';
-		stat = MKDIR(fname, 0755);
-		/* MKDIR is defined as mkdir in wfdblib.h;  depending on
-		   the platform, mkdir may take two arguments (POSIX), or
-		   only the first argument (MS-Windows without Cygwin).
-		   The '0755' means that (under Unix), the directory will
-		   be world-readable, but writable only by the owner. */
+		stat = mkdir(fname, 0755);
 		*p = '/';
 	    }
 	/* At this point, we may have created one or more directories.
