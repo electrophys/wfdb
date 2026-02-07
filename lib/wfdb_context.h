@@ -79,6 +79,10 @@ struct WFDB_Context {
     char *cstring[ACMAX+1];	/* ECG mnemonic strings */
     char *astring[ACMAX+1];	/* annotation mnemonic strings */
     char *tstring[ACMAX+1];	/* annotation descriptive strings */
+    char wfdb_qrs[ACMAX+1];	/* QRS classification table */
+    char wfdb_mp1[ACMAX+1];	/* map1 classification table */
+    char wfdb_mp2[ACMAX+1];	/* map2 classification table */
+    char wfdb_annp[ACMAX+1];	/* annotation position table */
     char ecgstr_buf[14];	/* ecgstr return buffer */
     char annstr_buf[14];	/* annstr return buffer */
     int wfdb_mt;		/* ecgmap.h macro temporary */

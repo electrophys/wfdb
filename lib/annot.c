@@ -98,9 +98,21 @@ may be attached to the same signal provided that their num fields are unique.
 #include "wfdb_context.h"
 #include "ecgmap.h"
 
-/* Use context field instead of file-scope static for macro temporary */
+/* Save pointers to default ecgmap tables before overriding names */
+static char * const p_default_wfdb_qrs = wfdb_qrs;
+static char * const p_default_wfdb_mp1 = wfdb_mp1;
+static char * const p_default_wfdb_mp2 = wfdb_mp2;
+static char * const p_default_wfdb_annp = wfdb_annp;
+
+/* Use context fields instead of file-scope statics for ecgmap state */
 #undef wfdb_mt
 #define wfdb_mt (ctx->wfdb_mt)
+#define wfdb_qrs (ctx->wfdb_qrs)
+#define wfdb_mp1 (ctx->wfdb_mp1)
+#define wfdb_mp2 (ctx->wfdb_mp2)
+#define wfdb_annp (ctx->wfdb_annp)
+
+static void init_ann_tables(WFDB_Context *ctx);
 
 #include <limits.h>
 
@@ -308,6 +320,7 @@ int annopen_ctx(WFDB_Context *ctx, char *record, const WFDB_Anninfo *aiarray,
     unsigned int i, niafneeded, noafneeded;
 
     ctx->annclose_error = 0;
+    init_ann_tables(ctx);
 
     if (*record == '+')		/* don't close open annotation files */
 	record++;		/* discard the '+' prefix */
@@ -855,6 +868,10 @@ static void init_ann_tables(WFDB_Context *ctx)
 	astring[i] = (char *)default_astring[i];
 	tstring[i] = (char *)default_tstring[i];
     }
+    memcpy(wfdb_qrs, p_default_wfdb_qrs, ACMAX + 1);
+    memcpy(wfdb_mp1, p_default_wfdb_mp1, ACMAX + 1);
+    memcpy(wfdb_mp2, p_default_wfdb_mp2, ACMAX + 1);
+    memcpy(wfdb_annp, p_default_wfdb_annp, ACMAX + 1);
 }
 
 /* ecgstr: convert an anntyp value to a mnemonic string */
@@ -1222,66 +1239,77 @@ void oannclose(WFDB_Annotator n)
 int wfdb_isann(int code)
 {
     WFDB_Context *ctx = wfdb_get_default_context();
+    init_ann_tables(ctx);
     return (isann(code));
 }
 
 int wfdb_isqrs(int code)
 {
     WFDB_Context *ctx = wfdb_get_default_context();
+    init_ann_tables(ctx);
     return (isqrs(code));
 }
 
 int wfdb_setisqrs(int code, int newval)
 {
     WFDB_Context *ctx = wfdb_get_default_context();
+    init_ann_tables(ctx);
     return (setisqrs(code, newval));
 }
 
 int wfdb_map1(int code)
 {
     WFDB_Context *ctx = wfdb_get_default_context();
+    init_ann_tables(ctx);
     return (map1(code));
 }
 
 int wfdb_setmap1(int code, int newval)
 {
     WFDB_Context *ctx = wfdb_get_default_context();
+    init_ann_tables(ctx);
     return (setmap1(code, newval));
 }
 
 int wfdb_map2(int code)
 {
     WFDB_Context *ctx = wfdb_get_default_context();
+    init_ann_tables(ctx);
     return (map2(code));
 }
 
 int wfdb_setmap2(int code, int newval)
 {
     WFDB_Context *ctx = wfdb_get_default_context();
+    init_ann_tables(ctx);
     return (setmap2(code, newval));
 }
 
 int wfdb_ammap(int code)
 {
     WFDB_Context *ctx = wfdb_get_default_context();
+    init_ann_tables(ctx);
     return (ammap(code));
 }
 
 int wfdb_mamap(int code, int subtype)
 {
     WFDB_Context *ctx = wfdb_get_default_context();
+    init_ann_tables(ctx);
     return (mamap(code, subtype));
 }
 
 int wfdb_annpos(int code)
 {
     WFDB_Context *ctx = wfdb_get_default_context();
+    init_ann_tables(ctx);
     return (annpos(code));
 }
 
 int wfdb_setannpos(int code, int newval)
 {
     WFDB_Context *ctx = wfdb_get_default_context();
+    init_ann_tables(ctx);
     return (setannpos(code, newval));
 }
 
