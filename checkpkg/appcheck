@@ -526,7 +526,7 @@ do
   TESTS=`expr $TESTS + 1`
 done
 
-if ( grep "WFDB_NETFILES 1" $INCDIR/wfdb/wfdb.h >grep.out 2>&1 )
+if ( grep "WFDB_NETFILES 1" $INCDIR/wfdb/wfdb_config.h $INCDIR/wfdb/wfdb.h >grep.out 2>&1 )
 then
   echo "Testing xform (with NETFILES) ..."
   if [ "x$WFDB_NO_NET_CHECK" != x ]
@@ -559,14 +559,15 @@ rm -f grep.out
 
 rm -rf data
 
-( if [ $PASS = $TESTS ]
+if [ $PASS = $TESTS ]
 then
-    echo "`basename $0`: all $TESTS tests passed."
+    echo "`basename $0`: all $TESTS tests passed." | tee appcheck.out
 else
     if [ $FAIL = 1 ]
     then
-	echo "`basename $0`: $PASS of $TESTS tests passed, $FAIL test failed."
+	echo "`basename $0`: $PASS of $TESTS tests passed, $FAIL test failed." | tee appcheck.out
     else
-	echo "`basename $0`: $PASS of $TESTS tests passed, $FAIL tests failed."
+	echo "`basename $0`: $PASS of $TESTS tests passed, $FAIL tests failed." | tee appcheck.out
     fi
-fi ) >appcheck.out
+    exit 1
+fi

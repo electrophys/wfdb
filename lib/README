@@ -49,13 +49,10 @@ ecgmap.h	ECG annotation code mapping macros
 signal.c	WFDB library functions for signals
 wfdb-config.c	mini-app to print WFDB library version and linking information
 wfdb.h		WFDB library constant, structure, and function interface
-		 definitions (created from wfdb.h0 by ../configure)
-wfdb.h0		template for wfdb.h
+		 definitions (public header)
 wfdbinit.c	WFDB library functions wfdbinit, wfdbquit, and wfdbflush
 wfdbio.c	Low-level I/O functions for the WFDB library
-wfdblib.h	External definitions for WFDB library functions (created from
-		 wfdblib.h0 by ../configure)
-wfdblib.h0	template for wfdblib.h
+wfdblib.h	External definitions for WFDB library private functions
 
 What next?
 ----------

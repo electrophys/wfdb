@@ -31,6 +31,7 @@ esac
 
 DBDIR=$1
 LIBDIR=$2
+LCHECK_PATH=$3
 DBURL=http://physionet.org/physiobank/database
 
 # If not using DESTDIR, test the built-in path used by the WFDB library.
@@ -74,9 +75,16 @@ else
 fi
 export LD_LIBRARY_PATH
 
-test -s Makefile || ( cd ..; ./configure )
-test -s lcheck || test -s lcheck.exe || make lcheck
-if test -s lcheck.exe; then LCHECK=./lcheck.exe; else LCHECK=./lcheck; fi
+if [ -n "$LCHECK_PATH" ] && [ -x "$LCHECK_PATH" ]; then
+    LCHECK="$LCHECK_PATH"
+elif test -s lcheck; then
+    LCHECK=./lcheck
+elif test -s lcheck.exe; then
+    LCHECK=./lcheck.exe
+else
+    echo "Error: lcheck binary not found"
+    exit 1
+fi
 $LCHECK -v >lcheck.log
 cp ../data/100s.atr expected/100s.chk
 cp ../data/100s.dat expected/100z.dat

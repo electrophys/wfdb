@@ -35,20 +35,20 @@ symbols reserved to the library begin with the characters "wfdb_".
 /* DEFWFDB is the default value of the WFDB path if the WFDB environment
    variable is not set.
 
-   If WFDB_NETFILES support is disabled, the string ". @DBDIR@" is
-   usually sufficient for a default WFDB path, thus restricting the search for
-   WFDB files to the current directory ("."), followed by @DBDIR@).
+   If WFDB_NETFILES support is disabled, the path is ". <DBDIR>",
+   restricting the search for WFDB files to the current directory (".")
+   followed by DBDIR.
 
-   If WFDB_NETFILES support is enabled, the first setting below adds the
-   web-accessible PhysioBank databases to the default path; you may wish to
-   change this to use a nearby PhysioNet mirror (for a list of mirrors, see
+   If WFDB_NETFILES support is enabled, the web-accessible PhysioBank
+   databases are appended to the default path; you may wish to change this
+   to use a nearby PhysioNet mirror (for a list of mirrors, see
    http://physionet.org/mirrors/).  DEFWFDB must not be NULL, however.
 */
 
-#ifndef WFDB_NETFILES
-# define DEFWFDB	". @DBDIR@"
+#if !WFDB_NETFILES
+# define DEFWFDB	". " DBDIR
 #else
-# define DEFWFDB ". @DBDIR@ http://physionet.org/physiobank/database"
+# define DEFWFDB ". " DBDIR " http://physionet.org/physiobank/database"
 #endif
 
 /* DEFWFDBCAL is the name of the default WFDB calibration file, used if the

@@ -56,9 +56,8 @@ These functions were previously part of signal.c.
 
 #define strtotime strtoll
 
-WFDB_Frequency sampfreq(char *record)
+WFDB_Frequency sampfreq_ctx(WFDB_Context *ctx, char *record)
 {
-    WFDB_Context *ctx = wfdb_get_default_context();
     int n;
 
     /* Remove trailing .hea, if any, from record name. */
@@ -79,9 +78,13 @@ WFDB_Frequency sampfreq(char *record)
     return (sfreq);
 }
 
-int setsampfreq(WFDB_Frequency freq)
+WFDB_Frequency sampfreq(char *record)
 {
-    WFDB_Context *ctx = wfdb_get_default_context();
+    return sampfreq_ctx(wfdb_get_default_context(), record);
+}
+
+int setsampfreq_ctx(WFDB_Context *ctx, WFDB_Frequency freq)
+{
     if (freq >= 0.) {
 	sfreq = ffreq = freq;
 	if (spfmax == 0) spfmax = 1;
@@ -92,9 +95,13 @@ int setsampfreq(WFDB_Frequency freq)
     return (-1);
 }
 
-int setbasetime(char *string)
+int setsampfreq(WFDB_Frequency freq)
 {
-    WFDB_Context *ctx = wfdb_get_default_context();
+    return setsampfreq_ctx(wfdb_get_default_context(), freq);
+}
+
+int setbasetime_ctx(WFDB_Context *ctx, char *string)
+{
     char *p;
 
     pdays = -1;
@@ -127,6 +134,11 @@ int setbasetime(char *string)
     return (0);
 }
 
+int setbasetime(char *string)
+{
+    return setbasetime_ctx(wfdb_get_default_context(), string);
+}
+
 /* Convert sample number to string, using the given sampling
    frequency */
 char *ftimstr(WFDB_Time t, WFDB_Frequency f)
@@ -142,9 +154,8 @@ char *ftimstr(WFDB_Time t, WFDB_Frequency f)
     return (p);
 }
 
-char *timstr(WFDB_Time t)
+char *timstr_ctx(WFDB_Context *ctx, WFDB_Time t)
 {
-    WFDB_Context *ctx = wfdb_get_default_context();
     double f;
 
     if (ifreq > 0.) f = ifreq;
@@ -152,6 +163,11 @@ char *timstr(WFDB_Time t)
     else f = 1.0;
 
     return ftimstr(t, f);
+}
+
+char *timstr(WFDB_Time t)
+{
+    return timstr_ctx(wfdb_get_default_context(), t);
 }
 
 /* Convert sample number to string, using the given sampling
@@ -211,9 +227,8 @@ char *fmstimstr(WFDB_Time t, WFDB_Frequency f)
     return (time_string);
 }
 
-char *mstimstr(WFDB_Time t)
+char *mstimstr_ctx(WFDB_Context *ctx, WFDB_Time t)
 {
-    WFDB_Context *ctx = wfdb_get_default_context();
     double f;
 
     if (ifreq > 0.) f = ifreq;
@@ -223,28 +238,49 @@ char *mstimstr(WFDB_Time t)
     return fmstimstr(t, f);
 }
 
+char *mstimstr(WFDB_Time t)
+{
+    return mstimstr_ctx(wfdb_get_default_context(), t);
+}
+
+WFDB_Frequency getcfreq_ctx(WFDB_Context *ctx)
+{
+    return (cfreq > 0. ? cfreq : ffreq);
+}
+
 WFDB_Frequency getcfreq(void)
 {
-    WFDB_Context *ctx = wfdb_get_default_context();
-    return (cfreq > 0. ? cfreq : ffreq);
+    return getcfreq_ctx(wfdb_get_default_context());
+}
+
+void setcfreq_ctx(WFDB_Context *ctx, WFDB_Frequency freq)
+{
+    cfreq = freq;
 }
 
 void setcfreq(WFDB_Frequency freq)
 {
-    WFDB_Context *ctx = wfdb_get_default_context();
-    cfreq = freq;
+    setcfreq_ctx(wfdb_get_default_context(), freq);
+}
+
+double getbasecount_ctx(WFDB_Context *ctx)
+{
+    return (bcount);
 }
 
 double getbasecount(void)
 {
-    WFDB_Context *ctx = wfdb_get_default_context();
-    return (bcount);
+    return getbasecount_ctx(wfdb_get_default_context());
+}
+
+void setbasecount_ctx(WFDB_Context *ctx, double counter)
+{
+    bcount = counter;
 }
 
 void setbasecount(double counter)
 {
-    WFDB_Context *ctx = wfdb_get_default_context();
-    bcount = counter;
+    setbasecount_ctx(wfdb_get_default_context(), counter);
 }
 
 /* Convert string to sample number, using the given sampling
@@ -294,9 +330,8 @@ WFDB_Time fstrtim(const char *string, WFDB_Frequency f)
     }
 }
 
-WFDB_Time strtim(const char *string)
+WFDB_Time strtim_ctx(WFDB_Context *ctx, const char *string)
 {
-    WFDB_Context *ctx = wfdb_get_default_context();
     double f;
 
     if (ifreq > 0.) f = ifreq;
@@ -306,6 +341,11 @@ WFDB_Time strtim(const char *string)
     return fstrtim(string, f);
 }
 
+WFDB_Time strtim(const char *string)
+{
+    return strtim_ctx(wfdb_get_default_context(), string);
+}
+
 /* The functions datstr and strdat convert between Julian dates (used
    internally) and dd/mm/yyyy format dates.  (Yes, this is overkill for this
    application.  For the astronomically-minded, Julian dates are supposed
@@ -313,9 +353,8 @@ WFDB_Time strtim(const char *string)
    based on similar functions in chapter 1 of "Numerical Recipes", by Press,
    Flannery, Teukolsky, and Vetterling (Cambridge U. Press, 1986). */
 
-char *datstr(WFDB_Date date)
+char *datstr_ctx(WFDB_Context *ctx, WFDB_Date date)
 {
-    WFDB_Context *ctx = wfdb_get_default_context();
     int d, m, y, gcorr, jm, jy;
     WFDB_Date jd;
 
@@ -335,6 +374,11 @@ char *datstr(WFDB_Date date)
     (void)sprintf(date_string, " %02d/%02d/%d", d, m, y);
     pdays = -1;
     return (date_string);
+}
+
+char *datstr(WFDB_Date date)
+{
+    return datstr_ctx(wfdb_get_default_context(), date);
 }
 
 WFDB_Date strdat(const char *string)
@@ -360,9 +404,13 @@ WFDB_Date strdat(const char *string)
     return (date);
 }
 
-int adumuv(WFDB_Signal s, WFDB_Sample a)
+WFDB_Date strdat_ctx(WFDB_Context *ctx, const char *string)
 {
-    WFDB_Context *ctx = wfdb_get_default_context();
+    return strdat(string);
+}
+
+int adumuv_ctx(WFDB_Context *ctx, WFDB_Signal s, WFDB_Sample a)
+{
     double x;
     WFDB_Gain g = (s < nvsig) ? vsd[s]->info.gain : WFDB_DEFGAIN;
 
@@ -374,9 +422,13 @@ int adumuv(WFDB_Signal s, WFDB_Sample a)
 	return ((int)(x - 0.5));
 }
 
-WFDB_Sample muvadu(WFDB_Signal s, int v)
+int adumuv(WFDB_Signal s, WFDB_Sample a)
 {
-    WFDB_Context *ctx = wfdb_get_default_context();
+    return adumuv_ctx(wfdb_get_default_context(), s, a);
+}
+
+WFDB_Sample muvadu_ctx(WFDB_Context *ctx, WFDB_Signal s, int v)
+{
     double x;
     WFDB_Gain g = (s < nvsig) ? vsd[s]->info.gain : WFDB_DEFGAIN;
 
@@ -388,9 +440,13 @@ WFDB_Sample muvadu(WFDB_Signal s, int v)
 	return ((int)(x - 0.5));
 }
 
-double aduphys(WFDB_Signal s, WFDB_Sample a)
+WFDB_Sample muvadu(WFDB_Signal s, int v)
 {
-    WFDB_Context *ctx = wfdb_get_default_context();
+    return muvadu_ctx(wfdb_get_default_context(), s, v);
+}
+
+double aduphys_ctx(WFDB_Context *ctx, WFDB_Signal s, WFDB_Sample a)
+{
     double b;
     WFDB_Gain g;
 
@@ -406,9 +462,13 @@ double aduphys(WFDB_Signal s, WFDB_Sample a)
     return ((a - b)/g);
 }
 
-WFDB_Sample physadu(WFDB_Signal s, double v)
+double aduphys(WFDB_Signal s, WFDB_Sample a)
 {
-    WFDB_Context *ctx = wfdb_get_default_context();
+    return aduphys_ctx(wfdb_get_default_context(), s, a);
+}
+
+WFDB_Sample physadu_ctx(WFDB_Context *ctx, WFDB_Signal s, double v)
+{
     int b;
     WFDB_Gain g;
 
@@ -426,4 +486,9 @@ WFDB_Sample physadu(WFDB_Signal s, double v)
 	return ((int)(v + 0.5) + b);
     else
 	return ((int)(v - 0.5) + b);
+}
+
+WFDB_Sample physadu(WFDB_Signal s, double v)
+{
+    return physadu_ctx(wfdb_get_default_context(), s, v);
 }

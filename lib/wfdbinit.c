@@ -29,30 +29,48 @@ This file contains definitions of the following WFDB library functions:
  wfdbflush	(writes all buffered output annotation and signal files)
 */
 
-#include "wfdblib.h"
+#include "wfdb_context.h"
+
+int wfdbinit_ctx(WFDB_Context *ctx, char *record,
+		  const WFDB_Anninfo *aiarray, unsigned int nann,
+		  WFDB_Siginfo *siarray, unsigned int nsig)
+{
+    int stat;
+
+    if ((stat = annopen_ctx(ctx, record, aiarray, nann)) == 0)
+	stat = isigopen_ctx(ctx, record, siarray, (int)nsig);
+    return (stat);
+}
 
 int wfdbinit(char *record, const WFDB_Anninfo *aiarray, unsigned int nann,
 	      WFDB_Siginfo *siarray, unsigned int nsig)
 {
-    int stat;
-
-    if ((stat = annopen(record, aiarray, nann)) == 0)
-	stat = isigopen(record, siarray, (int)nsig);
-    return (stat);
+    return wfdbinit_ctx(wfdb_get_default_context(), record, aiarray, nann,
+			siarray, nsig);
 }
 
-void wfdbquit(void)
+void wfdbquit_ctx(WFDB_Context *ctx)
 {
     wfdb_anclose();	/* close annotation files, reset variables */
     wfdb_oinfoclose();	/* close info file */
     wfdb_sigclose();	/* close signals, reset variables */
-    resetwfdb();	/* restore the WFDB path */
+    resetwfdb_ctx(ctx);	/* restore the WFDB path */
     wfdb_sampquit();	/* release sample data buffer */
     wfdb_freeinfo();	/* release info strings */
 }
 
-void wfdbflush(void)	/* write all buffered output to files */
+void wfdbquit(void)
+{
+    wfdbquit_ctx(wfdb_get_default_context());
+}
+
+void wfdbflush_ctx(WFDB_Context *ctx)
 {
     wfdb_oaflush();	/* flush buffered output annotations */
     wfdb_osflush();	/* flush buffered output samples */
+}
+
+void wfdbflush(void)	/* write all buffered output to files */
+{
+    wfdbflush_ctx(wfdb_get_default_context());
 }

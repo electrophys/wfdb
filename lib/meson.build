@@ -5,45 +5,53 @@ else
   dbdir = get_option('datadir') / 'wfdb'
 endif
 
-# Configuration data for wfdb.h
-wfdb_conf = configuration_data()
-wfdb_conf.set('WFDBMAJOR', wfdb_major)
-wfdb_conf.set('WFDBMINOR', wfdb_minor)
-wfdb_conf.set('WFDBRELEASE', wfdb_release)
-wfdb_conf.set('WFDB_NETFILES', libcurl_dep.found() ? '1' : '0')
-wfdb_conf.set('WFDB_NETFILES_LIBCURL', libcurl_dep.found() ? '1' : '0')
+# Generate wfdb_config.h with build-time configuration values.
+# wfdb.h includes this file; the library build also uses -D flags which
+# override via #ifndef guards.
+wfdb_config_data = configuration_data()
+wfdb_config_data.set('WFDB_MAJOR', wfdb_major.to_int())
+wfdb_config_data.set('WFDB_MINOR', wfdb_minor.to_int())
+wfdb_config_data.set('WFDB_RELEASE', wfdb_release.to_int())
+wfdb_config_data.set('WFDB_NETFILES', libcurl_dep.found() ? 1 : 0)
+wfdb_config_data.set('WFDB_NETFILES_LIBCURL', libcurl_dep.found() ? 1 : 0)
+wfdb_config_data.set('DBDIR', get_option('prefix') / dbdir)
 
-wfdb_h = configure_file(
-  input: 'wfdb.h0',
-  output: 'wfdb.h',
-  configuration: wfdb_conf,
+wfdb_config_h = configure_file(
+  input: 'wfdb_config.h.meson',
+  output: 'wfdb_config.h',
+  configuration: wfdb_config_data,
 )
 
-# Configuration data for wfdblib.h
-wfdblib_conf = configuration_data()
-wfdblib_conf.set('DBDIR', get_option('prefix') / dbdir)
+# Version and config -D flags override the #ifndef defaults in wfdb_config.h
+lib_c_args = [
+  '-DWFDB_MAJOR=' + wfdb_major,
+  '-DWFDB_MINOR=' + wfdb_minor,
+  '-DWFDB_RELEASE=' + wfdb_release,
+  '-DDBDIR="' + (get_option('prefix') / dbdir) + '"',
+]
 
-wfdblib_h = configure_file(
-  input: 'wfdblib.h0',
-  output: 'wfdblib.h',
-  configuration: wfdblib_conf,
-)
+if libcurl_dep.found()
+  lib_c_args += [
+    '-DWFDB_NETFILES=1',
+    '-DWFDB_NETFILES_LIBCURL=1',
+  ]
+endif
+if libflac_dep.found()
+  lib_c_args += '-DWFDB_FLAC_SUPPORT'
+endif
 
-# Apps use #include <wfdb/wfdb.h>.  Generated headers go to build/lib/,
-# so we create a symlink build/wfdb -> build/lib at configure time.
-# This lets -Ibuild/ resolve <wfdb/wfdb.h> to build/wfdb/wfdb.h
-# (i.e. build/lib/wfdb.h).
-#
-# We also need the source tree's lib/ accessible as wfdb/ for static headers
-# like ecgcodes.h and ecgmap.h.  A symlink in the source tree is not ideal,
-# so we create a symlink build/wfdb that points to build/lib, and copy the
-# static headers into build/lib/ at configure time.
+# Apps use #include <wfdb/wfdb.h>.  Headers live in the source tree's lib/,
+# so we create a symlink build/wfdb -> <source>/lib at configure time.
+# We also copy ecgcodes.h and ecgmap.h to build/lib/ so the symlink from
+# build/ works for all headers.
 build_lib_dir = meson.current_build_dir()
 build_root = meson.project_build_root()
 wfdb_link = build_root / 'wfdb'
 
-# Copy static headers to build/lib/ so they coexist with generated ones
-foreach hdr : ['ecgcodes.h', 'ecgmap.h']
+# Copy source headers to build/lib/ so the build/wfdb symlink works
+# for apps that #include <wfdb/wfdb.h>.  (wfdb_config.h is already
+# generated in build/lib/ by configure_file above.)
+foreach hdr : ['wfdb.h', 'wfdblib.h', 'ecgcodes.h', 'ecgmap.h']
   configure_file(
     input: hdr,
     output: hdr,
@@ -81,14 +89,12 @@ lib_sources = files(
 
 # Collect dependency objects
 lib_deps = [m_dep]
-lib_c_args = []
 
 if libcurl_dep.found()
   lib_deps += libcurl_dep
 endif
 if libflac_dep.found()
   lib_deps += libflac_dep
-  lib_c_args += '-DWFDB_FLAC_SUPPORT'
 endif
 
 # wfdbio.c needs special compile-time defines
@@ -130,7 +136,7 @@ libwfdb_static = static_library('wfdb',
 
 # Declare dependency for use by subdirectories.
 # - lib_inc: for internal headers (wfdblib.h, signal_internal.h, etc.)
-# - build_root_inc: for <wfdb/wfdb.h> via build/wfdb -> build/lib symlink
+# - build_root_inc: for <wfdb/wfdb.h> via build/wfdb -> <source>/lib symlink
 wfdb_dep = declare_dependency(
   link_with: libwfdb,
   include_directories: [lib_inc, build_root_inc],
@@ -139,9 +145,10 @@ wfdb_dep = declare_dependency(
 
 # Install public headers
 install_headers(
-  wfdb_h,
+  'wfdb.h',
+  wfdb_config_h,
   'ecgcodes.h',
   'ecgmap.h',
-  wfdblib_h,
+  'wfdblib.h',
   subdir: 'wfdb',
 )

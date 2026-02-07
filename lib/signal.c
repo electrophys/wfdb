@@ -408,9 +408,8 @@ int osigclose(void)
 
 /* WFDB library functions. */
 
-int isigopen(char *record, WFDB_Siginfo *siarray, int nsig)
+int isigopen_ctx(WFDB_Context *ctx, char *record, WFDB_Siginfo *siarray, int nsig)
 {
-    WFDB_Context *ctx = wfdb_get_default_context();
     int navail, nn, spflimit;
     int first_segment = 0;
     struct hsdata *hs;
@@ -478,7 +477,7 @@ int isigopen(char *record, WFDB_Siginfo *siarray, int nsig)
 
     /* Set default buffer size (if not set already by setibsize). */
     if (ibsize <= 0) ibsize = BUFSIZ;
-  
+
     /* Open the signal files.  One signal group is handled per iteration.  In
        this loop, si counts through the entries that have been read from hsd,
        and s counts the entries that have been added to isd. */
@@ -508,7 +507,7 @@ int isigopen(char *record, WFDB_Siginfo *siarray, int nsig)
 	/* Check that the signal file is readable. */
 	if (hs->info.fmt == 0)
 	    ig->fp = NULL;	/* Don't open a file for a null signal. */
-	else { 
+	else {
 	    ig->fp = wfdb_open(hs->info.fname, (char *)NULL, WFDB_READ);
 	    /* Skip this group if the signal file can't be opened. */
 	    if (ig->fp == NULL) {
@@ -567,7 +566,7 @@ int isigopen(char *record, WFDB_Siginfo *siarray, int nsig)
        maximum number of samples per signal per frame and the maximum skew. */
     for (si = 0; si < s; si++) {
         is = isd[nisig + si];
-	if (siarray) 
+	if (siarray)
 	    copysi(&siarray[si], &is->info);
 	is->samp = is->info.initval;
 	if (ispfmax < is->info.spf) ispfmax = is->info.spf;
@@ -609,6 +608,11 @@ int isigopen(char *record, WFDB_Siginfo *siarray, int nsig)
 	SALLOC(dsbuf, dsblen, sizeof(WFDB_Sample));
     }
     return (s);
+}
+
+int isigopen(char *record, WFDB_Siginfo *siarray, int nsig)
+{
+    return isigopen_ctx(wfdb_get_default_context(), record, siarray, nsig);
 }
 
 static int openosig(const char *func, WFDB_Siginfo *si_out,
@@ -711,9 +715,8 @@ static int openosig(const char *func, WFDB_Siginfo *si_out,
     return (s);
 }
 
-int osigopen(char *record, WFDB_Siginfo *siarray, unsigned int nsig)
+int osigopen_ctx(WFDB_Context *ctx, char *record, WFDB_Siginfo *siarray, unsigned int nsig)
 {
-    WFDB_Context *ctx = wfdb_get_default_context();
     int n;
     WFDB_Signal s;
     WFDB_Siginfo *hsi;
@@ -742,9 +745,13 @@ int osigopen(char *record, WFDB_Siginfo *siarray, unsigned int nsig)
     return (s);
 }
 
-int osigfopen(const WFDB_Siginfo *siarray, unsigned int nsig)
+int osigopen(char *record, WFDB_Siginfo *siarray, unsigned int nsig)
 {
-    WFDB_Context *ctx = wfdb_get_default_context();
+    return osigopen_ctx(wfdb_get_default_context(), record, siarray, nsig);
+}
+
+int osigfopen_ctx(WFDB_Context *ctx, const WFDB_Siginfo *siarray, unsigned int nsig)
+{
     int s, stat;
     const WFDB_Siginfo *si;
 
@@ -785,6 +792,11 @@ int osigfopen(const WFDB_Siginfo *siarray, unsigned int nsig)
     return (openosig("osigfopen", NULL, siarray, nsig));
 }
 
+int osigfopen(const WFDB_Siginfo *siarray, unsigned int nsig)
+{
+    return osigfopen_ctx(wfdb_get_default_context(), siarray, nsig);
+}
+
 /* Function findsig finds an open input signal with the name specified by its
 (string) argument, and returns the associated signal number.  If the argument
 is a decimal numeral and is less than the number of open input signals, it is
@@ -792,9 +804,8 @@ assumed to represent a signal number, which is returned.  Otherwise, findsig
 looks for a signal with a description matching the string, and returns the
 first match if any, or -1 if not. */
 
-int findsig(const char *p)
+int findsig_ctx(WFDB_Context *ctx, const char *p)
 {
-  WFDB_Context *ctx = wfdb_get_default_context();
   const char *q = p;
   int s;
 
@@ -818,6 +829,11 @@ int findsig(const char *p)
   return (-1);
 }
 
+int findsig(const char *p)
+{
+    return findsig_ctx(wfdb_get_default_context(), p);
+}
+
 /* Function getvec can operate in two different modes when reading
 multifrequency records.  In WFDB_LOWRES mode, getvec returns one sample of each
 signal per frame (decimating any oversampled signal by returning the average of
@@ -838,15 +854,18 @@ problems if this rounding is omitted.  Thanks to Guido Muesch for pointing out
 this problem.
  */
 
-int getspf(void)
+int getspf_ctx(WFDB_Context *ctx)
 {
-    WFDB_Context *ctx = wfdb_get_default_context();
     return ((sfreq != ffreq) ? (int)(sfreq/ffreq + 0.5) : 1);
 }
 
-void setgvmode(int mode)
+int getspf(void)
 {
-    WFDB_Context *ctx = wfdb_get_default_context();
+    return getspf_ctx(wfdb_get_default_context());
+}
+
+void setgvmode_ctx(WFDB_Context *ctx, int mode)
+{
     if (mode < 0) {	/* (re)set to default mode */
 	char *p;
 
@@ -867,10 +886,19 @@ void setgvmode(int mode)
     }
 }
 
+void setgvmode(int mode)
+{
+    setgvmode_ctx(wfdb_get_default_context(), mode);
+}
+
+int getgvmode_ctx(WFDB_Context *ctx)
+{
+    return (gvmode);
+}
+
 int getgvmode(void)
 {
-    WFDB_Context *ctx = wfdb_get_default_context();
-    return (gvmode);
+    return getgvmode_ctx(wfdb_get_default_context());
 }
 
 /* An application can specify the input sampling frequency it prefers by
@@ -881,9 +909,8 @@ static int rgvstat;
 static WFDB_Time rgvtime, gvtime;
 static WFDB_Sample *gv0, *gv1;
 
-int setifreq(WFDB_Frequency f)
+int setifreq_ctx(WFDB_Context *ctx, WFDB_Frequency f)
 {
-    WFDB_Context *ctx = wfdb_get_default_context();
     WFDB_Frequency error, g = sfreq;
 
     if (g <= 0.0) {
@@ -929,15 +956,23 @@ int setifreq(WFDB_Frequency f)
     }
 }
 
+int setifreq(WFDB_Frequency f)
+{
+    return setifreq_ctx(wfdb_get_default_context(), f);
+}
+
+WFDB_Frequency getifreq_ctx(WFDB_Context *ctx)
+{
+    return (ifreq > (WFDB_Frequency)0 ? ifreq : sfreq);
+}
+
 WFDB_Frequency getifreq(void)
 {
-    WFDB_Context *ctx = wfdb_get_default_context();
-    return (ifreq > (WFDB_Frequency)0 ? ifreq : sfreq);
-}    
+    return getifreq_ctx(wfdb_get_default_context());
+}
 
-int getvec(WFDB_Sample *vector)
+int getvec_ctx(WFDB_Context *ctx, WFDB_Sample *vector)
 {
-    WFDB_Context *ctx = wfdb_get_default_context();
     int i, nsig;
 
     if (ifreq == 0.0 || ifreq == sfreq)	/* no resampling necessary */
@@ -963,9 +998,13 @@ int getvec(WFDB_Sample *vector)
     return (rgvstat);
 }
 
-int getframe(WFDB_Sample *vector)
+int getvec(WFDB_Sample *vector)
 {
-    WFDB_Context *ctx = wfdb_get_default_context();
+    return getvec_ctx(wfdb_get_default_context(), vector);
+}
+
+int getframe_ctx(WFDB_Context *ctx, WFDB_Sample *vector)
+{
     int stat = -1;
 
     if (dsbuf) {	/* signals must be deskewed */
@@ -998,9 +1037,13 @@ int getframe(WFDB_Sample *vector)
     return (stat);
 }
 
-int putvec(const WFDB_Sample *vector)
+int getframe(WFDB_Sample *vector)
 {
-    WFDB_Context *ctx = wfdb_get_default_context();
+    return getframe_ctx(wfdb_get_default_context(), vector);
+}
+
+int putvec_ctx(WFDB_Context *ctx, const WFDB_Sample *vector)
+{
     int c, dif, stat = (int)nosig;
     struct osdata *os;
     struct ogdata *og;
@@ -1090,13 +1133,17 @@ int putvec(const WFDB_Sample *vector)
     return (stat);
 }
 
-int isigsettime(WFDB_Time t)
+int putvec(const WFDB_Sample *vector)
 {
-    WFDB_Context *ctx = wfdb_get_default_context();
+    return putvec_ctx(wfdb_get_default_context(), vector);
+}
+
+int isigsettime_ctx(WFDB_Context *ctx, WFDB_Time t)
+{
     WFDB_Group g;
     WFDB_Time curtime;
     int stat = 0;
-	
+
     /* Return immediately if no seek is needed. */
     if (nisig == 0) return (0);
     if (ifreq <= (WFDB_Frequency)0) {
@@ -1114,10 +1161,14 @@ int isigsettime(WFDB_Time t)
     if (stat == 0) stat = isgsettime(0, t);
     return (stat);
 }
-    
-int isgsettime(WFDB_Group g, WFDB_Time t)
+
+int isigsettime(WFDB_Time t)
 {
-    WFDB_Context *ctx = wfdb_get_default_context();
+    return isigsettime_ctx(wfdb_get_default_context(), t);
+}
+    
+int isgsettime_ctx(WFDB_Context *ctx, WFDB_Group g, WFDB_Time t)
+{
     int spf, stat, trem = 0;
     double tt;
 
@@ -1169,9 +1220,13 @@ int isgsettime(WFDB_Group g, WFDB_Time t)
     return (stat);
 }
 
-WFDB_Time tnextvec(WFDB_Signal s, WFDB_Time t)
+int isgsettime(WFDB_Group g, WFDB_Time t)
 {
-    WFDB_Context *ctx = wfdb_get_default_context();
+    return isgsettime_ctx(wfdb_get_default_context(), g, t);
+}
+
+WFDB_Time tnextvec_ctx(WFDB_Context *ctx, WFDB_Signal s, WFDB_Time t)
+{
     int stat = 0;
     WFDB_Time tf;
 
@@ -1223,11 +1278,15 @@ WFDB_Time tnextvec(WFDB_Signal s, WFDB_Time t)
     }
     /* Error or end of record without finding another sample of signal s. */
     return ((WFDB_Time) stat);
-}  
+}
 
-int setibsize(int n)
+WFDB_Time tnextvec(WFDB_Signal s, WFDB_Time t)
 {
-    WFDB_Context *ctx = wfdb_get_default_context();
+    return tnextvec_ctx(wfdb_get_default_context(), s, t);
+}
+
+int setibsize_ctx(WFDB_Context *ctx, int n)
+{
     if (nisig) {
 	wfdb_error("setibsize: can't change buffer size after isigopen\n");
 	return (-1);
@@ -1240,9 +1299,13 @@ int setibsize(int n)
     return (ibsize = n);
 }
 
-int setobsize(int n)
+int setibsize(int n)
 {
-    WFDB_Context *ctx = wfdb_get_default_context();
+    return setibsize_ctx(wfdb_get_default_context(), n);
+}
+
+int setobsize_ctx(WFDB_Context *ctx, int n)
+{
     if (nosig) {
 	wfdb_error("setobsize: can't change buffer size after osig[f]open\n");
 	return (-1);
@@ -1255,9 +1318,13 @@ int setobsize(int n)
     return (obsize = n);
 }
 
-int newheader(char *record)
+int setobsize(int n)
 {
-    WFDB_Context *ctx = wfdb_get_default_context();
+    return setobsize_ctx(wfdb_get_default_context(), n);
+}
+
+int newheader_ctx(WFDB_Context *ctx, char *record)
+{
     int stat;
     WFDB_Signal s;
     WFDB_Siginfo *osi;
@@ -1278,9 +1345,13 @@ int newheader(char *record)
     return (stat);
 }
 
-int setheader(char *record, const WFDB_Siginfo *siarray, unsigned int nsig)
+int newheader(char *record)
 {
-    WFDB_Context *ctx = wfdb_get_default_context();
+    return newheader_ctx(wfdb_get_default_context(), record);
+}
+
+int setheader_ctx(WFDB_Context *ctx, char *record, const WFDB_Siginfo *siarray, unsigned int nsig)
+{
     char *p;
     WFDB_Signal s;
 
@@ -1355,16 +1426,24 @@ int setheader(char *record, const WFDB_Siginfo *siarray, unsigned int nsig)
     return (0);
 }
 
-int getseginfo(WFDB_Seginfo **sarray)
+int setheader(char *record, const WFDB_Siginfo *siarray, unsigned int nsig)
 {
-    WFDB_Context *ctx = wfdb_get_default_context();
+    return setheader_ctx(wfdb_get_default_context(), record, siarray, nsig);
+}
+
+int getseginfo_ctx(WFDB_Context *ctx, WFDB_Seginfo **sarray)
+{
     *sarray = segarray;
     return (segments);
 }
 
-int setmsheader(char *record, char **segment_name, unsigned int nsegments)
+int getseginfo(WFDB_Seginfo **sarray)
 {
-    WFDB_Context *ctx = wfdb_get_default_context();
+    return getseginfo_ctx(wfdb_get_default_context(), sarray);
+}
+
+int setmsheader_ctx(WFDB_Context *ctx, char *record, char **segment_name, unsigned int nsegments)
+{
     WFDB_Frequency msfreq = 0, mscfreq = 0;
     double msbcount = 0;
     int n, nsig = 0, old_in_msrec = in_msrec;
@@ -1482,37 +1561,53 @@ int setmsheader(char *record, char **segment_name, unsigned int nsegments)
     return (0);
 }
 
-int wfdbgetskew(WFDB_Signal s)
+int setmsheader(char *record, char **segment_name, unsigned int nsegments)
 {
-    WFDB_Context *ctx = wfdb_get_default_context();
+    return setmsheader_ctx(wfdb_get_default_context(), record, segment_name, nsegments);
+}
+
+int wfdbgetskew_ctx(WFDB_Context *ctx, WFDB_Signal s)
+{
     if (s < nvsig)
 	return (vsd[s]->skew);
     else
 	return (0);
 }
 
+int wfdbgetskew(WFDB_Signal s)
+{
+    return wfdbgetskew_ctx(wfdb_get_default_context(), s);
+}
+
 /* Careful!!  This function is dangerous, and should be used only to restore
    skews when they have been reset as a side effect of using, e.g., sampfreq */
-void wfdbsetiskew(WFDB_Signal s, int skew)
+void wfdbsetiskew_ctx(WFDB_Context *ctx, WFDB_Signal s, int skew)
 {
-    WFDB_Context *ctx = wfdb_get_default_context();
     if (s < nvsig && skew >= 0 && skew < dsblen / tspf)
         vsd[s]->skew = skew;
+}
+
+void wfdbsetiskew(WFDB_Signal s, int skew)
+{
+    wfdbsetiskew_ctx(wfdb_get_default_context(), s, skew);
 }
 
 /* Note: wfdbsetskew affects *only* the skew to be written by setheader.
    It does not affect how getframe deskews input signals, nor does it
    affect the value returned by wfdbgetskew. */
-void wfdbsetskew(WFDB_Signal s, int skew)
+void wfdbsetskew_ctx(WFDB_Context *ctx, WFDB_Signal s, int skew)
 {
-    WFDB_Context *ctx = wfdb_get_default_context();
     if (s < nosig)
 	osd[s]->skew = skew;
 }
 
-long wfdbgetstart(WFDB_Signal s)
+void wfdbsetskew(WFDB_Signal s, int skew)
 {
-    WFDB_Context *ctx = wfdb_get_default_context();
+    wfdbsetskew_ctx(wfdb_get_default_context(), s, skew);
+}
+
+long wfdbgetstart_ctx(WFDB_Context *ctx, WFDB_Signal s)
+{
     if (s < nisig)
         return (igd[vsd[s]->info.group]->start);
     else if (s == 0 && hsd != NULL)
@@ -1521,20 +1616,28 @@ long wfdbgetstart(WFDB_Signal s)
 	return (0L);
 }
 
+long wfdbgetstart(WFDB_Signal s)
+{
+    return wfdbgetstart_ctx(wfdb_get_default_context(), s);
+}
+
 /* Note: wfdbsetstart affects *only* the byte offset to be written by
    setheader.  It does not affect how isgsettime calculates byte offsets, nor
    does it affect the value returned by wfdbgetstart. */
-void wfdbsetstart(WFDB_Signal s, long int bytes)
+void wfdbsetstart_ctx(WFDB_Context *ctx, WFDB_Signal s, long int bytes)
 {
-    WFDB_Context *ctx = wfdb_get_default_context();
     if (s < nosig)
         ogd[osd[s]->info.group]->start = bytes;
     prolog_bytes = bytes;
 }
 
-int wfdbputprolog(const char *buf, long int size, WFDB_Signal s)
+void wfdbsetstart(WFDB_Signal s, long int bytes)
 {
-    WFDB_Context *ctx = wfdb_get_default_context();
+    wfdbsetstart_ctx(wfdb_get_default_context(), s, bytes);
+}
+
+int wfdbputprolog_ctx(WFDB_Context *ctx, const char *buf, long int size, WFDB_Signal s)
+{
     long int n;
     WFDB_Group g = osd[s]->info.group;
 
@@ -1545,10 +1648,14 @@ int wfdbputprolog(const char *buf, long int size, WFDB_Signal s)
     return (n == size ? 0 : -1);
 }
 
-/* Create a .info file (or open it for appending) */
-int setinfo(char *record)
+int wfdbputprolog(const char *buf, long int size, WFDB_Signal s)
 {
-    WFDB_Context *ctx = wfdb_get_default_context();
+    return wfdbputprolog_ctx(wfdb_get_default_context(), buf, size, s);
+}
+
+/* Create a .info file (or open it for appending) */
+int setinfo_ctx(WFDB_Context *ctx, char *record)
+{
     /* Close any previously opened output info file. */
     int stat = wfdb_oinfoclose();
 
@@ -1572,10 +1679,14 @@ int setinfo(char *record)
     return (0);
 }
 
-/* Write an info string to the open output .hea or .info file */
-int putinfo(const char *s)
+int setinfo(char *record)
 {
-    WFDB_Context *ctx = wfdb_get_default_context();
+    return setinfo_ctx(wfdb_get_default_context(), record);
+}
+
+/* Write an info string to the open output .hea or .info file */
+int putinfo_ctx(WFDB_Context *ctx, const char *s)
+{
     if (outinfo == NULL) {
 	if (oheader) outinfo = oheader;
 	else {
@@ -1588,14 +1699,18 @@ int putinfo(const char *s)
     return (0);
 }
 
+int putinfo(const char *s)
+{
+    return putinfo_ctx(wfdb_get_default_context(), s);
+}
+
 /* getinfo: On the first call, read all info strings from the .hea file and (if
 available) the .info file for the specified record, and return a pointer to the
 first one.  On subsequent calls, return a pointer to the next info string.
 Return NULL if there are no more info strings. */
 
-char *getinfo(char *record)
+char *getinfo_ctx(WFDB_Context *ctx, char *record)
 {
-    WFDB_Context *ctx = wfdb_get_default_context();
     char *buf = NULL, *p;
     size_t bufsize = 0;
     static int i;
@@ -1674,6 +1789,11 @@ char *getinfo(char *record)
 	return (NULL);
 }
 
+char *getinfo(char *record)
+{
+    return getinfo_ctx(wfdb_get_default_context(), record);
+}
+
 /* sample(s, t) provides buffered random access to the input signals.  The
 arguments are the signal number (s) and the sample number (t); the returned
 value is the sample from signal s at time t.  On return, the global variable
@@ -1685,9 +1805,8 @@ any order. */
 
 #define BUFLN   4096	/* must be a power of 2, see sample() */
 
-WFDB_Sample sample(WFDB_Signal s, WFDB_Time t)
+WFDB_Sample sample_ctx(WFDB_Context *ctx, WFDB_Signal s, WFDB_Time t)
 {
-    WFDB_Context *ctx = wfdb_get_default_context();
     static WFDB_Sample v;
     static WFDB_Time tt;
     int nsig = (nvsig > nisig) ? nvsig : nisig;
@@ -1744,10 +1863,19 @@ WFDB_Sample sample(WFDB_Signal s, WFDB_Time t)
     return (v);
 }
 
+WFDB_Sample sample(WFDB_Signal s, WFDB_Time t)
+{
+    return sample_ctx(wfdb_get_default_context(), s, t);
+}
+
+int sample_valid_ctx(WFDB_Context *ctx)
+{
+    return (sample_vflag);
+}
+
 int sample_valid(void)
 {
-    WFDB_Context *ctx = wfdb_get_default_context();
-    return (sample_vflag);
+    return sample_valid_ctx(wfdb_get_default_context());
 }
 
 /* Private functions (for use by other WFDB library functions only). */
@@ -1846,15 +1974,19 @@ void wfdb_osflush(void)
 }
 
 /* Release resources allocated for info string handling */
-void wfdb_freeinfo(void)
+void wfdb_freeinfo_ctx(WFDB_Context *ctx)
 {
-    WFDB_Context *ctx = wfdb_get_default_context();
     int i;
 
     for (i = 0; i < nimax; i++)
 	SFREE(pinfo[i]);
     SFREE(pinfo);
     nimax = ninfo = 0;
+}
+
+void wfdb_freeinfo(void)
+{
+    wfdb_freeinfo_ctx(wfdb_get_default_context());
 }
 
 /* Close any previously opened output info file. */

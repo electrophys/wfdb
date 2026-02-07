@@ -54,9 +54,8 @@ environment variable is not set.
    otherwise, the "+" is discarded before attempting to open the file,
    which may be in any directory in the WFDB path.  If the file can be read,
    its contents are appended to the calibration list. */
-int calopen(const char *cfname)
+int calopen_ctx(WFDB_Context *ctx, const char *cfname)
 {
-    WFDB_Context *ctx = wfdb_get_default_context();
     WFDB_FILE *cfile;
     char *buf = NULL, *p1, *p2, *p3, *p4, *p5, *p6;
     size_t bufsize = 0;
@@ -139,6 +138,11 @@ int calopen(const char *cfname)
     return (0);
 }
 
+int calopen(const char *cfname)
+{
+    return calopen_ctx(wfdb_get_default_context(), cfname);
+}
+
 /* Function getcal attempts to find a calibration record which matches the
    supplied desc and units strings.  If the sigtype field of the record
    is a prefix of or an exact match for the desc string, and if the units
@@ -147,10 +151,9 @@ int calopen(const char *cfname)
    of finding a match.  If a match is found, it is copied into the caller's
    WFDB_Calinfo structure.  The caller must not write over the storage
    addressed by the desc and units fields. */
-int getcal(const char *desc, const char *units, WFDB_Calinfo *cal)
+int getcal_ctx(WFDB_Context *ctx, const char *desc, const char *units,
+	       WFDB_Calinfo *cal)
 {
-    WFDB_Context *ctx = wfdb_get_default_context();
-
     for (ctx->this_cle = ctx->first_cle; ctx->this_cle;
 	 ctx->this_cle = ctx->this_cle->next) {
 	if ((desc == NULL || strncmp(desc, ctx->this_cle->sigtype,
@@ -168,12 +171,15 @@ int getcal(const char *desc, const char *units, WFDB_Calinfo *cal)
     return (-1);
 }
 
+int getcal(const char *desc, const char *units, WFDB_Calinfo *cal)
+{
+    return getcal_ctx(wfdb_get_default_context(), desc, units, cal);
+}
+
 /* Function putcal appends the caller's WFDB_Calinfo structure to the end of
    the calibration list. */
-int putcal(const WFDB_Calinfo *cal)
+int putcal_ctx(WFDB_Context *ctx, const WFDB_Calinfo *cal)
 {
-    WFDB_Context *ctx = wfdb_get_default_context();
-
     SUALLOC(ctx->this_cle, 1, sizeof(struct cle));
     SSTRCPY(ctx->this_cle->sigtype, cal->sigtype);
     ctx->this_cle->caltype = cal->caltype;
@@ -192,11 +198,15 @@ int putcal(const WFDB_Calinfo *cal)
     return (0);
 }
 
+int putcal(const WFDB_Calinfo *cal)
+{
+    return putcal_ctx(wfdb_get_default_context(), cal);
+}
+
 /* Function newcal generates a calibration file based on the contents of the
    calibration list. */
-int newcal(const char *cfname)
+int newcal_ctx(WFDB_Context *ctx, const char *cfname)
 {
-    WFDB_Context *ctx = wfdb_get_default_context();
     WFDB_FILE *cfile;
     int errflag;
 
@@ -246,11 +256,14 @@ int newcal(const char *cfname)
     return (0);
 }
 
-/* Function flushcal empties the calibration list. */
-void flushcal(void)
+int newcal(const char *cfname)
 {
-    WFDB_Context *ctx = wfdb_get_default_context();
+    return newcal_ctx(wfdb_get_default_context(), cfname);
+}
 
+/* Function flushcal empties the calibration list. */
+void flushcal_ctx(WFDB_Context *ctx)
+{
     while (ctx->first_cle) {
 	SFREE(ctx->first_cle->sigtype);
 	SFREE(ctx->first_cle->units);
@@ -258,4 +271,9 @@ void flushcal(void)
 	SFREE(ctx->first_cle);
 	ctx->first_cle = ctx->this_cle;
     }
+}
+
+void flushcal(void)
+{
+    flushcal_ctx(wfdb_get_default_context());
 }

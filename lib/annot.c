@@ -297,10 +297,9 @@ static int allocoann(unsigned n)
 /* WFDB library functions (for general use). */
 
 /* annopen: open annotation files for the specified record */
-int annopen(char *record, const WFDB_Anninfo *aiarray,
+int annopen_ctx(WFDB_Context *ctx, char *record, const WFDB_Anninfo *aiarray,
 	     unsigned int nann)
 {
-    WFDB_Context *ctx = wfdb_get_default_context();
     int a;
     unsigned int i, niafneeded, noafneeded;
 
@@ -422,10 +421,15 @@ int annopen(char *record, const WFDB_Anninfo *aiarray,
     return (0);
 }
 
-/* getann: read an annotation from annotator n into *annot */
-int getann(WFDB_Annotator n, WFDB_Annotation *annot)
+int annopen(char *record, const WFDB_Anninfo *aiarray,
+	     unsigned int nann)
 {
-    WFDB_Context *ctx = wfdb_get_default_context();
+    return annopen_ctx(wfdb_get_default_context(), record, aiarray, nann);
+}
+
+/* getann: read an annotation from annotator n into *annot */
+int getann_ctx(WFDB_Context *ctx, WFDB_Annotator n, WFDB_Annotation *annot)
+{
     int a, len;
     struct iadata *ia;
 
@@ -528,10 +532,14 @@ int getann(WFDB_Annotator n, WFDB_Annotation *annot)
     return (0);
 }
 
-/* ungetann: push back an annotation into an input stream */
-int ungetann(WFDB_Annotator n, const WFDB_Annotation *annot)
+int getann(WFDB_Annotator n, WFDB_Annotation *annot)
 {
-    WFDB_Context *ctx = wfdb_get_default_context();
+    return getann_ctx(wfdb_get_default_context(), n, annot);
+}
+
+/* ungetann: push back an annotation into an input stream */
+int ungetann_ctx(WFDB_Context *ctx, WFDB_Annotator n, const WFDB_Annotation *annot)
+{
 
     if (n >= ctx->niaf || ctx->iad[n] == NULL) {
 	wfdb_error("ungetann: annotator %d is not initialized\n", n);
@@ -553,10 +561,14 @@ int ungetann(WFDB_Annotator n, const WFDB_Annotation *annot)
     return (0);
 }
 
-/* putann: write annotation at annot to annotator n */
-int putann(WFDB_Annotator n, const WFDB_Annotation *annot)
+int ungetann(WFDB_Annotator n, const WFDB_Annotation *annot)
 {
-    WFDB_Context *ctx = wfdb_get_default_context();
+    return ungetann_ctx(wfdb_get_default_context(), n, annot);
+}
+
+/* putann: write annotation at annot to annotator n */
+int putann_ctx(WFDB_Context *ctx, WFDB_Annotator n, const WFDB_Annotation *annot)
+{
     unsigned annwd;
     const unsigned char *ap;
     int i, len;
@@ -672,11 +684,15 @@ int putann(WFDB_Annotator n, const WFDB_Annotation *annot)
     return (0);
 }
 
+int putann(WFDB_Annotator n, const WFDB_Annotation *annot)
+{
+    return putann_ctx(wfdb_get_default_context(), n, annot);
+}
+
 /* iannsettime: seek so that for the next annotation read from each input
    annotator, anntime >= t */
-int iannsettime(WFDB_Time t)
+int iannsettime_ctx(WFDB_Context *ctx, WFDB_Time t)
 {
-    WFDB_Context *ctx = wfdb_get_default_context();
     int stat = 0, niavalid = ctx->niaf;
     WFDB_Annotation tempann;
     WFDB_Annotator i;
@@ -714,6 +730,11 @@ int iannsettime(WFDB_Time t)
     }
     stat = (niavalid > 0) ? 0 : -1;
     return (stat);	/* -1 if all inputs are invalid, 0 otherwise */
+}
+
+int iannsettime(WFDB_Time t)
+{
+    return iannsettime_ctx(wfdb_get_default_context(), t);
 }
 
 /* Functions for converting between anntyp values (annotation codes defined in
@@ -831,9 +852,8 @@ int strann(const char *str)
     return (NOTQRS);
 }
 
-int setannstr(int code, const char *string)
+int setannstr_ctx(WFDB_Context *ctx, int code, const char *string)
 {
-    WFDB_Context *ctx = wfdb_get_default_context();
     int mflag = 0;
 
     if (code > 0) mflag = 1;
@@ -851,6 +871,11 @@ int setannstr(int code, const char *string)
 	wfdb_error("setannstr: illegal annotation code %d\n", code);
 	return (-1);
     }
+}
+
+int setannstr(int code, const char *string)
+{
+    return setannstr_ctx(wfdb_get_default_context(), code, string);
 }
 
 static char *tstring[ACMAX+1] = {  /* descriptive strings for each code */
@@ -914,9 +939,8 @@ char *anndesc(int code)
 	return ("illegal annotation code");
 }
 
-int setanndesc(int code, const char *string)
+int setanndesc_ctx(WFDB_Context *ctx, int code, const char *string)
 {
-    WFDB_Context *ctx = wfdb_get_default_context();
     int mflag = 0;
 
     if (code > 0) mflag = 1;
@@ -936,25 +960,37 @@ int setanndesc(int code, const char *string)
     }
 }
 
+int setanndesc(int code, const char *string)
+{
+    return setanndesc_ctx(wfdb_get_default_context(), code, string);
+}
+
 
 /*  setafreq: set time resolution for output annotation files */
-void setafreq(WFDB_Frequency f)
+void setafreq_ctx(WFDB_Context *ctx, WFDB_Frequency f)
 {
-    WFDB_Context *ctx = wfdb_get_default_context();
     ctx->oafreq = f;
 }
 
-/* getafreq: return time resolution for output annotation files */
-WFDB_Frequency getafreq(void)
+void setafreq(WFDB_Frequency f)
 {
-    WFDB_Context *ctx = wfdb_get_default_context();
+    setafreq_ctx(wfdb_get_default_context(), f);
+}
+
+/* getafreq: return time resolution for output annotation files */
+WFDB_Frequency getafreq_ctx(WFDB_Context *ctx)
+{
     return (ctx->oafreq);
 }
 
-/* setiafreq: set time resolution for input annotations */
-void setiafreq(WFDB_Annotator n, WFDB_Frequency f)
+WFDB_Frequency getafreq(void)
 {
-    WFDB_Context *ctx = wfdb_get_default_context();
+    return getafreq_ctx(wfdb_get_default_context());
+}
+
+/* setiafreq: set time resolution for input annotations */
+void setiafreq_ctx(WFDB_Context *ctx, WFDB_Annotator n, WFDB_Frequency f)
+{
     struct iadata *ia;
     WFDB_Frequency sfreq;
 
@@ -972,10 +1008,14 @@ void setiafreq(WFDB_Annotator n, WFDB_Frequency f)
     }
 }
 
-/* getiafreq: return time resolution for input annotations */
-WFDB_Frequency getiafreq(WFDB_Annotator n)
+void setiafreq(WFDB_Annotator n, WFDB_Frequency f)
 {
-    WFDB_Context *ctx = wfdb_get_default_context();
+    setiafreq_ctx(wfdb_get_default_context(), n, f);
+}
+
+/* getiafreq: return time resolution for input annotations */
+WFDB_Frequency getiafreq_ctx(WFDB_Context *ctx, WFDB_Annotator n)
+{
     struct iadata *ia;
 
     if (n < ctx->niaf && (ia = ctx->iad[n]) != NULL) {
@@ -989,11 +1029,15 @@ WFDB_Frequency getiafreq(WFDB_Annotator n)
     }
 }
 
+WFDB_Frequency getiafreq(WFDB_Annotator n)
+{
+    return getiafreq_ctx(wfdb_get_default_context(), n);
+}
+
 /* getiaorigfreq: return the original time resolution of an input
    annotation file */
-WFDB_Frequency getiaorigfreq(WFDB_Annotator n)
+WFDB_Frequency getiaorigfreq_ctx(WFDB_Context *ctx, WFDB_Annotator n)
 {
-    WFDB_Context *ctx = wfdb_get_default_context();
     struct iadata *ia;
 
     if (n < ctx->niaf && (ia = ctx->iad[n]) != NULL)
@@ -1002,10 +1046,14 @@ WFDB_Frequency getiaorigfreq(WFDB_Annotator n)
 	return (-2);
 }
 
-/* iannclose: close input annotation file n */
-void iannclose(WFDB_Annotator n)
+WFDB_Frequency getiaorigfreq(WFDB_Annotator n)
 {
-    WFDB_Context *ctx = wfdb_get_default_context();
+    return getiaorigfreq_ctx(wfdb_get_default_context(), n);
+}
+
+/* iannclose: close input annotation file n */
+void iannclose_ctx(WFDB_Context *ctx, WFDB_Annotator n)
+{
     struct iadata *ia;
 
     if (n < ctx->niaf && (ia = ctx->iad[n]) != NULL && ia->file != NULL) {
@@ -1022,10 +1070,14 @@ void iannclose(WFDB_Annotator n)
     }
 }
 
-/* oannclose: close output annotation file n */
-void oannclose(WFDB_Annotator n)
+void iannclose(WFDB_Annotator n)
 {
-    WFDB_Context *ctx = wfdb_get_default_context();
+    iannclose_ctx(wfdb_get_default_context(), n);
+}
+
+/* oannclose: close output annotation file n */
+void oannclose_ctx(WFDB_Context *ctx, WFDB_Annotator n)
+{
     int i, errflag;
     char *cmdbuf = NULL;
     struct oadata *oa;
@@ -1102,6 +1154,11 @@ void oannclose(WFDB_Annotator n)
 	ctx->noaf--;
 	ctx->maxoann--;
     }
+}
+
+void oannclose(WFDB_Annotator n)
+{
+    oannclose_ctx(wfdb_get_default_context(), n);
 }
 
 /* Semi-private functions

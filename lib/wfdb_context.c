@@ -33,6 +33,18 @@ WFDB_Context *wfdb_context_new(void)
     return ctx;
 }
 
+/* Public API: create a new context. */
+WFDB_Context *wfdb_context_create(void)
+{
+    return wfdb_context_new();
+}
+
+/* Public API: destroy a context. */
+void wfdb_context_destroy(WFDB_Context *ctx)
+{
+    wfdb_context_free(ctx);
+}
+
 void wfdb_context_free(WFDB_Context *ctx)
 {
     if (ctx && ctx != &default_context) {

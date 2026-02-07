@@ -68,7 +68,7 @@ struct wfdb_path_component {
 };
 
 /* ---- WFDB_Context ---- */
-typedef struct WFDB_Context_s {
+struct WFDB_Context {
 
     /* Calibration state (from calib.c) */
     struct cle *first_cle;
@@ -193,7 +193,10 @@ typedef struct WFDB_Context_s {
     /* Initialization flag */
     int initialized;
 
-} WFDB_Context;
+};
+
+/* Typedef for convenience (also declared as opaque type in wfdb.h). */
+typedef struct WFDB_Context WFDB_Context;
 
 /* Get the default (global) context. */
 WFDB_Context *wfdb_get_default_context(void);

@@ -163,15 +163,18 @@ static const char *wfdb_getiwfdb(char **p);
 to restore the WFDB path to the value that was returned by the first call
 to getwfdb (or NULL if getwfdb was not called). */
 
-void resetwfdb(void)
+void resetwfdb_ctx(WFDB_Context *ctx)
 {
-    WFDB_Context *ctx = wfdb_get_default_context();
     SSTRCPY(ctx->wfdbpath, ctx->wfdbpath_init);
 }
 
-char *getwfdb(void)
+void resetwfdb(void)
 {
-    WFDB_Context *ctx = wfdb_get_default_context();
+    resetwfdb_ctx(wfdb_get_default_context());
+}
+
+char *getwfdb_ctx(WFDB_Context *ctx)
+{
     if (ctx->wfdbpath == NULL) {
 	const char *p = getenv("WFDB");
 
@@ -184,11 +187,15 @@ char *getwfdb(void)
     return (ctx->wfdbpath);
 }
 
+char *getwfdb(void)
+{
+    return getwfdb_ctx(wfdb_get_default_context());
+}
+
 /* setwfdb can be called within an application to change the WFDB path. */
 
-void setwfdb(const char *p)
+void setwfdb_ctx(WFDB_Context *ctx, const char *p)
 {
-    WFDB_Context *ctx = wfdb_get_default_context();
     void wfdb_export_config(void);
 
     if (p == NULL && (p = getenv("WFDB")) == NULL) p = DEFWFDB;
@@ -200,27 +207,39 @@ void setwfdb(const char *p)
     wfdb_parse_path(p);
 }
 
+void setwfdb(const char *p)
+{
+    setwfdb_ctx(wfdb_get_default_context(), p);
+}
+
 /* wfdbquiet can be used to suppress error messages from the WFDB library. */
+
+void wfdbquiet_ctx(WFDB_Context *ctx)
+{
+    ctx->error_print = 0;
+}
 
 void wfdbquiet(void)
 {
-    WFDB_Context *ctx = wfdb_get_default_context();
-    ctx->error_print = 0;
+    wfdbquiet_ctx(wfdb_get_default_context());
 }
 
 /* wfdbverbose enables error messages from the WFDB library. */
 
+void wfdbverbose_ctx(WFDB_Context *ctx)
+{
+    ctx->error_print = 1;
+}
+
 void wfdbverbose(void)
 {
-    WFDB_Context *ctx = wfdb_get_default_context();
-    ctx->error_print = 1;
+    wfdbverbose_ctx(wfdb_get_default_context());
 }
 
 /* wfdbfile returns the pathname or URL of a WFDB file. */
 
-char *wfdbfile(const char *s, char *record)
+char *wfdbfile_ctx(WFDB_Context *ctx, const char *s, char *record)
 {
-    WFDB_Context *ctx = wfdb_get_default_context();
     WFDB_FILE *ifile;
 
     if (s == NULL && record == NULL)
@@ -236,14 +255,23 @@ char *wfdbfile(const char *s, char *record)
     else return (NULL);
 }
 
+char *wfdbfile(const char *s, char *record)
+{
+    return wfdbfile_ctx(wfdb_get_default_context(), s, record);
+}
+
 /* Determine how the WFDB library handles memory allocation errors (running
 out of memory).  Call wfdbmemerr(0) in order to have these errors returned
 to the caller;  by default, such errors cause the running process to exit. */
 
+void wfdbmemerr_ctx(WFDB_Context *ctx, int behavior)
+{
+    ctx->wfdb_mem_behavior = behavior;
+}
+
 void wfdbmemerr(int behavior)
 {
-    WFDB_Context *ctx = wfdb_get_default_context();
-    ctx->wfdb_mem_behavior = behavior;
+    wfdbmemerr_ctx(wfdb_get_default_context(), behavior);
 }
 
 /* Functions that expose configuration constants used by the WFDB Toolkit for
@@ -817,9 +845,8 @@ be inappropriate).
 #define WFDB_BUILD_DATE __DATE__
 #endif
 
-char *wfdberror(void)
+char *wfdberror_ctx(WFDB_Context *ctx)
 {
-    WFDB_Context *ctx = wfdb_get_default_context();
     if (!ctx->error_flag)
 	wfdb_asprintf(&ctx->error_message,
 		      "WFDB library version %d.%d.%d (%s).\n",
@@ -828,6 +855,11 @@ char *wfdberror(void)
 	return (ctx->error_message);
     else
 	return ("WFDB: cannot allocate memory for error message");
+}
+
+char *wfdberror(void)
+{
+    return wfdberror_ctx(wfdb_get_default_context());
 }
 
 void wfdb_error(const char *format, ...)
