@@ -17,6 +17,9 @@ WFDB_Context *wfdb_get_default_context(void)
 	default_context.initialized = 1;
 	default_context.error_print = 1;
 	default_context.wfdb_mem_behavior = 1;
+#if WFDB_NETFILES
+	default_context.nf_page_size = NF_PAGE_SIZE;
+#endif
 	default_context_initialized = 1;
     }
     return &default_context;
@@ -29,6 +32,9 @@ WFDB_Context *wfdb_context_new(void)
 	ctx->initialized = 1;
 	ctx->error_print = 1;
 	ctx->wfdb_mem_behavior = 1;
+#if WFDB_NETFILES
+	ctx->nf_page_size = NF_PAGE_SIZE;
+#endif
     }
     return ctx;
 }
@@ -97,6 +103,22 @@ void wfdb_context_free(WFDB_Context *ctx)
 	free(ctx->p_wfdbcal);
 	free(ctx->p_wfdbannsort);
 	free(ctx->p_wfdbgvmode);
+#if WFDB_NETFILES
+	/* Clean up libcurl state */
+	if (ctx->www_done_init) {
+	    curl_easy_cleanup(ctx->curl_ua);
+	    ctx->curl_ua = NULL;
+	    curl_global_cleanup();
+	    ctx->www_done_init = 0;
+	}
+	{
+	    int i;
+	    for (i = 0; ctx->www_passwords && ctx->www_passwords[i]; i++)
+		free(ctx->www_passwords[i]);
+	    free(ctx->www_passwords);
+	}
+	free(ctx->curl_ua_string);
+#endif
 	free(ctx);
     }
 }

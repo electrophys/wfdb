@@ -1267,37 +1267,27 @@ struct netfile {
   unsigned int redirect_time;
 };
 
-static int nf_open_files = 0;		/* number of open netfiles */
-static long page_size = NF_PAGE_SIZE;	/* bytes per range request (0: disable
-					   range requests) */
-static int www_done_init = FALSE;	/* TRUE once libcurl is initialized */
-
-static CURL *curl_ua = NULL;
-
 /* Construct the User-Agent string to be sent with HTTP requests. */
-static char *curl_get_ua_string(void)
+static char *curl_get_ua_string(WFDB_Context *ctx)
 {
     char *libcurl_ver;
-    static char *s = NULL;
 
     libcurl_ver = curl_version();
 
     /* The +3XX flag informs the server that this client understands
        and supports HTTP redirection (CURLOPT_FOLLOWLOCATION
        enabled.) */
-    wfdb_asprintf(&s, "libwfdb/%d.%d.%d (%s +3XX)", WFDB_MAJOR, WFDB_MINOR,
-		  WFDB_RELEASE, libcurl_ver);
-    return (s);
+    wfdb_asprintf(&ctx->curl_ua_string, "libwfdb/%d.%d.%d (%s +3XX)",
+		  WFDB_MAJOR, WFDB_MINOR, WFDB_RELEASE, libcurl_ver);
+    return (ctx->curl_ua_string);
 }
-
-static char curl_error_buf[CURL_ERROR_SIZE];
 
 /* This function will print out the curl error message if there was an
    error.  Zero means there was no error. */
-static int curl_try(CURLcode err)
+static int curl_try(WFDB_Context *ctx, CURLcode err)
 {
     if (err) {
-      wfdb_error("curl error: %s\n", curl_error_buf);
+      wfdb_error("curl error: %s\n", ctx->curl_error_buf);
     }
     return err;
 }
@@ -1335,8 +1325,6 @@ typedef struct chunk CHUNK;
 #define chunk_delete curl_chunk_delete
 #define chunk_putb curl_chunk_putb
 
-static char **passwords;
-
 /* www_parse_passwords parses the WFDBPASSWORD environment variable.
 This environment variable contains a list of URL prefixes and
 corresponding usernames/passwords.  Alternatively, the environment
@@ -1351,7 +1339,7 @@ to example.org.
 
 If there are multiple items in the list, they must be separated by
 end-of-line or tab characters. */
-static void www_parse_passwords(const char *str)
+static void www_parse_passwords(WFDB_Context *ctx, const char *str)
 {
     static char sep[] = "\t\n\r";
     char *xstr = NULL, *p, *q, *saveptr;
@@ -1362,18 +1350,18 @@ static void www_parse_passwords(const char *str)
     if (!xstr)
 	return;
 
-    SALLOC(passwords, 1, sizeof(char *));
+    SALLOC(ctx->www_passwords, 1, sizeof(char *));
     n = 0;
     for (p = strtok_r(xstr, sep, &saveptr); p; p = strtok_r(NULL, sep, &saveptr)) {
 	if (!(q = strchr(p, ' ')) || !strchr(q, ':'))
 	    continue;
-	SREALLOC(passwords, n + 2, sizeof(char *));
-	if (!passwords)
+	SREALLOC(ctx->www_passwords, n + 2, sizeof(char *));
+	if (!ctx->www_passwords)
 	    return;
-	SSTRCPY(passwords[n], p);
+	SSTRCPY(ctx->www_passwords[n], p);
 	n++;
     }
-    passwords[n] = NULL;
+    ctx->www_passwords[n] = NULL;
 
     SFREE(xstr);
 }
@@ -1382,20 +1370,20 @@ static void www_parse_passwords(const char *str)
 given URL.  It returns a string of the form "username:password" if one
 is defined, or returns NULL if no login information is required for
 that URL. */
-static const char *www_userpwd(const char *url)
+static const char *www_userpwd(WFDB_Context *ctx, const char *url)
 {
     int i, n;
     const char *p;
 
-    for (i = 0; passwords && passwords[i]; i++) {
-	p = strchr(passwords[i], ' ');
-	if (!p || p == passwords[i])
+    for (i = 0; ctx->www_passwords && ctx->www_passwords[i]; i++) {
+	p = strchr(ctx->www_passwords[i], ' ');
+	if (!p || p == ctx->www_passwords[i])
 	    continue;
 
-	n = p - passwords[i];
-	if (strncmp(passwords[i], url, n) == 0 &&
+	n = p - ctx->www_passwords[i];
+	if (strncmp(ctx->www_passwords[i], url, n) == 0 &&
 	    (url[n] == 0 || url[n] == '/' || url[n - 1] == '/')) {
-	    return &passwords[i][n + 1];
+	    return &ctx->www_passwords[i][n + 1];
 	}
     }
 
@@ -1404,59 +1392,63 @@ static const char *www_userpwd(const char *url)
 
 static void wfdb_wwwquit(void)
 {
+    WFDB_Context *ctx = wfdb_get_default_context();
     int i;
-    if (www_done_init) {
-	curl_easy_cleanup(curl_ua);
-	curl_ua = NULL;
+    if (ctx->www_done_init) {
+	curl_easy_cleanup(ctx->curl_ua);
+	ctx->curl_ua = NULL;
 	curl_global_cleanup();
-	www_done_init = FALSE;
-	for (i = 0; passwords && passwords[i]; i++)
-	    SFREE(passwords[i]);
-	SFREE(passwords);
+	ctx->www_done_init = FALSE;
+	for (i = 0; ctx->www_passwords && ctx->www_passwords[i]; i++)
+	    SFREE(ctx->www_passwords[i]);
+	SFREE(ctx->www_passwords);
+	SFREE(ctx->curl_ua_string);
     }
 }
 
-static void www_init(void)
+static void www_init(WFDB_Context *ctx)
 {
-    if (!www_done_init) {
+    if (!ctx->www_done_init) {
 	char *p;
 
 	if ((p = getenv("WFDB_PAGESIZE")) && *p)
-	    page_size = strtol(p, NULL, 10);
+	    ctx->nf_page_size = strtol(p, NULL, 10);
 
 	/* Initialize the curl "easy" handle. */
 	curl_global_init(CURL_GLOBAL_ALL);
-	curl_ua = curl_easy_init();
+	ctx->curl_ua = curl_easy_init();
 	/* Buffer for error messages */
-	curl_easy_setopt(curl_ua, CURLOPT_ERRORBUFFER, curl_error_buf);
+	curl_easy_setopt(ctx->curl_ua, CURLOPT_ERRORBUFFER,
+			 ctx->curl_error_buf);
 	/* String to send as a User-Agent header */
-	curl_easy_setopt(curl_ua, CURLOPT_USERAGENT, curl_get_ua_string());
+	curl_easy_setopt(ctx->curl_ua, CURLOPT_USERAGENT,
+			 curl_get_ua_string(ctx));
 	/* Get password information from the environment if available */
 	if ((p = getenv("WFDBPASSWORD")) && *p)
-            www_parse_passwords(p);
+            www_parse_passwords(ctx, p);
 
 	/* Get the name of the CA bundle file */
 	if ((p = getenv("CURL_CA_BUNDLE")) && *p)
-	    curl_easy_setopt(curl_ua, CURLOPT_CAINFO, p);
+	    curl_easy_setopt(ctx->curl_ua, CURLOPT_CAINFO, p);
 
 	/* Use any available authentication method */
-	curl_easy_setopt(curl_ua, CURLOPT_HTTPAUTH, CURLAUTH_ANY);
+	curl_easy_setopt(ctx->curl_ua, CURLOPT_HTTPAUTH, CURLAUTH_ANY);
 
 	/* Follow up to 5 redirections */
-	curl_easy_setopt(curl_ua, CURLOPT_FOLLOWLOCATION, 1L);
-	curl_easy_setopt(curl_ua, CURLOPT_MAXREDIRS, 5L);
+	curl_easy_setopt(ctx->curl_ua, CURLOPT_FOLLOWLOCATION, 1L);
+	curl_easy_setopt(ctx->curl_ua, CURLOPT_MAXREDIRS, 5L);
 
 	/* Timeout protection */
-	curl_easy_setopt(curl_ua, CURLOPT_CONNECTTIMEOUT, 10L);
-	curl_easy_setopt(curl_ua, CURLOPT_LOW_SPEED_LIMIT, 1L);
-	curl_easy_setopt(curl_ua, CURLOPT_LOW_SPEED_TIME, 30L);
+	curl_easy_setopt(ctx->curl_ua, CURLOPT_CONNECTTIMEOUT, 10L);
+	curl_easy_setopt(ctx->curl_ua, CURLOPT_LOW_SPEED_LIMIT, 1L);
+	curl_easy_setopt(ctx->curl_ua, CURLOPT_LOW_SPEED_TIME, 30L);
 
 	/* Show details of URL requests if WFDB_NET_DEBUG is set */
 	if ((p = getenv("WFDB_NET_DEBUG")) && *p)
-	    curl_easy_setopt(curl_ua, CURLOPT_VERBOSE, 1L);
+	    curl_easy_setopt(ctx->curl_ua, CURLOPT_VERBOSE, 1L);
 
 	atexit(wfdb_wwwquit);
-	www_done_init = TRUE;
+	ctx->www_done_init = TRUE;
     }
 }
 
@@ -1472,30 +1464,31 @@ static int www_perform_request(CURL *c)
     return (code < 400 ? 0 : -1);
 }
 
-static long www_get_cont_len(const char *url)
+static long www_get_cont_len(WFDB_Context *ctx, const char *url)
 {
     curl_off_t length = 0;
 
     if (/* We just want the content length; NOBODY means we want to
 	   send a HEAD request rather than GET */
-	curl_try(curl_easy_setopt(curl_ua, CURLOPT_NOBODY, 1L))
+	curl_try(ctx, curl_easy_setopt(ctx->curl_ua, CURLOPT_NOBODY, 1L))
 	/* Set the URL to retrieve */
-	|| curl_try(curl_easy_setopt(curl_ua, CURLOPT_URL, url))
+	|| curl_try(ctx, curl_easy_setopt(ctx->curl_ua, CURLOPT_URL, url))
 	/* Set username/password */
-	|| curl_try(curl_easy_setopt(curl_ua, CURLOPT_USERPWD,
-	                             www_userpwd(url)))
+	|| curl_try(ctx, curl_easy_setopt(ctx->curl_ua, CURLOPT_USERPWD,
+	                             www_userpwd(ctx, url)))
 	/* Don't send a range request */
-	|| curl_try(curl_easy_setopt(curl_ua, CURLOPT_RANGE, NULL))
+	|| curl_try(ctx, curl_easy_setopt(ctx->curl_ua, CURLOPT_RANGE, NULL))
 	/* Ignore both headers and body */
-	|| curl_try(curl_easy_setopt(curl_ua, CURLOPT_WRITEFUNCTION,
+	|| curl_try(ctx, curl_easy_setopt(ctx->curl_ua, CURLOPT_WRITEFUNCTION,
 				     curl_null_write))
-	|| curl_try(curl_easy_setopt(curl_ua, CURLOPT_HEADERFUNCTION,
+	|| curl_try(ctx, curl_easy_setopt(ctx->curl_ua, CURLOPT_HEADERFUNCTION,
 				     curl_null_write))
 	/* Actually perform the request and wait for a response */
-	|| www_perform_request(curl_ua))
+	|| www_perform_request(ctx->curl_ua))
 	return (0);
 
-    if (curl_easy_getinfo(curl_ua, CURLINFO_CONTENT_LENGTH_DOWNLOAD_T, &length))
+    if (curl_easy_getinfo(ctx->curl_ua, CURLINFO_CONTENT_LENGTH_DOWNLOAD_T,
+			  &length))
 	return (0);
 
     return ((long) length);
@@ -1581,7 +1574,8 @@ static void curl_chunk_putb(struct chunk *chunk, char *data, size_t len)
     curl_chunk_write(data, 1, len, chunk);
 }
 
-static CHUNK *www_get_url_range_chunk(const char *url, long startb, long len)
+static CHUNK *www_get_url_range_chunk(WFDB_Context *ctx, const char *url,
+				      long startb, long len)
 {
     CHUNK *chunk = NULL, *extra_chunk = NULL;
     char range_req_str[6*sizeof(long) + 2];
@@ -1595,28 +1589,28 @@ static CHUNK *www_get_url_range_chunk(const char *url, long startb, long len)
 
 	if (/* In this case we want to send a GET request rather than
 	       a HEAD */
-	    curl_try(curl_easy_setopt(curl_ua, CURLOPT_NOBODY, 0L))
-	    || curl_try(curl_easy_setopt(curl_ua, CURLOPT_HTTPGET, 1L))
+	    curl_try(ctx, curl_easy_setopt(ctx->curl_ua, CURLOPT_NOBODY, 0L))
+	    || curl_try(ctx, curl_easy_setopt(ctx->curl_ua, CURLOPT_HTTPGET, 1L))
 	    /* URL to retrieve */
-	    || curl_try(curl_easy_setopt(curl_ua, CURLOPT_URL, url))
+	    || curl_try(ctx, curl_easy_setopt(ctx->curl_ua, CURLOPT_URL, url))
 	    /* Set username/password */
-	    || curl_try(curl_easy_setopt(curl_ua, CURLOPT_USERPWD,
-	                                 www_userpwd(url)))
+	    || curl_try(ctx, curl_easy_setopt(ctx->curl_ua, CURLOPT_USERPWD,
+	                                 www_userpwd(ctx, url)))
 	    /* Range request */
-	    || curl_try(curl_easy_setopt(curl_ua, CURLOPT_RANGE,
+	    || curl_try(ctx, curl_easy_setopt(ctx->curl_ua, CURLOPT_RANGE,
 					 range_req_str))
 	    /* This function will be used to "write" data as it is received */
-	    || curl_try(curl_easy_setopt(curl_ua, CURLOPT_WRITEFUNCTION,
+	    || curl_try(ctx, curl_easy_setopt(ctx->curl_ua, CURLOPT_WRITEFUNCTION,
 					 curl_chunk_write))
 	    /* The pointer to pass to the write function */
-	    || curl_try(curl_easy_setopt(curl_ua, CURLOPT_WRITEDATA, chunk))
+	    || curl_try(ctx, curl_easy_setopt(ctx->curl_ua, CURLOPT_WRITEDATA, chunk))
 	    /* This function will be used to parse HTTP headers */
-	    || curl_try(curl_easy_setopt(curl_ua, CURLOPT_HEADERFUNCTION,
+	    || curl_try(ctx, curl_easy_setopt(ctx->curl_ua, CURLOPT_HEADERFUNCTION,
 					 curl_chunk_header_write))
 	    /* The pointer to pass to the header function */
-	    || curl_try(curl_easy_setopt(curl_ua, CURLOPT_HEADERDATA, chunk))
+	    || curl_try(ctx, curl_easy_setopt(ctx->curl_ua, CURLOPT_HEADERDATA, chunk))
 	    /* Perform the request */
-	    || www_perform_request(curl_ua)) {
+	    || www_perform_request(ctx->curl_ua)) {
 
 	    chunk_delete(chunk);
 	    return (NULL);
@@ -1625,7 +1619,7 @@ static CHUNK *www_get_url_range_chunk(const char *url, long startb, long len)
 	    chunk_delete(chunk);
 	    chunk = NULL;
 	}
-	else if (!curl_easy_getinfo(curl_ua, CURLINFO_EFFECTIVE_URL, &url2) &&
+	else if (!curl_easy_getinfo(ctx->curl_ua, CURLINFO_EFFECTIVE_URL, &url2) &&
 		 url2 && *url2 && strcmp(url, url2)) {
 	    SSTRCPY(chunk->url, url2);
 	}
@@ -1633,7 +1627,7 @@ static CHUNK *www_get_url_range_chunk(const char *url, long startb, long len)
     return (chunk);
 }
 
-static CHUNK *www_get_url_chunk(const char *url)
+static CHUNK *www_get_url_chunk(WFDB_Context *ctx, const char *url)
 {
     CHUNK *chunk = NULL;
 
@@ -1642,25 +1636,25 @@ static CHUNK *www_get_url_chunk(const char *url)
 	return (NULL);
 
     if (/* Send a GET request */
-	curl_try(curl_easy_setopt(curl_ua, CURLOPT_NOBODY, 0L))
-	|| curl_try(curl_easy_setopt(curl_ua, CURLOPT_HTTPGET, 1L))
+	curl_try(ctx, curl_easy_setopt(ctx->curl_ua, CURLOPT_NOBODY, 0L))
+	|| curl_try(ctx, curl_easy_setopt(ctx->curl_ua, CURLOPT_HTTPGET, 1L))
 	/* URL to retrieve */
-	|| curl_try(curl_easy_setopt(curl_ua, CURLOPT_URL, url))
+	|| curl_try(ctx, curl_easy_setopt(ctx->curl_ua, CURLOPT_URL, url))
 	/* Set username/password */
-	|| curl_try(curl_easy_setopt(curl_ua, CURLOPT_USERPWD,
-				     www_userpwd(url)))
+	|| curl_try(ctx, curl_easy_setopt(ctx->curl_ua, CURLOPT_USERPWD,
+				     www_userpwd(ctx, url)))
 	/* No range request */
-	|| curl_try(curl_easy_setopt(curl_ua, CURLOPT_RANGE, NULL))
+	|| curl_try(ctx, curl_easy_setopt(ctx->curl_ua, CURLOPT_RANGE, NULL))
 	/* Write to the chunk specified ... */
-	|| curl_try(curl_easy_setopt(curl_ua, CURLOPT_WRITEFUNCTION,
+	|| curl_try(ctx, curl_easy_setopt(ctx->curl_ua, CURLOPT_WRITEFUNCTION,
 				     curl_chunk_write))
 	/* ... by this pointer */
-	|| curl_try(curl_easy_setopt(curl_ua, CURLOPT_HEADERFUNCTION,
+	|| curl_try(ctx, curl_easy_setopt(ctx->curl_ua, CURLOPT_HEADERFUNCTION,
 				     curl_null_write))
 	/* and ignore the header data */
-	|| curl_try(curl_easy_setopt(curl_ua, CURLOPT_WRITEDATA, chunk))
+	|| curl_try(ctx, curl_easy_setopt(ctx->curl_ua, CURLOPT_WRITEDATA, chunk))
 	/* perform the request */
-	|| www_perform_request(curl_ua)) {
+	|| www_perform_request(ctx->curl_ua)) {
 
 	chunk_delete(chunk);
 	return (NULL);
@@ -1683,7 +1677,8 @@ static void nf_delete(netfile *nf)
     }
 }
 
-static CHUNK *nf_get_url_range_chunk(netfile *nf, long startb, long len)
+static CHUNK *nf_get_url_range_chunk(WFDB_Context *ctx, netfile *nf,
+				     long startb, long len)
 {
     char *url;
     CHUNK *chunk;
@@ -1699,7 +1694,7 @@ static CHUNK *nf_get_url_range_chunk(netfile *nf, long startb, long len)
     }
     url = (nf->redirect_url ? nf->redirect_url : nf->url);
 
-    chunk = www_get_url_range_chunk(url, startb, len);
+    chunk = www_get_url_range_chunk(ctx, url, startb, len);
 
     if (chunk && chunk->url) {
 	/* don't update redirect_time if we didn't hit nf->url */
@@ -1723,10 +1718,11 @@ static CHUNK *nf_get_url_range_chunk(netfile *nf, long startb, long len)
    can be used by nf_fread, etc., to obtain the contents of the file.
 
 */
-static netfile *nf_new(const char* url)
+static netfile *nf_new(WFDB_Context *ctx, const char* url)
 {
     netfile *nf;
     CHUNK *chunk = NULL;
+    long page_size = ctx->nf_page_size;
 
     SUALLOC(nf, 1, sizeof(netfile));
     if (nf && url && *url) {
@@ -1739,10 +1735,10 @@ static netfile *nf_new(const char* url)
 
 	if (page_size > 0L)
 	    /* Try to read the first part of the file. */
-	    chunk = nf_get_url_range_chunk(nf, 0L, page_size);
+	    chunk = nf_get_url_range_chunk(ctx, nf, 0L, page_size);
 	else
 	    /* Try to read the entire file. */
-	    chunk = www_get_url_chunk(nf->url);
+	    chunk = www_get_url_chunk(ctx, nf->url);
 
 	if (!chunk) {
 	    nf_delete(nf);
@@ -1763,7 +1759,7 @@ static netfile *nf_new(const char* url)
 		   doesn't report the file size, or might be a file
 		   that happens to be exactly the size we requested.
 		   Check the full size of the file. */
-		nf->cont_len = www_get_cont_len(nf->url);
+		nf->cont_len = www_get_cont_len(ctx, nf->url);
 	    else
 		nf->cont_len = chunk->size;
 
@@ -1802,11 +1798,13 @@ static netfile *nf_new(const char* url)
     return(nf);
 }
 
-static long nf_get_range(netfile* nf, long startb, long len, char *rbuf)
+static long nf_get_range(WFDB_Context *ctx, netfile* nf, long startb,
+			long len, char *rbuf)
 {
     CHUNK *chunk = NULL;
     char *rp = NULL;
     long avail = nf->cont_len - startb;
+    long page_size = ctx->nf_page_size;
 
     if (len > avail) len = avail;	/* limit request to available bytes */
     if (nf == NULL || nf->url == NULL || *nf->url == '\0' ||
@@ -1820,7 +1818,7 @@ static long nf_get_range(netfile* nf, long startb, long len, char *rbuf)
 	    if ((startb < nf->base_addr) ||
 		((startb + len) > (nf->base_addr + page_size))) {
 		/* requested data not in cache -- update the cache */
-		if (chunk = nf_get_url_range_chunk(nf, startb, rlen)) {
+		if (chunk = nf_get_url_range_chunk(ctx, nf, startb, rlen)) {
 		    if (chunk_size(chunk) != rlen) {
 			wfdb_error(
 		     "nf_get_range: requested %ld bytes, received %ld bytes\n",
@@ -1844,7 +1842,7 @@ static long nf_get_range(netfile* nf, long startb, long len, char *rbuf)
 	    rp = nf->data + startb - nf->base_addr;
 	}
 
-	else if (chunk = nf_get_url_range_chunk(nf, startb, len)) {
+	else if (chunk = nf_get_url_range_chunk(ctx, nf, startb, len)) {
 	    /* long request (> page_size) */
 	    if (chunk_size(chunk) != len) {
 		wfdb_error(
@@ -1884,58 +1882,59 @@ static int nf_eof(netfile *nf)
     return (nf->pos >= nf->cont_len) ? TRUE : FALSE;
 }
 
-static netfile* nf_fopen(const char *url, const char *mode)
+static netfile* nf_fopen(WFDB_Context *ctx, const char *url, const char *mode)
 {
     netfile* nf = NULL;
 
-    if (!www_done_init)
-	www_init();
+    if (!ctx->www_done_init)
+	www_init(ctx);
     if (*mode == 'w' || *mode == 'a')
 	errno = EROFS;	/* no support for output */
     else if (*mode != 'r')
 	errno = EINVAL;	/* invalid mode string */
-    else if (nf = nf_new(url))
-	nf_open_files++;
+    else if (nf = nf_new(ctx, url))
+	ctx->nf_open_files++;
     return (nf);
 }
 
-static int nf_fclose(netfile* nf)
+static int nf_fclose(WFDB_Context *ctx, netfile* nf)
 {
     nf_delete(nf);
-    nf_open_files--;
+    ctx->nf_open_files--;
     return (0);
 }
 
-static int nf_fgetc(netfile *nf)
+static int nf_fgetc(WFDB_Context *ctx, netfile *nf)
 {
     char c;
 
-    if (nf_get_range(nf, nf->pos++, 1, &c))
+    if (nf_get_range(ctx, nf, nf->pos++, 1, &c))
 	return (c & 0xff);
     nf->err = (nf->pos >= nf->cont_len) ? NF_EOF_ERR : NF_REAL_ERR;
     return (EOF);
 }
 
-static char* nf_fgets(char *s, int size, netfile *nf)
+static char* nf_fgets(WFDB_Context *ctx, char *s, int size, netfile *nf)
 {
-    int c = 0, i = 0; 
+    int c = 0, i = 0;
 
     if (s == NULL) return (NULL);
-    while (c != '\n' && i < (size-1) && (c = nf_fgetc(nf)) != EOF)
+    while (c != '\n' && i < (size-1) && (c = nf_fgetc(ctx, nf)) != EOF)
 	s[i++] = c;
     if ((c == EOF) && (i == 0))	return (NULL);
     s[i] = 0;
     return (s);
 }
 
-static size_t nf_fread(void *ptr, size_t size, size_t nmemb, netfile *nf)
+static size_t nf_fread(WFDB_Context *ctx, void *ptr, size_t size,
+		       size_t nmemb, netfile *nf)
 {
     long bytes_available, bytes_read = 0L, bytes_requested = size * nmemb;
 
     if (nf == NULL || ptr == NULL || bytes_requested == 0) return ((size_t)0);
     bytes_available = nf->cont_len - nf->pos;
     if (bytes_requested > bytes_available) bytes_requested = bytes_available;
-    nf->pos += bytes_read = nf_get_range(nf, nf->pos, bytes_requested, ptr);
+    nf->pos += bytes_read = nf_get_range(ctx, nf, nf->pos, bytes_requested, ptr);
     return ((size_t)(bytes_read / size));
 }
 
@@ -2009,17 +2008,17 @@ static int nf_putc(int c, netfile *nf)
 }
 
 #else	/* !WFDB_NETFILES */
-# define nf_feof(nf)                      (0)
-# define nf_fgetc(nf)                     (EOF)
-# define nf_fgets(s, size, nf)            (NULL)
-# define nf_fread(ptr, size, nmemb, nf)   (0)
-# define nf_fseek(nf, offset, whence)     (-1)
-# define nf_ftell(nf)                     (-1)
-# define nf_ferror(nf)                    (0)
-# define nf_clearerr(nf)                  ((void) 0)
-# define nf_fflush(nf)                    (EOF)
-# define nf_fwrite(ptr, size, nmemb, nf)  (0)
-# define nf_putc(c, nf)                   (EOF)
+# define nf_feof(nf)                          (0)
+# define nf_fgetc(ctx, nf)                    (EOF)
+# define nf_fgets(ctx, s, size, nf)           (NULL)
+# define nf_fread(ctx, ptr, size, nmemb, nf)  (0)
+# define nf_fseek(nf, offset, whence)         (-1)
+# define nf_ftell(nf)                         (-1)
+# define nf_ferror(nf)                        (0)
+# define nf_clearerr(nf)                      ((void) 0)
+# define nf_fflush(nf)                        (EOF)
+# define nf_fwrite(ptr, size, nmemb, nf)      (0)
+# define nf_putc(c, nf)                       (EOF)
 #endif
 
 /* The definition of nf_vfprintf (which is a stub) has been moved;  it is
@@ -2063,14 +2062,14 @@ int wfdb_fflush(WFDB_FILE *wp)
 char* wfdb_fgets(char *s, int size, WFDB_FILE *wp)
 {
     if (wp->type == WFDB_NET)
-	return (nf_fgets(s, size, wp->netfp));
+	return (nf_fgets(wfdb_get_default_context(), s, size, wp->netfp));
     return (fgets(s, size, wp->fp));
 }
 
 size_t wfdb_fread(void *ptr, size_t size, size_t nmemb, WFDB_FILE *wp)
 {
     if (wp->type == WFDB_NET)
-	return (nf_fread(ptr, size, nmemb, wp->netfp));
+	return (nf_fread(wfdb_get_default_context(), ptr, size, nmemb, wp->netfp));
     return (fread(ptr, size, nmemb, wp->fp));
 }
 
@@ -2098,7 +2097,7 @@ size_t wfdb_fwrite(const void *ptr, size_t size, size_t nmemb, WFDB_FILE *wp)
 int wfdb_getc(WFDB_FILE *wp)
 {
     if (wp->type == WFDB_NET)
-	return (nf_fgetc(wp->netfp));
+	return (nf_fgetc(wfdb_get_default_context(), wp->netfp));
     return (getc(wp->fp));
 }
 
@@ -2114,7 +2113,8 @@ int wfdb_fclose(WFDB_FILE *wp)
     int status;
 
 #if WFDB_NETFILES
-    status = (wp->type == WFDB_NET) ? nf_fclose(wp->netfp) : fclose(wp->fp);
+    status = (wp->type == WFDB_NET) ?
+	nf_fclose(wfdb_get_default_context(), wp->netfp) : fclose(wp->fp);
 #else
     status = fclose(wp->fp);
 #endif
@@ -2133,7 +2133,7 @@ WFDB_FILE *wfdb_fopen(char *fname, const char *mode)
     SUALLOC(wp, 1, sizeof(WFDB_FILE));
     if (strstr(p, "://")) {
 #if WFDB_NETFILES
-	if (wp->netfp = nf_fopen(fname, mode)) {
+	if (wp->netfp = nf_fopen(wfdb_get_default_context(), fname, mode)) {
 	    wp->type = WFDB_NET;
 	    return (wp);
 	}

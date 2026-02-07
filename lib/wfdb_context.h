@@ -190,6 +190,17 @@ struct WFDB_Context {
     char time_string[62];
     WFDB_Date pdays;
 
+#if WFDB_NETFILES
+    /* NETFILES state (from wfdbio.c) */
+    int nf_open_files;		/* number of open netfiles */
+    long nf_page_size;		/* bytes per http range request */
+    int www_done_init;		/* TRUE once libcurl is initialized */
+    CURL *curl_ua;		/* libcurl easy handle */
+    char curl_error_buf[CURL_ERROR_SIZE]; /* curl error message buffer */
+    char **www_passwords;	/* parsed WFDBPASSWORD credentials */
+    char *curl_ua_string;	/* cached User-Agent string */
+#endif
+
     /* Initialization flag */
     int initialized;
 
