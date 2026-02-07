@@ -1,6 +1,6 @@
 /* file: helppan.c	G. Moody        1 May 1990
-			Last revised:  24 June 2002
-Help panel functions for WAVE
+			Last revised:	2026
+Help panel functions for WAVE (GTK 3 version)
 
 -------------------------------------------------------------------------------
 WAVE: Waveform analyzer, viewer, and editor
@@ -26,10 +26,8 @@ _______________________________________________________________________________
 */
 
 #include "wave.h"
-#include "xvwave.h"
+#include "gtkwave.h"
 #include <unistd.h>	/* getcwd */
-#include <xview/notice.h>
-#include <xview/textsw.h>
 
 /* On-line help files for WAVE are located in *(helpdir)/wave.  Their names are
    of the form *(helpdir)/wave/TOPIC.hlp, where TOPIC is one of the topics
@@ -42,8 +40,8 @@ void find_user_guide(void)
     FILE *ifile;
 
     sprintf(url, "%s/html/wug/wug.htm", helpdir);
-    if (ifile = fopen(url, "r")) fclose(ifile);
-    else if (ifile = fopen("wug.htm", "r")) {
+    if ((ifile = fopen(url, "r")) != NULL) fclose(ifile);
+    else if ((ifile = fopen("wug.htm", "r")) != NULL) {
 	fclose(ifile);
 	sprintf(url, "%s/wug.htm", getcwd(NULL, 256));
     }
@@ -56,8 +54,8 @@ void find_faq(void)
     FILE *ifile;
 
     sprintf(url, "%s/html/wug/wave-faq.htm", helpdir);
-    if (ifile = fopen(url, "r")) fclose(ifile);
-    else if (ifile = fopen("wave-faq.htm", "r")) {
+    if ((ifile = fopen(url, "r")) != NULL) fclose(ifile);
+    else if ((ifile = fopen("wave-faq.htm", "r")) != NULL) {
 	fclose(ifile);
 	sprintf(url, "%s/wave-faq.htm", getcwd(NULL, 256));
     }
@@ -101,16 +99,15 @@ void help(void)
     exit(1);
 }
 
-Frame help_frame;
-Panel help_panel;
-char *topic;
+static GtkWidget *help_window;	/* help topics popup window */
+static char *topic;
 
 static void help_print(void)
 {
     char *print_command;
 
     if (topic &&
-	(print_command = 
+	(print_command =
 	 malloc(strlen(textprint) + strlen(helpdir) + strlen(topic) + 14))) {
 	sprintf(print_command, "%s %s/wave/%s.hlp\n",
 		textprint, helpdir, topic);
@@ -119,190 +116,250 @@ static void help_print(void)
     }
 }
 
-
 /* Open the WAVE User's Guide in a web browser. */
-static void help_user_guide(Panel_item item, Event *event)
+static void help_user_guide_cb(GtkWidget *widget, gpointer data)
 {
+    (void)widget;
+    (void)data;
     find_user_guide();
     open_url();
 }
+
 /* Open the WAVE FAQ in a web browser. */
-static void help_faq(Panel_item item, Event *event)
+static void help_faq_cb(GtkWidget *widget, gpointer data)
 {
+    (void)widget;
+    (void)data;
     find_faq();
     open_url();
 }
 
-/* Create a text subwindow and display help on selected topic. */
-static void help_select(Panel_item item, Event *event)
+/* Load a help file into a GtkTextView and display it in a sub-window. */
+static void show_help_topic(const char *topic_key, const char *topic_label)
 {
+    GtkWidget *subwindow, *vbox, *scrolled, *textview, *button;
+    GtkTextBuffer *buffer;
     char *filename;
-    Frame help_subframe;
-    Panel help_subpanel;
-    Textsw textsw;
-    Textsw_status status;
+    FILE *fp;
 
-    switch ((int)xv_get(item, PANEL_CLIENT_DATA)) {
-      case 'a': topic = "analysis"; break;
-      case 'b': topic = "buttons"; break;
-      case 'e': topic = "editing"; break;
-      case 'f': topic = "faq"; break;
-      case 'l': topic = "log"; break;
-      case 'n': topic = "news"; break;
-      case 'p': topic = "printing"; break;
-      case 'r': topic = "resource"; break;
-      default:
-      case 'i':	topic = "intro"; break;
-    }
-    if (filename = malloc(strlen(helpdir) + strlen(topic) + 11)) {
-	/* strlen("/wave/") + strlen(."hlp") + 1 for the trailing null = 11 */
-	Icon icon;
+    filename = malloc(strlen(helpdir) + strlen(topic_key) + 11);
+    if (filename == NULL)
+	return;
+    /* strlen("/wave/") + strlen(".hlp") + 1 for trailing null = 11 */
+    sprintf(filename, "%s/wave/%s.hlp", helpdir, topic_key);
 
-	icon = xv_create(XV_NULL, ICON,
-			 ICON_IMAGE, icon_image,
-			 ICON_LABEL, topic,
-			 NULL);
-	help_subframe = xv_find(help_frame, FRAME,
-				  XV_LABEL, topic,
-				  WIN_COLUMNS, 100,
-				  FRAME_ICON, icon, 0);
-	help_subpanel = xv_find(help_subframe, PANEL,
-				WIN_ROWS, 1,
-				0);
-	xv_find(help_subpanel, PANEL_BUTTON,
-		PANEL_LABEL_STRING, "Print",
-		XV_HELP_DATA, "wave:help.print",
-		PANEL_NOTIFY_PROC, help_print,
-		0);
-	textsw = (Textsw)xv_find(help_subframe, TEXTSW,
-				 WIN_BELOW, help_subpanel,
-				 WIN_X, 0,
-				 NULL);
-	sprintf(filename, "%s/wave/%s.hlp", helpdir, topic);
-	xv_set(textsw,
-	       TEXTSW_STATUS, &status,
-	       TEXTSW_FILE, filename,
-	       TEXTSW_FIRST, 0,
-	       TEXTSW_READ_ONLY, TRUE,
-	       NULL);
-	if (status != TEXTSW_STATUS_OKAY) {
-#ifdef NOTICE
-	    Xv_notice notice = xv_create((Frame)frame, NOTICE,
-					 XV_SHOW, TRUE,
-#else
-	    (void)notice_prompt((Frame)frame, (Event *)NULL,
-#endif
-			  NOTICE_MESSAGE_STRINGS,
-			  "Sorry, help is not available for this topic.", 0,
-			  NOTICE_BUTTON_YES, "Continue", 0);
-#ifdef NOTICE
-	    xv_destroy_safe(notice);
-#endif
-	    xv_destroy_safe(help_subframe);
-	}
-	else {
-	    wmgr_top(help_subframe);
-	    xv_set(help_subframe, WIN_MAP, TRUE, 0);
-	}
+    fp = fopen(filename, "r");
+    if (fp == NULL) {
+	GtkWidget *dialog = gtk_message_dialog_new(
+	    GTK_WINDOW(help_window),
+	    GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT,
+	    GTK_MESSAGE_WARNING,
+	    GTK_BUTTONS_OK,
+	    "Sorry, help is not available for this topic.");
+	gtk_dialog_run(GTK_DIALOG(dialog));
+	gtk_widget_destroy(dialog);
 	free(filename);
+	return;
     }
+
+    /* Read entire file into a buffer. */
+    fseek(fp, 0, SEEK_END);
+    long fsize = ftell(fp);
+    rewind(fp);
+    char *contents = malloc(fsize + 1);
+    if (contents == NULL) {
+	fclose(fp);
+	free(filename);
+	return;
+    }
+    size_t nread = fread(contents, 1, fsize, fp);
+    contents[nread] = '\0';
+    fclose(fp);
+
+    /* Create a sub-window for this topic. */
+    subwindow = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+    gtk_window_set_title(GTK_WINDOW(subwindow), topic_label);
+    gtk_window_set_transient_for(GTK_WINDOW(subwindow),
+				 GTK_WINDOW(help_window));
+    gtk_window_set_destroy_with_parent(GTK_WINDOW(subwindow), TRUE);
+    gtk_window_set_default_size(GTK_WINDOW(subwindow), 700, 500);
+
+    vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 4);
+    gtk_container_set_border_width(GTK_CONTAINER(vbox), 4);
+    gtk_container_add(GTK_CONTAINER(subwindow), vbox);
+
+    /* Print button. */
+    button = gtk_button_new_with_label("Print");
+    gtk_widget_set_tooltip_text(button, "Print this help topic");
+    g_signal_connect_swapped(button, "clicked",
+			     G_CALLBACK(help_print), NULL);
+    gtk_widget_set_halign(button, GTK_ALIGN_START);
+    gtk_box_pack_start(GTK_BOX(vbox), button, FALSE, FALSE, 0);
+
+    /* Scrolled text view with help content. */
+    scrolled = gtk_scrolled_window_new(NULL, NULL);
+    gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scrolled),
+				   GTK_POLICY_AUTOMATIC,
+				   GTK_POLICY_AUTOMATIC);
+    gtk_box_pack_start(GTK_BOX(vbox), scrolled, TRUE, TRUE, 0);
+
+    textview = gtk_text_view_new();
+    gtk_text_view_set_editable(GTK_TEXT_VIEW(textview), FALSE);
+    gtk_text_view_set_cursor_visible(GTK_TEXT_VIEW(textview), FALSE);
+    gtk_text_view_set_wrap_mode(GTK_TEXT_VIEW(textview), GTK_WRAP_WORD);
+    gtk_text_view_set_left_margin(GTK_TEXT_VIEW(textview), 4);
+    gtk_text_view_set_right_margin(GTK_TEXT_VIEW(textview), 4);
+    gtk_container_add(GTK_CONTAINER(scrolled), textview);
+
+    buffer = gtk_text_view_get_buffer(GTK_TEXT_VIEW(textview));
+    gtk_text_buffer_set_text(buffer, contents, -1);
+
+    /* Scroll to the top. */
+    GtkTextIter start;
+    gtk_text_buffer_get_start_iter(buffer, &start);
+    gtk_text_buffer_place_cursor(buffer, &start);
+
+    gtk_widget_show_all(subwindow);
+    gtk_window_present(GTK_WINDOW(subwindow));
+
+    free(contents);
+    free(filename);
+}
+
+/* Callback for help topic buttons. The topic key is passed as user data. */
+static void help_select_cb(GtkWidget *widget, gpointer data)
+{
+    const char *key = (const char *)data;
+    const char *label;
+
+    (void)widget;
+
+    /* Map key character to topic name. */
+    switch (key[0]) {
+      case 'a': topic = "analysis";  label = "Analysis";            break;
+      case 'b': topic = "buttons";   label = "Buttons";             break;
+      case 'e': topic = "editing";   label = "Annotation Editing";  break;
+      case 'l': topic = "log";       label = "WAVE Logs";           break;
+      case 'n': topic = "news";      label = "What's new";          break;
+      case 'p': topic = "printing";  label = "Printing";            break;
+      case 'r': topic = "resource";  label = "Resources";           break;
+      default:
+      case 'i': topic = "intro";     label = "Introduction";        break;
+    }
+
+    show_help_topic(topic, label);
+}
+
+/* Handle window close (delete-event) by hiding instead of destroying. */
+static gboolean help_window_delete(GtkWidget *widget, GdkEvent *event,
+				   gpointer data)
+{
+    (void)widget;
+    (void)event;
+    (void)data;
+    dismiss_help();
+    return TRUE;	/* prevent destruction */
+}
+
+/* Callback wrapper for the Dismiss button. */
+static void dismiss_help_cb(GtkWidget *widget, gpointer data)
+{
+    (void)widget;
+    (void)data;
+    dismiss_help();
 }
 
 /* Set up popup window for help. */
 void create_help_popup(void)
 {
-    Icon icon;
+    GtkWidget *vbox, *label_box, *label, *button;
+    char version_str[128];
 
-    icon = xv_create(XV_NULL, ICON,
-		     ICON_IMAGE, icon_image,
-		     ICON_LABEL, "Help",
-		     NULL);
-    help_frame = xv_create(frame, FRAME,
-			   XV_LABEL, "Help Topics",
-			   FRAME_ICON, icon, 0);
-    help_panel = xv_create(help_frame, PANEL, 0);
-    xv_create(help_panel, PANEL_MESSAGE,
-	      PANEL_NEXT_ROW, -1,
-	      PANEL_LABEL_STRING, "WAVE",
-	      PANEL_LABEL_BOLD, TRUE,
-	      0);
-    xv_create(help_panel, PANEL_MESSAGE,
-	      PANEL_LABEL_STRING, WAVEVERSION,
-	      PANEL_LABEL_BOLD, TRUE,
-	      0);
-    xv_create(help_panel, PANEL_MESSAGE,
-	      PANEL_LABEL_STRING,
-	     "Copyright \251 1990-2010 George B. Moody.",
-	      0);
+    /* Create the popup window. */
+    help_window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+    gtk_window_set_title(GTK_WINDOW(help_window), "Help Topics");
+    gtk_window_set_transient_for(GTK_WINDOW(help_window),
+				 GTK_WINDOW(main_window));
+    gtk_window_set_destroy_with_parent(GTK_WINDOW(help_window), TRUE);
+    g_signal_connect(help_window, "delete-event",
+		     G_CALLBACK(help_window_delete), NULL);
 
-    xv_create(help_panel, PANEL_BUTTON,
-	      PANEL_LABEL_STRING, "Introduction",
-	      XV_HELP_DATA, "wave:help.intro",
-	      PANEL_NOTIFY_PROC, help_select,
-	      PANEL_CLIENT_DATA, (caddr_t) 'i',
-	      0);
-    xv_create(help_panel, PANEL_BUTTON,
-	      PANEL_LABEL_STRING, "Buttons",
-	      XV_HELP_DATA, "wave:help.buttons",
-	      PANEL_NOTIFY_PROC, help_select,
-	      PANEL_CLIENT_DATA, (caddr_t) 'b',
-	      0);
-    xv_create(help_panel, PANEL_BUTTON,
-	      PANEL_LABEL_STRING, "Annotation Editing",
-	      XV_HELP_DATA, "wave:help.editing",
-	      PANEL_NOTIFY_PROC, help_select,
-	      PANEL_CLIENT_DATA, (caddr_t) 'e',
-	      0);
-    xv_create(help_panel, PANEL_BUTTON,
-	      PANEL_LABEL_STRING, "WAVE Logs",
-	      XV_HELP_DATA, "wave:help.logs",
-	      PANEL_NOTIFY_PROC, help_select,
-	      PANEL_CLIENT_DATA, (caddr_t) 'l',
-	      0);
-    xv_create(help_panel, PANEL_BUTTON,
-	      PANEL_LABEL_STRING, "Printing",
-	      XV_HELP_DATA, "wave:help.printing",
-	      PANEL_NOTIFY_PROC, help_select,
-	      PANEL_CLIENT_DATA, (caddr_t) 'p',
-	      0);
-    xv_create(help_panel, PANEL_BUTTON,
-	      PANEL_LABEL_STRING, "Analysis",
-	      XV_HELP_DATA, "wave:help.analysis",
-	      PANEL_NOTIFY_PROC, help_select,
-	      PANEL_CLIENT_DATA, (caddr_t) 'a',
-	      0);
-    xv_create(help_panel, PANEL_BUTTON,
-	      PANEL_LABEL_STRING, "Resources",
-	      XV_HELP_DATA, "wave:help.resources",
-	      PANEL_NOTIFY_PROC, help_select,
-	      PANEL_CLIENT_DATA, (caddr_t) 'r',
-	      0);
-    xv_create(help_panel, PANEL_BUTTON,
-	      PANEL_LABEL_STRING, "What's new",
-	      XV_HELP_DATA, "wave:help.news",
-	      PANEL_NOTIFY_PROC, help_select,
-	      PANEL_CLIENT_DATA, (caddr_t) 'n',
-	      0);
+    vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 4);
+    gtk_container_set_border_width(GTK_CONTAINER(vbox), 8);
+    gtk_container_add(GTK_CONTAINER(help_window), vbox);
 
-    xv_create(help_panel, PANEL_BUTTON,
-	      PANEL_LABEL_STRING, "Frequently asked questions",
-	      XV_HELP_DATA, "wave:help.faq",
-	      PANEL_NOTIFY_PROC, help_faq,
-	      0);
+    /* Title labels: "WAVE" version and copyright. */
+    label_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
+    gtk_box_pack_start(GTK_BOX(vbox), label_box, FALSE, FALSE, 0);
 
-    xv_create(help_panel, PANEL_BUTTON,
-	      PANEL_LABEL_STRING, "User's Guide",
-	      XV_HELP_DATA, "wave:help.ug",
-	      PANEL_NOTIFY_PROC, help_user_guide,
-	      0);
+    label = gtk_label_new(NULL);
+    gtk_label_set_markup(GTK_LABEL(label), "<b>WAVE</b>");
+    gtk_box_pack_start(GTK_BOX(label_box), label, FALSE, FALSE, 0);
 
-    xv_create(help_panel, PANEL_BUTTON,
-	      PANEL_LABEL_STRING, "Quit from Help",
-	      XV_HELP_DATA, "wave:help.quit",
-	      PANEL_NOTIFY_PROC, dismiss_help,
-	      0);
-    window_fit(help_panel);
-    window_fit(help_frame);
+    snprintf(version_str, sizeof(version_str), "<b>%s</b>", WAVEVERSION);
+    label = gtk_label_new(NULL);
+    gtk_label_set_markup(GTK_LABEL(label), version_str);
+    gtk_box_pack_start(GTK_BOX(label_box), label, FALSE, FALSE, 0);
+
+    label = gtk_label_new("Copyright \302\251 1990-2010 George B. Moody.");
+    gtk_widget_set_halign(label, GTK_ALIGN_START);
+    gtk_box_pack_start(GTK_BOX(vbox), label, FALSE, FALSE, 0);
+
+    /* Help topic buttons. */
+    button = gtk_button_new_with_label("Introduction");
+    gtk_widget_set_tooltip_text(button, "Introduction to WAVE");
+    g_signal_connect(button, "clicked", G_CALLBACK(help_select_cb), "i");
+    gtk_box_pack_start(GTK_BOX(vbox), button, FALSE, FALSE, 0);
+
+    button = gtk_button_new_with_label("Buttons");
+    gtk_widget_set_tooltip_text(button, "WAVE button reference");
+    g_signal_connect(button, "clicked", G_CALLBACK(help_select_cb), "b");
+    gtk_box_pack_start(GTK_BOX(vbox), button, FALSE, FALSE, 0);
+
+    button = gtk_button_new_with_label("Annotation Editing");
+    gtk_widget_set_tooltip_text(button, "Annotation editing help");
+    g_signal_connect(button, "clicked", G_CALLBACK(help_select_cb), "e");
+    gtk_box_pack_start(GTK_BOX(vbox), button, FALSE, FALSE, 0);
+
+    button = gtk_button_new_with_label("WAVE Logs");
+    gtk_widget_set_tooltip_text(button, "WAVE log file help");
+    g_signal_connect(button, "clicked", G_CALLBACK(help_select_cb), "l");
+    gtk_box_pack_start(GTK_BOX(vbox), button, FALSE, FALSE, 0);
+
+    button = gtk_button_new_with_label("Printing");
+    gtk_widget_set_tooltip_text(button, "Printing help");
+    g_signal_connect(button, "clicked", G_CALLBACK(help_select_cb), "p");
+    gtk_box_pack_start(GTK_BOX(vbox), button, FALSE, FALSE, 0);
+
+    button = gtk_button_new_with_label("Analysis");
+    gtk_widget_set_tooltip_text(button, "Analysis tools help");
+    g_signal_connect(button, "clicked", G_CALLBACK(help_select_cb), "a");
+    gtk_box_pack_start(GTK_BOX(vbox), button, FALSE, FALSE, 0);
+
+    button = gtk_button_new_with_label("Resources");
+    gtk_widget_set_tooltip_text(button, "WAVE resources help");
+    g_signal_connect(button, "clicked", G_CALLBACK(help_select_cb), "r");
+    gtk_box_pack_start(GTK_BOX(vbox), button, FALSE, FALSE, 0);
+
+    button = gtk_button_new_with_label("What's new");
+    gtk_widget_set_tooltip_text(button, "Recent changes in WAVE");
+    g_signal_connect(button, "clicked", G_CALLBACK(help_select_cb), "n");
+    gtk_box_pack_start(GTK_BOX(vbox), button, FALSE, FALSE, 0);
+
+    button = gtk_button_new_with_label("Frequently asked questions");
+    gtk_widget_set_tooltip_text(button, "WAVE FAQ");
+    g_signal_connect(button, "clicked", G_CALLBACK(help_faq_cb), NULL);
+    gtk_box_pack_start(GTK_BOX(vbox), button, FALSE, FALSE, 0);
+
+    button = gtk_button_new_with_label("User's Guide");
+    gtk_widget_set_tooltip_text(button, "Open the WAVE User's Guide");
+    g_signal_connect(button, "clicked", G_CALLBACK(help_user_guide_cb), NULL);
+    gtk_box_pack_start(GTK_BOX(vbox), button, FALSE, FALSE, 0);
+
+    button = gtk_button_new_with_label("Quit from Help");
+    gtk_widget_set_tooltip_text(button, "Close this help window");
+    g_signal_connect(button, "clicked", G_CALLBACK(dismiss_help_cb), NULL);
+    gtk_box_pack_start(GTK_BOX(vbox), button, FALSE, FALSE, 0);
 }
 
 int help_popup_active = -1;
@@ -311,8 +368,8 @@ int help_popup_active = -1;
 void show_help(void)
 {
     if (help_popup_active < 0) create_help_popup();
-    wmgr_top(help_frame);
-    xv_set(help_frame, WIN_MAP, TRUE, 0);
+    gtk_widget_show_all(help_window);
+    gtk_window_present(GTK_WINDOW(help_window));
     help_popup_active = 1;
 }
 
@@ -320,7 +377,7 @@ void show_help(void)
 void dismiss_help(void)
 {
     if (help_popup_active > 0) {
-	xv_set(help_frame, WIN_MAP, FALSE, 0);
+	gtk_widget_hide(help_window);
 	help_popup_active = 0;
     }
 }

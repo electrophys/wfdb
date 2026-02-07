@@ -1,6 +1,6 @@
 /* file: logpan.c	G. Moody	 1 May 1990
-			Last revised:   24 April 2020
-Log panel functions for WAVE
+			Last revised:	2026
+Log panel functions for WAVE (GTK 3 version)
 
 -------------------------------------------------------------------------------
 WAVE: Waveform analyzer, viewer, and editor
@@ -26,17 +26,13 @@ _______________________________________________________________________________
 */
 
 #include "wave.h"
-#include "xvwave.h"
-#include <string.h>
-#include <X11/Xos.h>		/* for <sys/time.h> */
-#include <xview/notice.h>
-#include <xview/notify.h>
-#include <xview/textsw.h>
-#include <xview/defaults.h>
+#include "gtkwave.h"
+#include <ctype.h>
+#include <sys/time.h>
 
 #define LLLMAX	(RNLMAX+40+DSLMAX)	/* max length of line in log file */
 
-Frame log_frame;
+static GtkWidget *log_window;
 
 /* A WAVE log file contains one-line entries.  Each entry specifies a record
    and a time or time interval in that record, and contains an associated
@@ -76,7 +72,7 @@ void set_marker(WFDB_Time t)
 	move_annotation(log_marker, t);
 	attached = log_marker;
     }
-    else if (log_marker = get_ap()) {
+    else if ((log_marker = get_ap())) {
 	log_marker->this.time = t;
 	log_marker->this.anntyp = INDEX_MARK;
 	insert_annotation(log_marker);
@@ -105,18 +101,7 @@ int add_entry(char *recp, char *timep, char *textp)
 	(new_entry->time_spec = (char *)malloc(strlen(timep)+1)) == NULL ||
 	(textp &&
 	 (new_entry->text = (char *)malloc(strlen(textp)+1)) == NULL)) {
-#ifdef NOTICE
-	Xv_notice notice = xv_create((Frame)frame, NOTICE,
-				     XV_SHOW, TRUE,
-#else
-	(void)notice_prompt((Frame)frame, (Event *)NULL,
-#endif
-			    NOTICE_MESSAGE_STRINGS,
-			    "Error in allocating memory for log\n", 0,
-			    NOTICE_BUTTON_YES, "Continue", 0);
-#ifdef NOTICE
-	xv_destroy_safe(notice);
-#endif
+	wave_notice_prompt("Error in allocating memory for log\n");
 	if (new_entry) {
 	    if (new_entry->time_spec) free(new_entry->time_spec);
 	    if (new_entry->record) free(new_entry->record);
@@ -171,7 +156,7 @@ void delete_entry(void)
 	    (current_entry->prev)->next = current_entry->next;
 	else				/* deleting entry at head */
 	    first_entry = current_entry->next;
-	if (p = current_entry->next)
+	if ((p = current_entry->next))
 	    (current_entry->next)->prev = current_entry->prev;
 	else				/* deleting entry at tail */
 	    p = last_entry = current_entry->prev;
@@ -235,63 +220,40 @@ int write_log(char *logfname)
     if (save_log_backup) {
 	char backfname[LNLMAX+2];
 
-	sprintf(backfname, "%s~", logfname);
+	snprintf(backfname, sizeof(backfname), "%s~", logfname);
 	if (rename(logfname, backfname)) {
-#ifdef NOTICE
-	    Xv_notice notice = xv_create((Frame)frame, NOTICE,
-					 XV_SHOW, TRUE,
-					 NOTICE_STATUS, &result,
-#else
-	    result = notice_prompt((Frame)frame, (Event *)NULL,
-#endif
-		NOTICE_MESSAGE_STRINGS,
-		"Your log cannot be saved unless you remove the file named",
-		backfname,
-		"",
-		"You may attempt to correct this problem from",
-		"another window after pressing `Continue', or",
-		"you may exit immediately and discard your",
-		"changes by pressing `Exit'.", 0,
-		NOTICE_BUTTON_YES, "Continue",
-		NOTICE_BUTTON_NO, "Exit", NULL);
-#ifdef NOTICE
-	    xv_destroy_safe(notice);
-#endif
-	    if (result == NOTICE_YES) return (0);
+	    char msg[LNLMAX + 256];
+	    snprintf(msg, sizeof(msg),
+		     "Your log cannot be saved unless you remove the "
+		     "file named %s\n\n"
+		     "You may attempt to correct this problem from "
+		     "another window after pressing 'Yes', or "
+		     "you may exit immediately and discard your "
+		     "changes by pressing 'No'.", backfname);
+	    result = wave_notice_prompt(msg);
+	    if (result) return (0);  /* user chose "Yes" = continue */
 	    else if (post_changes()) {
-		xv_destroy_safe(frame);
+		gtk_widget_destroy(main_window);
 		exit(1);
 	    }
 	    else return (0);
 	}
 	save_log_backup = 0;
     }
-	
+
     if ((logfile = fopen(logfname, "w")) == NULL) {
-#ifdef NOTICE
-	Xv_notice notice = xv_create((Frame)frame, NOTICE,
-				     XV_SHOW, TRUE,
-				     NOTICE_STATUS, &result,
-#else
-	result = notice_prompt((Frame)frame, (Event *)NULL,
-#endif
-		    NOTICE_MESSAGE_STRINGS,
-		    "Your log cannot be saved until you obtain",
-		    "write permission for",
-		    logfname,
-		    "",
-		    "You may attempt to correct this problem from",
-		    "another window after pressing `Continue', or",
-		    "you may exit immediately and discard your",
-		    "changes by pressing `Exit'.", 0,
-		    NOTICE_BUTTON_YES, "Continue",
-		    NOTICE_BUTTON_NO, "Exit", NULL);
-#ifdef NOTICE
-	xv_destroy_safe(notice);
-#endif
-	if (result == NOTICE_YES) return (0);
+	char msg[LNLMAX + 256];
+	snprintf(msg, sizeof(msg),
+		 "Your log cannot be saved until you obtain "
+		 "write permission for %s\n\n"
+		 "You may attempt to correct this problem from "
+		 "another window after pressing 'Yes', or "
+		 "you may exit immediately and discard your "
+		 "changes by pressing 'No'.", logfname);
+	result = wave_notice_prompt(msg);
+	if (result) return (0);  /* user chose "Yes" = continue */
 	else if (post_changes()) {
-	    xv_destroy_safe(frame);
+	    gtk_widget_destroy(main_window);
 	    exit(1);
 	}
 	else return (0);
@@ -308,13 +270,13 @@ int write_log(char *logfname)
     return (1);
 }
 
-Panel_item log_name_item, log_text_item, load_button,
-    add_button, replace_button, delete_button, edit_button, first_button,
-    rreview_button, prev_button, pause_button, next_button, review_button,
-    last_button;
-struct itimerval timer;
+static GtkWidget *log_name_item, *log_text_item;
+static GtkWidget *load_button, *add_button, *replace_button, *delete_button;
+static GtkWidget *edit_button, *first_button, *rreview_button, *prev_button;
+static GtkWidget *pause_button, *next_button, *review_button, *last_button;
+static GtkWidget *delay_scale;
 
-Panel log_panel;
+static guint review_timer_id;
 
 void show_current_entry(void)
 {
@@ -335,7 +297,7 @@ void show_current_entry(void)
 	if (p) *p = '\0';
 	if ((t0 = strtim(current_entry->time_spec)) < 0L) t0 = -t0;
 	if (p)		/* start and end times are given */
-	    *p = '-';		
+	    *p = '-';
 	else {		/* only one time given -- place mark at that time */
 	    set_marker(t0);
 	    if ((t0 -= nsamp/2) < 0L) t0 = 0L;
@@ -346,8 +308,8 @@ void show_current_entry(void)
 	}
 	set_start_time(timstr(t0));
 	set_end_time(timstr(t0 + nsamp));
-	xv_set(log_text_item, PANEL_VALUE, description, NULL);
-	disp_proc(log_text_item, (Event *)NULL);
+	gtk_entry_set_text(GTK_ENTRY(log_text_item), description);
+	disp_proc(".");
 	if (attached)
 	  box((int)((attached->this.time - display_start_time)*tscale),
 	    (ann_mode==1 && (unsigned)attached->this.chan < nsig) ?
@@ -356,10 +318,11 @@ void show_current_entry(void)
     }
 }
 
-Notify_value show_next_entry(void)
+static gboolean show_next_entry_cb(gpointer data)
 {
     char *p;
     WFDB_Time t0;
+    (void)data;
 
     if (current_entry->next) current_entry = current_entry->next;
     else current_entry = first_entry;
@@ -369,17 +332,18 @@ Notify_value show_next_entry(void)
 	p = strchr(current_entry->next->time_spec, '-');
 	if (p) *p = '\0';
 	if ((t0 = strtim(current_entry->next->time_spec)) < 0L) t0 = -t0;
-	if (p) *p = '-';		/* t1 = strtim(p+1); */
+	if (p) *p = '-';
 	else if ((t0 -= nsamp/2) < 0L) t0 = 0L;
 	(void)find_display_list(t0);
     }
-    return (NOTIFY_DONE);
+    return G_SOURCE_CONTINUE;
 }
 
-Notify_value show_prev_entry(void)
+static gboolean show_prev_entry_cb(gpointer data)
 {
     char *p;
     WFDB_Time t0;
+    (void)data;
 
     if (current_entry->prev) current_entry = current_entry->prev;
     else current_entry = last_entry;
@@ -389,97 +353,99 @@ Notify_value show_prev_entry(void)
 	p = strchr(current_entry->prev->time_spec, '-');
 	if (p) *p = '\0';
 	if ((t0 = strtim(current_entry->prev->time_spec)) < 0L) t0 = -t0;
-	if (p) *p = '-';		/* t1 = strtim(p+1); */
+	if (p) *p = '-';
 	else if ((t0 -= nsamp/2) < 0L) t0 = 0L;
 	(void)find_display_list(t0);
     }
-    return (NOTIFY_DONE);
+    return G_SOURCE_CONTINUE;
 }
 
-int review_delay;
-int review_in_progress;
+static int review_delay = 5;
+static int review_in_progress;
 
 void log_review(int direction)
 {
     review_in_progress = direction;
-    timer.it_value.tv_sec = timer.it_interval.tv_sec = review_delay;
+    if (review_timer_id) {
+	g_source_remove(review_timer_id);
+	review_timer_id = 0;
+    }
     if (direction == 1)
-	notify_set_itimer_func(log_frame, show_next_entry, ITIMER_REAL,
-			       &timer, NULL);
-    else
-	notify_set_itimer_func(log_frame, show_prev_entry, ITIMER_REAL,
-			       &timer, NULL);
-}	
+	review_timer_id = g_timeout_add_seconds(review_delay,
+						show_next_entry_cb, NULL);
+    else if (direction == -1)
+	review_timer_id = g_timeout_add_seconds(review_delay,
+						show_prev_entry_cb, NULL);
+}
 
 void pause_review(void)
 {
     review_in_progress = 0;
-    notify_set_itimer_func(log_frame,NOTIFY_FUNC_NULL,ITIMER_REAL,NULL,NULL);
+    if (review_timer_id) {
+	g_source_remove(review_timer_id);
+	review_timer_id = 0;
+    }
 }
 
 /* Handle enabling/disabling log navigation buttons for non-review modes. */
 void set_buttons(void)
 {
-    xv_set(pause_button, PANEL_INACTIVE, TRUE, 0);
-    if (log_file_name) {
-	xv_set(load_button, PANEL_INACTIVE, FALSE, 0);
-	xv_set(add_button, PANEL_INACTIVE, FALSE, 0);
-	xv_set(edit_button, PANEL_INACTIVE, FALSE, 0);
+    gtk_widget_set_sensitive(pause_button, FALSE);
+    if (log_file_name[0]) {
+	gtk_widget_set_sensitive(load_button, TRUE);
+	gtk_widget_set_sensitive(add_button, TRUE);
+	gtk_widget_set_sensitive(edit_button, TRUE);
     }
     if (current_entry) {
-	xv_set(replace_button, PANEL_INACTIVE, FALSE, 0);
-	xv_set(delete_button, PANEL_INACTIVE, FALSE, 0);
-	xv_set(first_button, PANEL_INACTIVE, FALSE, 0);
-	xv_set(last_button, PANEL_INACTIVE, FALSE, 0);
-	xv_set(next_button, PANEL_INACTIVE,
-	       current_entry->next ? FALSE : TRUE, 0);
-	xv_set(prev_button, PANEL_INACTIVE,
-	       current_entry->prev ? FALSE : TRUE, 0);
-	xv_set(review_button, PANEL_INACTIVE,
-	       (current_entry->next || current_entry->prev) ? FALSE : TRUE, 0);
-	xv_set(rreview_button, PANEL_INACTIVE,
-	       (current_entry->next || current_entry->prev) ? FALSE : TRUE, 0);
+	gtk_widget_set_sensitive(replace_button, TRUE);
+	gtk_widget_set_sensitive(delete_button, TRUE);
+	gtk_widget_set_sensitive(first_button, TRUE);
+	gtk_widget_set_sensitive(last_button, TRUE);
+	gtk_widget_set_sensitive(next_button,
+				 current_entry->next ? TRUE : FALSE);
+	gtk_widget_set_sensitive(prev_button,
+				 current_entry->prev ? TRUE : FALSE);
+	gtk_widget_set_sensitive(review_button,
+		(current_entry->next || current_entry->prev) ? TRUE : FALSE);
+	gtk_widget_set_sensitive(rreview_button,
+		(current_entry->next || current_entry->prev) ? TRUE : FALSE);
     }
     else {
-	xv_set(replace_button, PANEL_INACTIVE, TRUE, 0);
-	xv_set(delete_button, PANEL_INACTIVE, TRUE, 0);
-	xv_set(first_button, PANEL_INACTIVE, TRUE, 0);
-	xv_set(rreview_button, PANEL_INACTIVE, TRUE, 0);
-	xv_set(prev_button, PANEL_INACTIVE, TRUE, 0);
-	xv_set(next_button, PANEL_INACTIVE, TRUE, 0);
-	xv_set(review_button, PANEL_INACTIVE, TRUE, 0);
-	xv_set(last_button, PANEL_INACTIVE, TRUE, 0);
+	gtk_widget_set_sensitive(replace_button, FALSE);
+	gtk_widget_set_sensitive(delete_button, FALSE);
+	gtk_widget_set_sensitive(first_button, FALSE);
+	gtk_widget_set_sensitive(rreview_button, FALSE);
+	gtk_widget_set_sensitive(prev_button, FALSE);
+	gtk_widget_set_sensitive(next_button, FALSE);
+	gtk_widget_set_sensitive(review_button, FALSE);
+	gtk_widget_set_sensitive(last_button, FALSE);
     }
 }
 
 void disable_buttons(void)
 {
-    xv_set(load_button, PANEL_INACTIVE, TRUE, 0);
-    xv_set(add_button, PANEL_INACTIVE, TRUE, 0);
-    xv_set(replace_button, PANEL_INACTIVE, TRUE, 0);
-    xv_set(delete_button, PANEL_INACTIVE, TRUE, 0);
-    xv_set(edit_button, PANEL_INACTIVE, TRUE, 0);
-    xv_set(first_button, PANEL_INACTIVE, TRUE, 0);
-    xv_set(rreview_button, PANEL_INACTIVE, TRUE, 0);
-    xv_set(prev_button, PANEL_INACTIVE, TRUE, 0);
-    xv_set(pause_button, PANEL_INACTIVE, TRUE, 0);
-    xv_set(next_button, PANEL_INACTIVE, TRUE, 0);
-    xv_set(review_button, PANEL_INACTIVE, TRUE, 0);
-    xv_set(last_button, PANEL_INACTIVE, TRUE, 0);
+    gtk_widget_set_sensitive(load_button, FALSE);
+    gtk_widget_set_sensitive(add_button, FALSE);
+    gtk_widget_set_sensitive(replace_button, FALSE);
+    gtk_widget_set_sensitive(delete_button, FALSE);
+    gtk_widget_set_sensitive(edit_button, FALSE);
+    gtk_widget_set_sensitive(first_button, FALSE);
+    gtk_widget_set_sensitive(rreview_button, FALSE);
+    gtk_widget_set_sensitive(prev_button, FALSE);
+    gtk_widget_set_sensitive(pause_button, FALSE);
+    gtk_widget_set_sensitive(next_button, FALSE);
+    gtk_widget_set_sensitive(review_button, FALSE);
+    gtk_widget_set_sensitive(last_button, FALSE);
 }
 
 /* Edit the log file. */
 void edit_log_file(void)
 {
     char *edit_command, *editor;
-    int clen, elen, result;
 
     if ((editor = getenv("EDITOR")) == NULL)
-	editor = defaults_get_string("wave.texteditor",
-				     "Wave.TextEditor",
-				     EDITOR);
-    elen = strlen(editor);
-    edit_command = malloc(elen + strlen(log_file_name) + 3);
+	editor = EDITOR;
+    edit_command = malloc(strlen(editor) + strlen(log_file_name) + 3);
     if (edit_command) {
 	sprintf(edit_command, "%s %s\n", editor, log_file_name);
 	analyze_proc();
@@ -487,14 +453,47 @@ void edit_log_file(void)
 	free(edit_command);
     }
 }
-    
-/* Handle selections in the log window. */
-static void log_select(Panel_item item, Event *event)
+
+/* Callback: file name entry activated (Enter pressed). */
+static void on_log_name_activate(GtkEntry *entry, gpointer data)
 {
-    int client_data = (int)xv_get(item, PANEL_CLIENT_DATA);
+    const char *new_name;
+    (void)data;
+
+    new_name = gtk_entry_get_text(entry);
+    /* Do nothing unless the name has been changed. */
+    if (strncmp(log_file_name, new_name, LNLMAX)) {
+	/* If edits have been made, write the current log to the old file.
+	   If the write fails, reset the file name (after write_log has
+	   alerted the user). */
+	if (log_changes && write_log(log_file_name) == 0)
+	    gtk_entry_set_text(GTK_ENTRY(log_name_item), log_file_name);
+	else {
+	    /* Clear out the old entries. */
+	    for (current_entry = first_entry; current_entry; )
+		delete_entry();
+	    strncpy(log_file_name, new_name, LNLMAX);
+	    /* Reinitialize from the new log file. */
+	    if (read_log(log_file_name))
+		save_log_backup = 1;
+	    log_changes = 0;
+	    current_entry = first_entry;
+	}
+	set_buttons();
+	show_current_entry();
+    }
+}
+
+/* Generic button-click callback dispatching on the character stored
+   as user data (same convention as the original XView PANEL_CLIENT_DATA). */
+static void on_log_button_clicked(GtkButton *button, gpointer data)
+{
+    int client_data = GPOINTER_TO_INT(data);
     char timestring[25];
+    (void)button;
+
     switch (client_data) {
-      case 'a':		/* add an entry */
+      case 'a': {	/* add an entry */
 	if (attached && display_start_time < attached->this.time &&
 	    attached->this.time < display_start_time + nsamp)
 	    strcpy(timestring, mstimstr(attached->this.time));
@@ -503,11 +502,13 @@ static void log_select(Panel_item item, Event *event)
 	    strcat(timestring, "-");
 	    strcat(timestring, strtok(timstr(display_start_time+nsamp), " "));
 	}
-	if (add_entry(record, timestring, xv_get(log_text_item,PANEL_VALUE))) {
+	if (add_entry(record, timestring,
+		      (char *)gtk_entry_get_text(GTK_ENTRY(log_text_item)))) {
 	    if (++log_changes > 10) write_log(log_file_name);
 	    set_buttons();
 	}
 	break;
+      }
       case 'd':		/* delete the current entry */
 	delete_entry();
 	if (++log_changes > 10) write_log(log_file_name);
@@ -515,7 +516,7 @@ static void log_select(Panel_item item, Event *event)
 	show_current_entry();
 	break;
       case 'e':		/* edit the log file */
-	if (log_file_name) {
+	if (log_file_name[0]) {
 	    disable_buttons();
 	    if (log_changes > 0) write_log(log_file_name);
 	    edit_log_file();
@@ -530,47 +531,22 @@ static void log_select(Panel_item item, Event *event)
 	    set_buttons();
 	}
 	break;
-      case 'f':		/* specify log file name */
-	/* Do nothing unless the name has been changed. */
-	if (strncmp(log_file_name, (char *)xv_get(log_name_item,PANEL_VALUE),
-		    LNLMAX)) {
-	    /* If edits have been made, write the current log to the old file.
-	       If the write fails, reset the file name (after write_log has
-	       alerted the user). */
-	    if (log_changes && write_log(log_file_name) == 0)
-		xv_set(log_name_item, PANEL_VALUE, log_file_name, 0);
-	    else {
-		/* Clear out the old entries. */
-		for (current_entry = first_entry; current_entry; )
-		    delete_entry();
-		strncpy(log_file_name,
-			(char *)xv_get(log_name_item, PANEL_VALUE), LNLMAX);
-		/* Reinitialize from the new log file. */
-		if (read_log(log_file_name))
-		    save_log_backup = 1;
-		log_changes = 0;
-		current_entry = first_entry;
-	    }
-	    set_buttons();
-	    show_current_entry();
-	}
-	break;
-      case 'l':		/* force reload of log file */
+      case 'l': {	/* force reload of log file */
+	const char *name_val;
 	/* If edits have been made, write the current log to the old file.
 	   If the write fails, reset the file name (after write_log has
 	   alerted the user). */
 	if (log_changes) {
 	    char backfname[LNLMAX+2];
-
-	    sprintf(backfname, "%s~", log_file_name);
+	    snprintf(backfname, sizeof(backfname), "%s~", log_file_name);
 	    save_log_backup = 0;
 	    write_log(backfname);
 	}
 	/* Clear out the old entries. */
 	for (current_entry = first_entry; current_entry; )
 	    delete_entry();
-	strncpy(log_file_name,
-		(char *)xv_get(log_name_item, PANEL_VALUE), LNLMAX);
+	name_val = gtk_entry_get_text(GTK_ENTRY(log_name_item));
+	strncpy(log_file_name, name_val, LNLMAX);
 	/* Reinitialize from the new log file. */
 	if (read_log(log_file_name))
 	    save_log_backup = 1;
@@ -579,13 +555,15 @@ static void log_select(Panel_item item, Event *event)
 	set_buttons();
 	show_current_entry();
 	break;
+      }
       case 'p':		/* pause review */
 	pause_review();
 	set_buttons();
 	break;
       case 'r':		/* replace description field of current entry */
 	if (current_entry) {
-	    char *newtext = (char *)xv_get(log_text_item, PANEL_VALUE);
+	    const char *newtext =
+		gtk_entry_get_text(GTK_ENTRY(log_text_item));
 	    char *newtextp;
 
 	    if (strcmp(newtext, current_entry->text) &&
@@ -628,171 +606,158 @@ static void log_select(Panel_item item, Event *event)
       case '+':		/* review log entries */
       case '-':		/* review log entries in reverse order */
 	disable_buttons();
-	xv_set(pause_button, PANEL_INACTIVE, FALSE, 0);
+	gtk_widget_set_sensitive(pause_button, TRUE);
 	log_review(client_data == '+' ? 1 : -1);
 	break;
     }
 }
 
-static void adjust_delay(Panel_item item, int value)
+static void on_delay_changed(GtkRange *range, gpointer data)
 {
-    review_delay = value;
+    (void)data;
+    review_delay = (int)gtk_range_get_value(range);
     if (review_in_progress) log_review(review_in_progress);
+}
+
+/* Helper to create a button with a label, tooltip, click handler, and
+   client-data character. */
+static GtkWidget *make_log_button(const char *label, const char *tooltip,
+				  int client_data)
+{
+    GtkWidget *btn = gtk_button_new_with_label(label);
+    gtk_widget_set_tooltip_text(btn, tooltip);
+    g_signal_connect(btn, "clicked", G_CALLBACK(on_log_button_clicked),
+		     GINT_TO_POINTER(client_data));
+    gtk_widget_set_sensitive(btn, FALSE);
+    return btn;
 }
 
 /* Set up log window. */
 static void create_log_popup(void)
 {
-    int dx;
-    Icon icon;
+    GtkWidget *vbox, *hbox, *label, *nav_box;
 
-    icon = xv_create(XV_NULL, ICON,
-		     ICON_IMAGE, icon_image,
-		     ICON_LABEL, "Log",
-		     NULL);
-    log_frame = xv_create(frame, FRAME_CMD,
-			  FRAME_LABEL, "WAVE log",
-			  FRAME_ICON, icon, 0);
-    log_panel = xv_get(log_frame, FRAME_CMD_PANEL);
-    log_name_item = xv_create(log_panel, PANEL_TEXT,
-	XV_X, xv_col(log_panel, 0),
-	XV_Y, xv_row(log_panel, 0),
-	PANEL_DISPLAY_LEVEL, PANEL_CURRENT,
-	PANEL_LABEL_STRING, "File: ",
-	XV_HELP_DATA, "wave:file.log.file",
-	PANEL_VALUE_DISPLAY_LENGTH, 60,
-	PANEL_NOTIFY_PROC, log_select,
-	PANEL_CLIENT_DATA, (caddr_t) 'f',
-	0);
-    load_button = xv_create(log_panel, PANEL_BUTTON,
-	PANEL_LABEL_STRING, "Load",
-	XV_HELP_DATA, "wave:file.log.load",
-	PANEL_NOTIFY_PROC, log_select,
-	PANEL_CLIENT_DATA, (caddr_t) 'l',
-	PANEL_INACTIVE, TRUE,
-	0);
-    log_text_item = xv_create(log_panel, PANEL_TEXT,
- 	XV_X, xv_col(log_panel, 0),
-	XV_Y, xv_row(log_panel, 1),
-	PANEL_DISPLAY_LEVEL, PANEL_CURRENT,
-	PANEL_LABEL_STRING, "Description: ",
-	XV_HELP_DATA, "wave:file.log.description",
-	PANEL_VALUE_DISPLAY_LENGTH, 50,
-	PANEL_CLIENT_DATA, (caddr_t) '!',  /* used by disp_proc, see annot.c */
-	0);
-    xv_create(log_panel, PANEL_SLIDER,
-	XV_HELP_DATA, "wave:file.log.review_delay",
-	PANEL_LABEL_STRING, "Delay:",
-	PANEL_DIRECTION, PANEL_HORIZONTAL,
-	PANEL_VALUE, 5,
-	PANEL_MAX_VALUE, 10,
-	PANEL_MIN_VALUE, 1,
-	PANEL_SHOW_RANGE, TRUE,
-	PANEL_SHOW_VALUE, FALSE,
-	PANEL_NOTIFY_PROC, adjust_delay,
-	NULL);
-    add_button = xv_create(log_panel, PANEL_BUTTON,
-        XV_X, xv_col(log_panel, 0),
-	XV_Y, xv_row(log_panel, 3),
-	PANEL_LABEL_STRING, "Add",
-	XV_HELP_DATA, "wave:file.log.add",
-	PANEL_NOTIFY_PROC, log_select,
-	PANEL_CLIENT_DATA, (caddr_t) 'a',
-	PANEL_INACTIVE, TRUE,
-	0);
-    replace_button = xv_create(log_panel, PANEL_BUTTON,
-	PANEL_LABEL_STRING, "Replace",
-	XV_HELP_DATA, "wave:file.log.replace",
-	PANEL_NOTIFY_PROC, log_select,
-	PANEL_CLIENT_DATA, (caddr_t) 'r',
-	PANEL_INACTIVE, TRUE,
-	0);
-    delete_button = xv_create(log_panel, PANEL_BUTTON,
-	PANEL_LABEL_STRING, "Delete",
-	XV_HELP_DATA, "wave:file.log.delete",
-	PANEL_NOTIFY_PROC, log_select,
-	PANEL_CLIENT_DATA, (caddr_t) 'd',
-	PANEL_INACTIVE, TRUE,
-	0);
-    edit_button = xv_create(log_panel, PANEL_BUTTON,
-	PANEL_LABEL_STRING, "Edit",
-	XV_HELP_DATA, "wave:file.log.edit",
-	PANEL_NOTIFY_PROC, log_select,
-	PANEL_CLIENT_DATA, (caddr_t) 'e',
-	PANEL_INACTIVE, TRUE,
-	0);
+    log_window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+    gtk_window_set_title(GTK_WINDOW(log_window), "WAVE log");
+    gtk_window_set_transient_for(GTK_WINDOW(log_window),
+				 GTK_WINDOW(main_window));
+    gtk_window_set_destroy_with_parent(GTK_WINDOW(log_window), TRUE);
+    /* Hide on close instead of destroying, so it can be re-shown. */
+    g_signal_connect(log_window, "delete-event",
+		     G_CALLBACK(gtk_widget_hide_on_delete), NULL);
 
-    dx = xv_get(log_panel, PANEL_ITEM_X_GAP);
-    xv_set(log_panel, PANEL_ITEM_X_GAP, 4*dx, 0);
+    vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 4);
+    gtk_container_set_border_width(GTK_CONTAINER(vbox), 6);
+    gtk_container_add(GTK_CONTAINER(log_window), vbox);
 
-    first_button = xv_create(log_panel, PANEL_BUTTON,
-        XV_X, xv_col(log_panel, 0),
-	XV_Y, xv_row(log_panel, 4),
-	PANEL_LABEL_STRING, "|<",
-	XV_HELP_DATA, "wave:file.log.|<",
-	PANEL_NOTIFY_PROC, log_select,
-	PANEL_CLIENT_DATA, (caddr_t) 'A',
-	PANEL_INACTIVE, TRUE,
-	0);
+    /* Row 0: File name entry */
+    hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 4);
+    gtk_box_pack_start(GTK_BOX(vbox), hbox, FALSE, FALSE, 0);
 
-    xv_set(log_panel, PANEL_ITEM_X_GAP, dx, 0);
+    label = gtk_label_new("File:");
+    gtk_box_pack_start(GTK_BOX(hbox), label, FALSE, FALSE, 0);
 
-    rreview_button = xv_create(log_panel, PANEL_BUTTON,
-	PANEL_LABEL_STRING, "<<",
-	XV_HELP_DATA, "wave:file.log.<<",
-	PANEL_NOTIFY_PROC, log_select,
-	PANEL_CLIENT_DATA, (caddr_t) '-',
-	PANEL_INACTIVE, TRUE,
-	0);
-    prev_button = xv_create(log_panel, PANEL_BUTTON,
-	PANEL_LABEL_STRING, "<",
-	XV_HELP_DATA, "wave:file.log.<",
-	PANEL_NOTIFY_PROC, log_select,
-	PANEL_CLIENT_DATA, (caddr_t) '<',
-	PANEL_INACTIVE, TRUE,
-	0);
-    pause_button = xv_create(log_panel, PANEL_BUTTON,
-	PANEL_LABEL_STRING, "Pause",
-	XV_HELP_DATA, "wave:file.log.pause",
-	PANEL_NOTIFY_PROC, log_select,
-	PANEL_CLIENT_DATA, (caddr_t) 'p',
-	PANEL_INACTIVE, TRUE,
-	0);
-    next_button = xv_create(log_panel, PANEL_BUTTON,
-	PANEL_LABEL_STRING, ">",
-	XV_HELP_DATA, "wave:file.log.>",
-	PANEL_NOTIFY_PROC, log_select,
-	PANEL_CLIENT_DATA, (caddr_t) '>',
-	PANEL_INACTIVE, TRUE,
-	0);
-    review_button = xv_create(log_panel, PANEL_BUTTON,
-	PANEL_LABEL_STRING, ">>",
-	XV_HELP_DATA, "wave:file.log.>>",
-	PANEL_NOTIFY_PROC, log_select,
-	PANEL_CLIENT_DATA, (caddr_t) '+',
-	PANEL_INACTIVE, TRUE,
-	0);
-    last_button = xv_create(log_panel, PANEL_BUTTON,
-	PANEL_LABEL_STRING, ">|",
-	XV_HELP_DATA, "wave:file.log.>|",
-	PANEL_NOTIFY_PROC, log_select,
-	PANEL_CLIENT_DATA, (caddr_t) 'Z',
-	PANEL_INACTIVE, TRUE,
-	0);
+    log_name_item = gtk_entry_new();
+    gtk_entry_set_width_chars(GTK_ENTRY(log_name_item), 60);
+    gtk_widget_set_tooltip_text(log_name_item,
+				"Name of the log file");
+    g_signal_connect(log_name_item, "activate",
+		     G_CALLBACK(on_log_name_activate), NULL);
+    gtk_box_pack_start(GTK_BOX(hbox), log_name_item, TRUE, TRUE, 0);
 
-    window_fit(log_panel);
-    window_fit(log_frame);
-    xv_set(log_frame, FRAME_CMD_PUSHPIN_IN, TRUE, 0);
+    load_button = make_log_button("Load",
+				  "Reload the log file from disk", 'l');
+    gtk_box_pack_start(GTK_BOX(hbox), load_button, FALSE, FALSE, 0);
+
+    /* Row 1: Description entry + delay slider */
+    hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 4);
+    gtk_box_pack_start(GTK_BOX(vbox), hbox, FALSE, FALSE, 0);
+
+    label = gtk_label_new("Description:");
+    gtk_box_pack_start(GTK_BOX(hbox), label, FALSE, FALSE, 0);
+
+    log_text_item = gtk_entry_new();
+    gtk_entry_set_width_chars(GTK_ENTRY(log_text_item), 50);
+    gtk_widget_set_tooltip_text(log_text_item,
+				"Description text for the current log entry");
+    gtk_box_pack_start(GTK_BOX(hbox), log_text_item, TRUE, TRUE, 0);
+
+    label = gtk_label_new("Delay:");
+    gtk_box_pack_start(GTK_BOX(hbox), label, FALSE, FALSE, 0);
+
+    delay_scale = gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL,
+					   1.0, 10.0, 1.0);
+    gtk_range_set_value(GTK_RANGE(delay_scale), 5.0);
+    gtk_scale_set_draw_value(GTK_SCALE(delay_scale), FALSE);
+    gtk_widget_set_size_request(delay_scale, 100, -1);
+    gtk_widget_set_tooltip_text(delay_scale,
+				"Review delay in seconds (1-10)");
+    g_signal_connect(delay_scale, "value-changed",
+		     G_CALLBACK(on_delay_changed), NULL);
+    gtk_box_pack_start(GTK_BOX(hbox), delay_scale, FALSE, FALSE, 0);
+
+    /* Row 2: Add / Replace / Delete / Edit buttons */
+    hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 4);
+    gtk_box_pack_start(GTK_BOX(vbox), hbox, FALSE, FALSE, 0);
+
+    add_button = make_log_button("Add",
+				 "Add a new log entry at the current position",
+				 'a');
+    gtk_box_pack_start(GTK_BOX(hbox), add_button, FALSE, FALSE, 0);
+
+    replace_button = make_log_button("Replace",
+		"Replace the description of the current log entry", 'r');
+    gtk_box_pack_start(GTK_BOX(hbox), replace_button, FALSE, FALSE, 0);
+
+    delete_button = make_log_button("Delete",
+				    "Delete the current log entry", 'd');
+    gtk_box_pack_start(GTK_BOX(hbox), delete_button, FALSE, FALSE, 0);
+
+    edit_button = make_log_button("Edit",
+		"Edit the log file in an external text editor", 'e');
+    gtk_box_pack_start(GTK_BOX(hbox), edit_button, FALSE, FALSE, 0);
+
+    /* Row 3: Navigation buttons */
+    nav_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 2);
+    gtk_box_pack_start(GTK_BOX(vbox), nav_box, FALSE, FALSE, 0);
+
+    first_button = make_log_button("|<",
+				   "Go to the first log entry", 'A');
+    gtk_box_pack_start(GTK_BOX(nav_box), first_button, FALSE, FALSE, 0);
+
+    rreview_button = make_log_button("<<",
+		"Auto-review log entries in reverse order", '-');
+    gtk_box_pack_start(GTK_BOX(nav_box), rreview_button, FALSE, FALSE, 0);
+
+    prev_button = make_log_button("<",
+				  "Go to the previous log entry", '<');
+    gtk_box_pack_start(GTK_BOX(nav_box), prev_button, FALSE, FALSE, 0);
+
+    pause_button = make_log_button("Pause",
+				   "Pause the auto-review", 'p');
+    gtk_box_pack_start(GTK_BOX(nav_box), pause_button, FALSE, FALSE, 0);
+
+    next_button = make_log_button(">",
+				  "Go to the next log entry", '>');
+    gtk_box_pack_start(GTK_BOX(nav_box), next_button, FALSE, FALSE, 0);
+
+    review_button = make_log_button(">>",
+		"Auto-review log entries in forward order", '+');
+    gtk_box_pack_start(GTK_BOX(nav_box), review_button, FALSE, FALSE, 0);
+
+    last_button = make_log_button(">|",
+				  "Go to the last log entry", 'Z');
+    gtk_box_pack_start(GTK_BOX(nav_box), last_button, FALSE, FALSE, 0);
 }
 
-int log_popup_active = -1;
+static int log_popup_active = -1;
 
 /* Make the log popup window appear. */
 void show_log(void)
 {
     if (log_popup_active < 0) create_log_popup();
-    wmgr_top(log_frame);
-    xv_set(log_frame, WIN_MAP, TRUE, 0);
+    gtk_widget_show_all(log_window);
+    gtk_window_present(GTK_WINDOW(log_window));
     log_popup_active = 1;
 }
 
@@ -807,12 +772,9 @@ void start_demo(void)
 {
     char *filename, *p, *title;
     int c, r, x, y;
-    Frame text_frame;
-    Textsw textsw;
-    Textsw_status status;
     extern void mode_undo(void);
 
-    if (filename = malloc(strlen(helpdir) + strlen("wave/demo.txt") + 2)) {
+    if ((filename = malloc(strlen(helpdir) + strlen("wave/demo.txt") + 2))) {
         if ((title = getenv("DEMOTITLE")) == NULL)
 	    title = "Demonstration of WAVE";
 	if ((p = getenv("DEMOX")) == NULL)
@@ -831,31 +793,64 @@ void start_demo(void)
 	    r = 20;
 	else
 	    r = atoi(p);
-        text_frame = xv_create(frame, FRAME,
-			       XV_LABEL, title, XV_X, x, XV_Y, y,
-			       WIN_COLUMNS, c, WIN_ROWS, r, 0);
-	textsw = (Textsw)xv_create(text_frame, TEXTSW, NULL);
+
 	sprintf(filename, "%s/wave/demo.txt", helpdir);
-	xv_set(textsw,
-	       TEXTSW_STATUS, &status,
-	       TEXTSW_FILE, filename,
-	       TEXTSW_FIRST, 0,
-	       TEXTSW_READ_ONLY, TRUE,
-	       NULL);
-	if (status == TEXTSW_STATUS_OKAY)
-	    xv_set(text_frame, WIN_MAP, TRUE, 0);
+
+	/* Create a text window to display the demo description. */
+	{
+	    GtkWidget *text_window, *scrolled, *textview;
+	    GtkTextBuffer *buffer;
+	    FILE *fp;
+
+	    text_window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+	    gtk_window_set_title(GTK_WINDOW(text_window), title);
+	    gtk_window_move(GTK_WINDOW(text_window), x, y);
+	    gtk_window_set_default_size(GTK_WINDOW(text_window),
+					c * 8, r * 16);
+
+	    scrolled = gtk_scrolled_window_new(NULL, NULL);
+	    gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scrolled),
+					   GTK_POLICY_AUTOMATIC,
+					   GTK_POLICY_AUTOMATIC);
+	    gtk_container_add(GTK_CONTAINER(text_window), scrolled);
+
+	    textview = gtk_text_view_new();
+	    gtk_text_view_set_editable(GTK_TEXT_VIEW(textview), FALSE);
+	    gtk_text_view_set_cursor_visible(GTK_TEXT_VIEW(textview), FALSE);
+	    gtk_text_view_set_wrap_mode(GTK_TEXT_VIEW(textview),
+					GTK_WRAP_WORD);
+	    gtk_container_add(GTK_CONTAINER(scrolled), textview);
+
+	    buffer = gtk_text_view_get_buffer(GTK_TEXT_VIEW(textview));
+
+	    fp = fopen(filename, "r");
+	    if (fp) {
+		char buf[4096];
+		size_t nread;
+		GtkTextIter end;
+
+		while ((nread = fread(buf, 1, sizeof(buf) - 1, fp)) > 0) {
+		    buf[nread] = '\0';
+		    gtk_text_buffer_get_end_iter(buffer, &end);
+		    gtk_text_buffer_insert(buffer, &end, buf, (gint)nread);
+		}
+		fclose(fp);
+		gtk_widget_show_all(text_window);
+	    }
+	}
 	free(filename);
     }
+
     create_log_popup();
     log_popup_active = 0;
-    xv_set(log_name_item, PANEL_VALUE, log_file_name, NULL);
+    gtk_entry_set_text(GTK_ENTRY(log_name_item), log_file_name);
     show_mode();
     ghflag = gvflag = visible = 1;
     show_signame = 16;
     mode_undo();
     dismiss_mode();
     if (read_log(log_file_name)) {
-	xv_set(pause_button, PANEL_INACTIVE, FALSE, 0);
-	log_review((Panel_item)NULL, (Event *)NULL);
+	gtk_widget_set_sensitive(pause_button, TRUE);
+	log_review(1);
     }
 }

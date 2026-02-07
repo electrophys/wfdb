@@ -1,5 +1,5 @@
 /* file: grid.c		G. Moody	 1 May 1990
-			Last revised:	13 July 2010
+			Last revised:	2026
 Grid drawing functions for WAVE
 
 -------------------------------------------------------------------------------
@@ -26,7 +26,7 @@ _______________________________________________________________________________
 */
 
 #include "wave.h"
-#include "xvwave.h"
+#include "gtkwave.h"
 
 static int grid_plotted;
 
@@ -38,24 +38,18 @@ void restore_grid(void)
     show_grid();
 }
 
-/* Show_grid() does what is necessary to display the grid in the requested
-style.  Note that the grid can be made to disappear and reappear by show_grid()
-without redrawing it, by manipulating the color map. */
+/* Show_grid() draws the grid in the requested style on the offscreen buffer. */
 void show_grid(void)
 {
     int i, ii, x, xx, y, yy;
     double dx, dxfine, dy, dyfine, vm;
-    static int oghf, ogvf, grid_hidden;
+    static int oghf, ogvf;
     static double odx, ody;
+    cairo_t *cr;
 
-    /* If the grid should not be visible, hide it if necessary. */
-    if (!visible) {
-	if (grid_plotted && !grid_hidden) {
-	    hide_grid();
-	    grid_hidden = 1;
-	}
+    /* If the grid should not be visible, nothing to do. */
+    if (!visible)
 	return;
-    }
 
     /* Calculate the grid spacing in pixels */
     if (tmag <= 0.0) tmag = 1.0;
@@ -74,26 +68,26 @@ void show_grid(void)
 	  dyfine = vm * millivolts(0.1); break;
     }
 
-    /* The grid must be drawn if it has not been plotted already, if the grid
-       spacing or style has changed, or if we are not using a read/write color
-       map. */
+    /* The grid must be drawn if it has not been plotted already, or if the
+       grid spacing or style has changed. */
     if (!grid_plotted || ghflag != oghf || gvflag != ogvf ||
-	(ghflag && dy != ody) || (gvflag && dx != odx) || !use_overlays) {
-	XFillRectangle(display, osb, clear_grd,
-		       0, 0, canvas_width,canvas_height);
-	
+	(ghflag && dy != ody) || (gvflag && dx != odx)) {
+
+	cr = wave_begin_paint();
+
 	/* If horizontal grid lines are enabled, draw them. */
 	if (ghflag)
 	    for (i = y = 0; y < canvas_height + dy; i++, y = i*dy) {
 		if (0 < y && y < canvas_height)
-		    XDrawLine(display, osb,
-			      (ghflag > 1) ? draw_cgrd : draw_grd,
-			      0, y, canvas_width, y);
+		    wave_draw_line(cr,
+				   (ghflag > 1) ? WAVE_COLOR_GRID_COARSE
+						: WAVE_COLOR_GRID,
+				   0, y, canvas_width, y);
 		if (ghflag > 1)		/* Draw fine horizontal grid lines. */
 		    for (ii = 1; ii < 5; ii++) {
 			yy = y + ii*dyfine;
-			XDrawLine(display, osb, draw_grd,
-				  0, yy, canvas_width, yy);
+			wave_draw_line(cr, WAVE_COLOR_GRID,
+				       0, yy, canvas_width, yy);
 		    }
 	    }
 
@@ -101,24 +95,21 @@ void show_grid(void)
 	if (gvflag)
 	    for (i = x = 0; x < canvas_width + dx; i++, x = i*dx) {
 		if (0 < x && x < canvas_width)
-		    XDrawLine(display, osb,
-			      (gvflag > 1) ? draw_cgrd : draw_grd,
-			      x, 0, x, canvas_height);
+		    wave_draw_line(cr,
+				   (gvflag > 1) ? WAVE_COLOR_GRID_COARSE
+						: WAVE_COLOR_GRID,
+				   x, 0, x, canvas_height);
 		if (gvflag > 1)		/* Draw fine vertical grid lines. */
 		    for (ii = 1; ii < 5; ii++) {
 			xx = x + ii*dxfine;
-			XDrawLine(display, osb, draw_grd,
-				  xx, 0, xx, canvas_height);
+			wave_draw_line(cr, WAVE_COLOR_GRID,
+				       xx, 0, xx, canvas_height);
 		    }
 	    }
 
+	wave_end_paint(cr);
+
         oghf = ghflag; ogvf = gvflag; odx = dx; ody = dy;
 	grid_plotted = 1;
-    }
-
-    /* If the grid was hidden, make it visible by changing the color map. */
-    if (grid_hidden) {
-	unhide_grid();
-        grid_hidden = 0;
     }
 }

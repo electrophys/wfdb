@@ -1,5 +1,5 @@
 /* file: sig.c		G. Moody	 27 April 1990
-			Last revised:	 24 April 2020
+			Last revised:	 2026
 Signal display functions for WAVE
 
 -------------------------------------------------------------------------------
@@ -26,10 +26,10 @@ _______________________________________________________________________________
 */
 
 #include "wave.h"
-#include "xvwave.h"
+#include "gtkwave.h"
 
-static void show_signal_names(void);
-static void show_signal_baselines(struct display_list *);
+static void show_signal_names(cairo_t *cr);
+static void show_signal_baselines(cairo_t *cr, struct display_list *lp);
 
 /* Show_display_list() plots the display list pointed to by its argument. */
 
@@ -45,27 +45,34 @@ int in_siglist(int i)
     return (0);
 }
 
-static void drawtrace(XPoint *b, int n, int ybase, GC gc, int mode)
+/* Draw a signal trace from absolute-coordinate WavePoint array.
+   ybase is added to each y value.  Segments with WFDB_INVALID_SAMPLE
+   are skipped (gaps in the trace). */
+static void drawtrace(cairo_t *cr, WavePoint *b, int n, int ybase,
+		      WaveColorIndex color)
 {
-    int j, xn, xp;
-    XPoint *p, *q;
+    int j;
+    WavePoint *p, *q;
 
     if (ybase == -9999) return;
+
+    wave_set_color(cr, color);
+    cairo_set_line_width(cr, 1.0);
+
     for (j = 0, p = q = b; j <= n; j++) {
 	if (j == n || q->y == WFDB_INVALID_SAMPLE) {
 	    if (p < q) {
+		/* Skip leading invalid samples */
 		while (p < q && p->y == WFDB_INVALID_SAMPLE)
 		    p++;
-		xp = p->x;
-		xn = p - b;
-		if (nsamp <= canvas_width) xn *= tscale;
-		p->x = xn;
-		p->y += ybase;
-		XDrawLines(display, osb, gc, p, q-p, CoordModePrevious);
-		if (mode)
-		    XDrawLines(display, xid, gc, p, q-p, CoordModePrevious);
-		p->x = xp;
-		p->y -= ybase;
+		if (p < q) {
+		    cairo_move_to(cr, p->x + 0.5, p->y + ybase + 0.5);
+		    for (WavePoint *r = p + 1; r < q; r++) {
+			if (r->y != WFDB_INVALID_SAMPLE)
+			    cairo_line_to(cr, r->x + 0.5, r->y + ybase + 0.5);
+		    }
+		    cairo_stroke(cr);
+		}
 	    }
 	    p = ++q;
 	}
@@ -74,31 +81,34 @@ static void drawtrace(XPoint *b, int n, int ybase, GC gc, int mode)
     }
 }
 
-static void show_display_list(struct display_list *lp)
+static void show_display_list(cairo_t *cr, struct display_list *lp)
 {
-    int i, j, k, xn, xp;
-    XPoint *p, *q;
+    int i, j;
 
     lp_current = lp;
     if (!lp) return;
     if (sig_mode == 0)
 	for (i = 0; i < nsig; i++) {
 	    if (lp->vlist[i])
-		drawtrace(lp->vlist[i], lp->ndpts, base[i], draw_sig, 0);
+		drawtrace(cr, lp->vlist[i], lp->ndpts, base[i],
+			  WAVE_COLOR_SIGNAL);
 	}
     else if (sig_mode == 1)
 	for (i = 0; i < siglistlen; i++) {
-	    if (0 <= siglist[i] && siglist[i] < nsig && lp->vlist[siglist[i]])
-		drawtrace(lp->vlist[siglist[i]], lp->ndpts,base[i],draw_sig,0);
+	    if (0 <= siglist[i] && siglist[i] < nsig &&
+		lp->vlist[siglist[i]])
+		drawtrace(cr, lp->vlist[siglist[i]], lp->ndpts, base[i],
+			  WAVE_COLOR_SIGNAL);
 	}
     else {	/* sig_mode == 2 (show valid signals only) */
-	int j, nvsig;
+	int nvsig;
 	for (i = nvsig = 0; i < nsig; i++)
 	    if (lp->vlist[i] && vvalid[i]) nvsig++;
 	for (i = j = 0; i < nsig; i++) {
 	    if (lp->vlist[i] && vvalid[i]) {
 		base[i] = canvas_height*(2*(j++)+1.)/(2.*nvsig);
-		drawtrace(lp->vlist[i], lp->ndpts, base[i], draw_sig, 0);
+		drawtrace(cr, lp->vlist[i], lp->ndpts, base[i],
+			  WAVE_COLOR_SIGNAL);
 	    }
 	    else
 		base[i] = -9999;
@@ -109,22 +119,23 @@ static void show_display_list(struct display_list *lp)
 
 void sig_highlight(int i)
 {
+    cairo_t *cr;
+
     if (!lp_current) return;
+    cr = wave_begin_paint();
+
     if (0 <= highlighted && highlighted < lp_current->nsig) {
 	if (sig_mode != 1) {
-	    drawtrace(lp_current->vlist[highlighted], lp_current->ndpts,
-		      base[highlighted], unhighlight_sig, 1);
-	    drawtrace(lp_current->vlist[highlighted], lp_current->ndpts,
-		      base[highlighted], draw_sig, 1);
+	    /* Erase old highlight by redrawing in signal color */
+	    drawtrace(cr, lp_current->vlist[highlighted], lp_current->ndpts,
+		      base[highlighted], WAVE_COLOR_SIGNAL);
 	}
 	else {
 	    int j;
 	    for (j = 0; j < siglistlen; j++) {
 		if (siglist[j] == highlighted) {
-		    drawtrace(lp_current->vlist[highlighted],
-			      lp_current->ndpts, base[j], unhighlight_sig, 1);
-		    drawtrace(lp_current->vlist[highlighted],
-			      lp_current->ndpts, base[j], draw_sig, 1);
+		    drawtrace(cr, lp_current->vlist[highlighted],
+			      lp_current->ndpts, base[j], WAVE_COLOR_SIGNAL);
 		}
 	    }
 	}
@@ -132,23 +143,23 @@ void sig_highlight(int i)
     highlighted = i;
     if (0 <= highlighted && highlighted < lp_current->nsig) {
 	if (sig_mode != 1) {
-	    drawtrace(lp_current->vlist[highlighted], lp_current->ndpts,
-		      base[highlighted], clear_sig, 1);
-	    drawtrace(lp_current->vlist[highlighted], lp_current->ndpts,
-		      base[highlighted], highlight_sig, 1);
+	    drawtrace(cr, lp_current->vlist[highlighted], lp_current->ndpts,
+		      base[highlighted], WAVE_COLOR_HIGHLIGHT);
 	}
 	else {
 	    int j;
 	    for (j = 0; j < siglistlen; j++) {
 		if (siglist[j] == highlighted) {
-		    drawtrace(lp_current->vlist[highlighted],
-			      lp_current->ndpts, base[j], clear_sig, 1);
-		    drawtrace(lp_current->vlist[highlighted],
-			      lp_current->ndpts, base[j], highlight_sig, 1);
+		    drawtrace(cr, lp_current->vlist[highlighted],
+			      lp_current->ndpts, base[j],
+			      WAVE_COLOR_HIGHLIGHT);
 		}
 	    }
 	}
     }
+
+    wave_end_paint(cr);
+    wave_refresh();
 }
 
 /* Do_disp() executes a display request.  The display will show nsamp samples
@@ -157,11 +168,17 @@ of nsig signals, starting at display_start_time. */
 void do_disp(void)
 {
     char *tp;
-    int c, i, x0, x1, y0;
+    int x0, x1, y0;
     struct display_list *lp;
+    cairo_t *cr;
 
-    /* This might take a while ... */
-    xv_set(frame, FRAME_BUSY, TRUE, NULL);
+    wave_set_busy(1);
+
+    cr = wave_begin_paint();
+
+    /* Clear the osb */
+    wave_fill_rect(cr, WAVE_COLOR_BACKGROUND, 0, 0,
+		   canvas_width + mmx(10), canvas_height);
 
     /* Show the grid if requested. */
     show_grid();
@@ -175,40 +192,41 @@ void do_disp(void)
     while (*tp == ' ') tp++;
     y0 = canvas_height - mmy(2);
     x0 = mmx(2);
-    XDrawString(display, osb, time_mode == 1 ? draw_ann : draw_sig,
-		x0, y0, tp, strlen(tp));
+    wave_draw_string(cr, time_mode == 1 ? WAVE_COLOR_ANNOTATION
+					: WAVE_COLOR_SIGNAL,
+		     x0, y0, tp);
     tp = wtimstr(display_start_time + nsamp);
     set_end_time(tp);
     while (*tp == ' ') tp++;
-    x1 = canvas_width - XTextWidth(font, tp, strlen(tp)) - mmx(2);
-    XDrawString(display, osb, time_mode == 1 ? draw_ann : draw_sig,
-		x1, y0, tp, strlen(tp));
+    x1 = canvas_width - wave_text_width(tp) - mmx(2);
+    wave_draw_string(cr, time_mode == 1 ? WAVE_COLOR_ANNOTATION
+					: WAVE_COLOR_SIGNAL,
+		     x1, y0, tp);
 
     /* Show the annotations, if available. */
     show_annotations(display_start_time, nsamp);
 
     /* Get a display list for the requested screen, and show it. */
     lp = find_display_list(display_start_time);
-    show_display_list(lp);
+    show_display_list(cr, lp);
 
     /* If requested, show the signal names. */
-    if (show_signame) show_signal_names();
+    if (show_signame) show_signal_names(cr);
 
     /* If requested, show the signal baselines. */
-    if (show_baseline) show_signal_baselines(lp);
+    if (show_baseline) show_signal_baselines(cr, lp);
 
-    xv_set(frame, FRAME_BUSY, FALSE, NULL);
-    XClearWindow(display, xid);
+    wave_end_paint(cr);
+
+    wave_set_busy(0);
+    wave_refresh();
 }
 
 static int nlists;
 static int vlist_size;
 
 /* Get_display_list() obtains storage for display lists from the heap (via
-malloc) or by recycling a display list in the cache.  Since the screen duration
-(nsamp) does not change frequently, get_display_list() calculates the pixel
-abscissas when a new display list is obtained from the heap, and recalculates
-them only when nsamp has been changed. */
+malloc) or by recycling a display list in the cache. */
 
 static struct display_list *get_display_list(void)
 {
@@ -233,7 +251,7 @@ static struct display_list *get_display_list(void)
 	}
     if (lp->nsig < nsig) {
 	lp->sb = realloc(lp->sb, nsig * sizeof(int));
-	lp->vlist = realloc(lp->vlist, nsig * sizeof(XPoint *));
+	lp->vlist = realloc(lp->vlist, nsig * sizeof(WavePoint *));
 	for (i = lp->nsig; i < nsig; i++) {
 	    lp->sb[i] = 0;
 	    lp->vlist[i] = NULL;
@@ -246,7 +264,7 @@ static struct display_list *get_display_list(void)
     for (i = 0; i < nsig; i++) {
 	if (lp->vlist[i] == NULL) {
 	    if ((lp->vlist[i] =
-		 (XPoint *)calloc(vlist_size, sizeof(XPoint)))==NULL) {
+		 (WavePoint *)calloc(vlist_size, sizeof(WavePoint)))==NULL) {
 		while (--i >= 0)
 		    free(lp->vlist[i]);
 		free(lp);
@@ -254,58 +272,33 @@ static struct display_list *get_display_list(void)
 		return (get_display_list());
 	    }
 	}
-	
-	/* If there are more samples to be shown than addressable x-pixels
-	   in the window, the abscissas are simply the integers from 0 to
-	   the canvas width (and some compression will be needed).  If the
-	   largest abscissa is correct, all of the others must also be correct,
-	   and they need not be reset. */
+
+	/* Set the x-coordinates as absolute pixel values. */
 	if (nsamp > canvas_width) {
 	    x = maxx = canvas_width - 1;
-	    if (lp->vlist[i][x].x != x) {
-		int xx;
-
-		lp->vlist[i][0].x = 0;	/* absolute first abscissa */
-		for (xx = 1; xx <= x; xx++)
-		    lp->vlist[i][xx].x = 1;	/* relative to previous */
-	    }
+	    for (x = 0; x <= maxx; x++)
+		lp->vlist[i][x].x = x;
 	}
-
-	/* Otherwise, no compression is needed, and the abscissas must be
-	   distributed across the window (at intervals > 1 pixel).  Again,
-	   if the largest abscissa is correct, all of the others must also
-	   be correct, and no computation is needed. */
 	else {
-	    x = maxx = nsamp - 1;
-	    if (lp->vlist[i][vlist_size-1].x != (int)(x*tscale)) {
-		int xp, xpp;
-
-		lp->vlist[i][0].x = xp = 0;    /* absolute first abscissa */
-		for (x = 1; x < vlist_size; x++) {
-		    xpp = xp;
-		    xp = x*tscale;
-		    lp->vlist[i][x].x = xp - xpp;	/* relative to prev */
-		}
-	    }
+	    maxx = nsamp - 1;
+	    for (x = 0; x < vlist_size; x++)
+		lp->vlist[i][x].x = (int)(x * tscale);
 	}
     }
     lp->next = first_list;
     lp->npoints = nsamp;
-    lp->xmax = maxx;
+    lp->xmax = (nsamp > canvas_width) ? canvas_width - 1 : nsamp - 1;
     return (first_list = lp);
 }
 
 /* Find_display_list() obtains a display list beginning at the sample number
-specified by its argument.  If such a list (with the correct duration) is
-found in the cache, it can be returned immediately.  Otherwise, the function
-reads the requested segment and determines the pixel ordinates of the
-vertices of the polylines for each signal. */
+specified by its argument.  Coordinates are stored as absolute values. */
 
 struct display_list *find_display_list(WFDB_Time fdl_time)
 {
     int c, i, j, x, x0, y, ymax, ymin;
     struct display_list *lp;
-    XPoint *tp;
+    WavePoint *tp;
 
     if (fdl_time < 0L) fdl_time = -fdl_time;
     /* If the requested display list is in the cache, return it at once. */
@@ -318,9 +311,7 @@ struct display_list *find_display_list(WFDB_Time fdl_time)
 	getvec(v0) < 0)
 	    return (NULL);
 
-    /* Allocate a new display list; give up if we can't do so.  Note
-       that once the structure has been allocated, we must fill it in
-       with valid data. */
+    /* Allocate a new display list; give up if we can't do so. */
     if ((lp = get_display_list()) == NULL)
 	return (NULL);
 
@@ -332,13 +323,12 @@ struct display_list *find_display_list(WFDB_Time fdl_time)
 	vmin[c] = vmax[c] = v0[c];
 	vvalid[c] = 0;
 	if (v0[c] == WFDB_INVALID_SAMPLE)
-	    lp->vlist[c][0].y = -1 << 15;
+	    lp->vlist[c][0].y = WFDB_INVALID_SAMPLE;
 	else
 	    lp->vlist[c][0].y = v0[c]*vscale[c];
     }
 
-    /* If there are more than canvas_width samples to be shown, compress the
-       data. */
+    /* If there are more than canvas_width samples to be shown, compress. */
     if (nsamp > canvas_width) {
 	for (i = 1, x0 = 0; i < nsamp && getvec(v) > 0; i++) {
 	    for (c = 0, vvalid[c] = 0; c < nsig; c++) {
@@ -359,37 +349,34 @@ struct display_list *find_display_list(WFDB_Time fdl_time)
 			lp->vlist[c][x0].y = v0[c]*vscale[c];
 		    }
 		    else
-			lp->vlist[c][x0].y = -1 << 15;
+			lp->vlist[c][x0].y = WFDB_INVALID_SAMPLE;
 		}
 	    }
 	}
 	i = x0+1;
     }
-    /* If there are canvas_width or fewer samples to be shown, no compression
-       is necessary. */
+    /* If there are canvas_width or fewer samples to be shown, no
+       compression is necessary. */
     else
 	for (i = 1; i < nsamp && getvec(v) > 0; i++)
 	    for (c = 0; c < nsig; c++) {
 		if (v[c] == WFDB_INVALID_SAMPLE)
-		    lp->vlist[c][i].y = -1 << 15;
+		    lp->vlist[c][i].y = WFDB_INVALID_SAMPLE;
 		else
 		    lp->vlist[c][i].y = v[c]*vscale[c];
 	    }
 
-    /* Record the number of displayed points.  This may be less than
-       expected at the end of the record. */
+    /* Record the number of displayed points. */
     lp->ndpts = i;
 
     /* Set the y-offset so that the signal will be vertically centered about
-       the nominal baseline if the midrange is near the mean.  The y-offset
-       is actually a weighted sum of the midrange and the mean, which favors
-       the mean if the two values differ significantly. */
+       the nominal baseline. */
     for (c = 0; c < nsig; c++) {
-	int dy;		/* the y-offset */
-	int n;		/* the number of valid ordinates */
-	int ymid;	/* the midpoint of the ordinate range */
-	long ymean;	/* the mean of the ordinates */
-	double w;	/* weight assigned to ymean in y-offset calculation */
+	int dy;
+	int n;
+	int ymid;
+	long ymean;
+	double w;
 
 	tp = lp->vlist[c];
 
@@ -407,41 +394,26 @@ struct display_list *find_display_list(WFDB_Time fdl_time)
 	}
 	ymean /= n;
 	ymid = (ymax + ymin)/2;
-	/* Since ymin <= ymid <= ymax, the next lines imply 0 <= w <= 1 */
-	if (ymid > ymean) /* in this case, ymax must be > ymean */
+	if (ymid > ymean)
 	    w = (ymid - ymean)/(ymax - ymean);
-	else if (ymid < ymean) /* in this case, ymin must be < ymean */
+	else if (ymid < ymean)
 	    w = (ymean - ymid)/(ymean - ymin);
 	else w = 1.0;
 	dy = -(ymid + ((double)ymean-ymid)*w);
-	for (j = i-1; j >= 0; j--) {
+
+	/* Apply the y-offset to all valid samples (absolute coordinates). */
+	for (j = 0; j < i; j++) {
 	    if (tp[j].y == WFDB_INVALID_SAMPLE) continue;
-	    /* The bounds-checking below shouldn't be necessary (the X server
-	       should clip at the canvas boundaries), but Sun's X11/NeWS
-	       server will crash (and may bring the system down with it) if
-	       run on a system with the GX accelerator and if passed
-	       sufficiently out-of-bounds ordinates (maybe abscissas, too --
-	       this hasn't been tested).  This bug is present in both the
-	       original X11/NeWS server and the GFX revision.  It appears that
-	       the bug can be avoided if the maximum distance from the window
-	       edge to the out-of-bounds ordinate is less than about 2000
-	       pixels (although this may be dependent on the window height).
-	       This bug has not been observed with other X servers. */
-	    if ((tp[j].y += dy) < -canvas_height) tp[j].y = -canvas_height;
-	    else if  (tp[j].y > canvas_height) tp[j].y = canvas_height;
-	    /* Convert all except the first ordinate in each set of contiguous
-	       valid samples to relative ordinates. */
-	    if (j < i-1 && tp[j+1].y != WFDB_INVALID_SAMPLE)
-		tp[j+1].y -= tp[j].y;
+	    tp[j].y += dy;
+	    if (tp[j].y < -canvas_height) tp[j].y = -canvas_height;
+	    else if (tp[j].y > canvas_height) tp[j].y = canvas_height;
 	}
 	if (dc_coupled[c]) lp->sb[c] = sigbase[c]*vscale[c] + dy;
-    }	    
+    }
     return (lp);
 }
 
-/* Clear_cache() marks all of the display lists in the cache as invalid.  This
-   function should be executed whenever the gain (vscale) or record is changed,
-   or whenever the canvas width has been increased. */
+/* Clear_cache() marks all of the display lists in the cache as invalid. */
 void clear_cache(void)
 {
     int i;
@@ -464,21 +436,21 @@ void clear_cache(void)
     }
 }
 
-static void show_signal_names(void)
+static void show_signal_names(cairo_t *cr)
 {
     int i, xoff, yoff;
 
     xoff = mmx(5);
     yoff = (nsig > 1) ? (base[1] - base[0])/3 : canvas_height/3;
-    if (sig_mode == 0) 
+    if (sig_mode == 0)
 	for (i = 0; i < nsig; i++)
-	    XDrawString(display, osb, draw_sig, xoff, base[i] - yoff,
-			signame[i], strlen(signame[i]));
+	    wave_draw_string(cr, WAVE_COLOR_SIGNAL, xoff, base[i] - yoff,
+			     signame[i]);
     else if (sig_mode == 1) {
 	for (i = 0; i < siglistlen; i++)
 	    if (0 <= siglist[i] && siglist[i] < nsig)
-		XDrawString(display, osb, draw_sig, xoff, base[i] - yoff,
-			    signame[siglist[i]], strlen(signame[siglist[i]]));
+		wave_draw_string(cr, WAVE_COLOR_SIGNAL, xoff, base[i] - yoff,
+				 signame[siglist[i]]);
     }
     else {	/* sig_mode == 2 (show valid signals only) */
 	int j, nvsig;
@@ -487,14 +459,14 @@ static void show_signal_names(void)
 	for (i = j = 0; i < nsig; i++) {
 	    if (vvalid[i]) {
 		base[i] = canvas_height*(2*(j++)+1.)/(2.*nvsig);
-		XDrawString(display, osb, draw_sig, xoff, base[i] - yoff,
-			signame[i], strlen(signame[i]));
+		wave_draw_string(cr, WAVE_COLOR_SIGNAL, xoff, base[i] - yoff,
+				 signame[i]);
 	    }
 	}
     }
 }
 
-static void show_signal_baselines(struct display_list *lp)
+static void show_signal_baselines(cairo_t *cr, struct display_list *lp)
 {
     int i, l, xoff, yoff;
 
@@ -504,31 +476,34 @@ static void show_signal_baselines(struct display_list *lp)
     for (i = 0; i < nsig; i++) {
 	if (base[i] == -9999) continue;
 	if (dc_coupled[i] && 0 <= lp->sb[i] && lp->sb[i] < canvas_height) {
-	    XDrawLine(display, osb, draw_ann,
-		      0, lp->sb[i]+base[i], canvas_width, lp->sb[i]+base[i]);
+	    wave_draw_line(cr, WAVE_COLOR_ANNOTATION,
+			   0, lp->sb[i]+base[i],
+			   canvas_width, lp->sb[i]+base[i]);
 	    if (blabel[i]) {
 		l = strlen(blabel[i]);
-		xoff = canvas_width - XTextWidth(font, blabel[i], l) - mmx(2);
-		XDrawString(display, osb, draw_sig,
-			    xoff, lp->sb[i]+base[i] - yoff, blabel[i], l);
+		xoff = canvas_width - wave_text_width(blabel[i]) - mmx(2);
+		wave_draw_string(cr, WAVE_COLOR_SIGNAL,
+				 xoff, lp->sb[i]+base[i] - yoff, blabel[i]);
 	    }
 	}
     }
 }
 
 /* Return window y-coordinate corresponding to the level of displayed trace
-   i at abscissa x. */
+   i at abscissa x.  Uses absolute coordinates stored in the display list. */
 int sigy(int i, int x)
 {
-    int ix, j = -1, xx, yy;
+    int ix, j = -1;
 
     if (sig_mode != 1) j = i;
     else if (0 <= i && i < siglistlen) j = siglist[i];
     if (j < 0 || j >= nsig || lp_current->vlist[j] == NULL) return (-1);
     if (nsamp > canvas_width) ix = x;
-    else ix = (int)x/tscale;
+    else ix = (int)(x/tscale);
     if (ix >= lp_current->ndpts) ix = lp_current->ndpts - 1;
-    for (xx = yy = 0; xx < ix; xx++)
-	yy += lp_current->vlist[j][xx].y;
-    return (yy + base[i]);
+    if (ix < 0) ix = 0;
+
+    /* With absolute coordinates, just look up the y value directly. */
+    if (lp_current->vlist[j][ix].y == WFDB_INVALID_SAMPLE) return (-1);
+    return (lp_current->vlist[j][ix].y + base[i]);
 }

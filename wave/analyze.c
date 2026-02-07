@@ -1,5 +1,5 @@
 /* file: analyze.c	G. Moody	10 August 1990
-			Last revised:    24 April 2020
+			Last revised:	2026
 Functions for the analysis panel of WAVE
 
 -------------------------------------------------------------------------------
@@ -26,12 +26,10 @@ _______________________________________________________________________________
 */
 
 #include "wave.h"
-#include "xvwave.h"
+#include "gtkwave.h"
+#include <vte/vte.h>
 #include <stdio.h>
-#include <xview/notice.h>
-#include <xview/termsw.h>
-#include <xview/notify.h>
-#include <xview/defaults.h>
+#include <unistd.h>
 
 #ifndef MENUDIR
 #define MENUDIR		"/usr/local/lib"
@@ -42,15 +40,33 @@ _______________________________________________________________________________
 #define MAXLL		1024		/* maximum length of a line in the menu
 					   file including continuation lines */
 
-void do_analysis(), edit_menu_file(), set_signal(), set_start(), set_stop(),
-    set_back(), set_ahead(), set_siglist(), set_siglist_from_string(),
-    show_command_window(), add_signal_choice(), delete_signal_choice();
+void do_analysis(GtkWidget *widget, gpointer data);
+void edit_menu_file(void);
+void set_signal(GtkWidget *widget, gpointer data);
+void set_start_from_entry(GtkWidget *widget, gpointer data);
+void set_stop_from_entry(GtkWidget *widget, gpointer data);
+void set_back(void);
+void set_ahead(void);
+void set_siglist(void);
+void set_siglist_from_string(char *s);
+void show_command_window(void);
+void add_signal_choice(void);
+void delete_signal_choice(void);
+
 char *wavemenu;
-Frame analyze_frame, tty_frame;
-Panel analyze_panel;
-Panel_item start_item, astart_item, dstart_item, end_item, aend_item,
-           dend_item, signal_item, signal_name_item, siglist_item;
-Termsw tty;
+GtkWidget *analyze_window;	/* analysis controls window */
+GtkWidget *tty_window;		/* terminal emulator window */
+GtkWidget *tty;			/* VteTerminal widget */
+
+GtkWidget *start_item;		/* elapsed start time entry */
+GtkWidget *astart_item;		/* absolute start time entry */
+GtkWidget *dstart_item;		/* date start entry */
+GtkWidget *end_item;		/* elapsed end time entry */
+GtkWidget *aend_item;		/* absolute end time entry */
+GtkWidget *dend_item;		/* date end entry */
+GtkWidget *signal_item;		/* signal number spin button */
+GtkWidget *signal_name_item;	/* signal name label */
+GtkWidget *siglist_item;	/* signal list entry */
 
 int analyze_popup_active = -1;
 
@@ -68,7 +84,7 @@ int menu_read = 0;
 void print_proc(void)
 {
     char default_print_command[256];
-    void read_menu();
+    void read_menu(void);
 
     if (menu_read == 0)
 	read_menu();
@@ -85,7 +101,7 @@ char *open_url_command = NULL;
 void open_url(void)
 {
     char default_open_url_command[256];
-    void read_menu();
+    void read_menu(void);
 
     if (menu_read == 0)
 	read_menu();
@@ -113,19 +129,13 @@ void read_menu(void)
     /* Try to open the user's menu file, if one is specified. */
     if ((wavemenu != NULL || (wavemenu = getenv("WAVEMENU"))) &&
 	(ifile = fopen(wavemenu, "r")) == NULL) {
-#ifdef NOTICE
-	Xv_notice notice = xv_create((Frame)frame, NOTICE,
-				     XV_SHOW, TRUE,
-#else
-	notice_prompt((Frame)frame, (Event *)NULL,
-#endif
-			  NOTICE_MESSAGE_STRINGS,
-			   "Can't read menu file:",
-			   wavemenu, 0,
-			  NOTICE_BUTTON_YES, "Continue", 0);
-#ifdef NOTICE
-	xv_destroy_safe(notice);
-#endif
+	GtkWidget *dialog = gtk_message_dialog_new(
+	    GTK_WINDOW(main_window),
+	    GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT,
+	    GTK_MESSAGE_WARNING, GTK_BUTTONS_OK,
+	    "Can't read menu file: %s", wavemenu);
+	gtk_dialog_run(GTK_DIALOG(dialog));
+	gtk_widget_destroy(dialog);
     }
 
     /* If no user menu was specified, try to open "wavemenu" in the current
@@ -138,22 +148,16 @@ void read_menu(void)
        file. */
     if (ifile == NULL) {
 	if ((menudir = getenv("MENUDIR")) == NULL) menudir = MENUDIR;
-	if (wavemenu = malloc(strlen(menudir)+strlen(MENUFILE)+2)) {
+	if ((wavemenu = malloc(strlen(menudir)+strlen(MENUFILE)+2))) {
 	    sprintf(wavemenu, "%s/%s", menudir, MENUFILE);
 	    if ((ifile = fopen(wavemenu, "r")) == NULL) {
-#ifdef NOTICE
-	    Xv_notice notice = xv_create((Frame)frame, NOTICE,
-					 XV_SHOW, TRUE,
-#else
-	    (void)notice_prompt((Frame)frame, (Event *)NULL,
-#endif
-			      NOTICE_MESSAGE_STRINGS,
-			      "Can't read default menu file:",
-			      wavemenu, 0,
-			      NOTICE_BUTTON_YES, "Continue", 0);
-#ifdef NOTICE
-		xv_destroy_safe(notice);
-#endif
+		GtkWidget *dialog = gtk_message_dialog_new(
+		    GTK_WINDOW(main_window),
+		    GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT,
+		    GTK_MESSAGE_WARNING, GTK_BUTTONS_OK,
+		    "Can't read default menu file: %s", wavemenu);
+		gtk_dialog_run(GTK_DIALOG(dialog));
+		gtk_widget_destroy(dialog);
 	    }
 	    free(wavemenu);
 	    wavemenu = NULL;
@@ -209,7 +213,7 @@ void read_menu(void)
 
 	/* Test for special <Print> command definition. */
 	if (strcmp(p, "<Print>") == 0) {
-	    if (p = (char *)malloc((unsigned)(strlen(p2)+1))) {
+	    if ((p = (char *)malloc((unsigned)(strlen(p2)+1)))) {
 		strcpy(p, p2);
 		print_command = p;
 	    }
@@ -218,7 +222,7 @@ void read_menu(void)
 
 	/* Test for special <Open URL> command definition. */
 	if (strcmp(p, "<Open URL>") == 0) {
-	    if (p = (char *)malloc((unsigned)(strlen(p2)+1))) {
+	    if ((p = (char *)malloc((unsigned)(strlen(p2)+1)))) {
 		strcpy(p, p2);
 		open_url_command = p;
 	    }
@@ -229,18 +233,13 @@ void read_menu(void)
 	if (!(mep->nme=(struct MenuEntry *)malloc(sizeof(struct MenuEntry))) ||
 	    !(mep->nme->label = (char *)malloc((unsigned)(strlen(p)+1))) ||
 	    !(mep->nme->command = (char *)malloc((unsigned)(strlen(p2)+1)))) {
-#ifdef NOTICE
-	    Xv_notice notice = xv_create((Frame)frame, NOTICE,
-					 XV_SHOW, TRUE,
-#else
-	    (void)notice_prompt((Frame)frame, (Event *)NULL,
-#endif
-			  NOTICE_MESSAGE_STRINGS,
-			  "Out of memory while reading menu file",
-			  NOTICE_BUTTON_YES, "Continue", 0);
-#ifdef NOTICE
-	    xv_destroy_safe(notice);
-#endif
+	    GtkWidget *dialog = gtk_message_dialog_new(
+		GTK_WINDOW(main_window),
+		GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT,
+		GTK_MESSAGE_ERROR, GTK_BUTTONS_OK,
+		"Out of memory while reading menu file");
+	    gtk_dialog_run(GTK_DIALOG(dialog));
+	    gtk_widget_destroy(dialog);
 	    mep->nme = NULL;
 	    break;
 	}
@@ -252,193 +251,248 @@ void read_menu(void)
     fclose(ifile);
 }
 
-int xaf = -1, yaf = -1;
+/* Helper: pass the 'e', 'a', or 'd' tag via the entry widget name.
+   set_start and set_stop read this to decide which entry triggered them. */
+static void set_entry_tag(GtkWidget *entry, char tag)
+{
+    char name[2] = { tag, '\0' };
+    gtk_widget_set_name(entry, name);
+}
+
+static char get_entry_tag(GtkWidget *entry)
+{
+    const char *name = gtk_widget_get_name(entry);
+    if (name && name[0] && name[1] == '\0')
+	return name[0];
+    return 'e';
+}
 
 /* Set up analyze menu and terminal emulator windows. */
 void create_analyze_popup(void)
 {
     int i;
-    Icon menu_icon, tty_icon;
-    void recreate_analyze_popup(), reload();
+    void recreate_analyze_popup(void);
+    void reload(void);
+    GtkWidget *vbox, *row1, *row2, *row3, *btn_box;
+    GtkWidget *btn;
 
     if (menu_read == 0)
 	read_menu();
 
     analyze_popup_active = 0;
-    menu_icon = xv_create(XV_NULL, ICON,
-			  ICON_IMAGE, icon_image,
-			  ICON_LABEL, "Analyze",
-			  NULL);
-    analyze_frame = xv_create(frame, FRAME,
-			      XV_LABEL, "Analyze",
-			      FRAME_ICON, menu_icon, 0);
-/*
-    if (xaf >= 0 || yaf >= 0)
-	xv_set(analyze_frame, XV_X, xaf, XV_Y, yaf);
-*/
-    analyze_panel = xv_create(analyze_frame, PANEL,
-			      XV_WIDTH, mmx(225),
-			      0);
-    xv_create(analyze_panel, PANEL_BUTTON,
-	      PANEL_LABEL_STRING, "<",
-	      XV_HELP_DATA, "wave:file.analyze.<",
-	      PANEL_NOTIFY_PROC, set_back, 0);
-    start_item = xv_create(analyze_panel, PANEL_TEXT,
-			   PANEL_LABEL_STRING, "Start (elapsed): ",
-			   XV_HELP_DATA, "wave:file.analyze.start",
-			   PANEL_VALUE_DISPLAY_LENGTH, 13,
-			   PANEL_CLIENT_DATA, (caddr_t)'e',
-			   PANEL_NOTIFY_PROC, set_start, 0);
-    end_item = xv_create(analyze_panel, PANEL_TEXT,
-			 PANEL_LABEL_STRING, "End (elapsed): ",
-			 XV_HELP_DATA, "wave:file.analyze.end",
-			 PANEL_VALUE_DISPLAY_LENGTH, 13,
-			 PANEL_CLIENT_DATA, (caddr_t)'e',
-			 PANEL_NOTIFY_PROC, set_stop, 0);
-    xv_create(analyze_panel, PANEL_BUTTON,
-	      PANEL_LABEL_STRING, ">",
-	      XV_HELP_DATA, "wave:file.analyze.<",
-	      PANEL_NOTIFY_PROC, set_ahead, 0);
-    signal_item = xv_create(analyze_panel, PANEL_NUMERIC_TEXT,
-			    PANEL_LABEL_STRING, "Signal: ",
-			    XV_HELP_DATA, "wave:file.analyze.signal",
-			    PANEL_VALUE_DISPLAY_LENGTH, 3,
-			    PANEL_VALUE, signal_choice,
-			    PANEL_MIN_VALUE, 0,
-			    PANEL_MAX_VALUE, nsig > 0 ? nsig-1 : 0,
-			    PANEL_INACTIVE, nsig > 0 ? FALSE : TRUE,
-			    PANEL_NOTIFY_PROC, set_signal, 0);
-    signal_name_item = xv_create(analyze_panel, PANEL_MESSAGE,
-				 PANEL_LABEL_STRING, "xxxxxxxxxxxxxx", 0);
 
-    astart_item= xv_create(analyze_panel, PANEL_TEXT,
-			   PANEL_NEXT_ROW, -1, 
-			   PANEL_LABEL_STRING, "From: ",
-			   XV_HELP_DATA, "wave:file.analyze.astart",
-			   PANEL_VALUE_DISPLAY_LENGTH, 13,
-			   PANEL_CLIENT_DATA, (caddr_t)'a',
-			   PANEL_NOTIFY_PROC, set_start, 0);
-    dstart_item= xv_create(analyze_panel, PANEL_TEXT,
-			   XV_HELP_DATA, "wave:file.analyze.dstart",
-			   PANEL_VALUE_DISPLAY_LENGTH, 11,
-			   PANEL_CLIENT_DATA, (caddr_t)'d',
-			   PANEL_NOTIFY_PROC, set_start, 0);
+    /* --- Analysis controls window --- */
+    analyze_window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+    gtk_window_set_title(GTK_WINDOW(analyze_window), "Analyze");
+    gtk_window_set_transient_for(GTK_WINDOW(analyze_window),
+				 GTK_WINDOW(main_window));
+    gtk_window_set_default_size(GTK_WINDOW(analyze_window), mmx(225), -1);
+    g_signal_connect(analyze_window, "delete-event",
+		     G_CALLBACK(gtk_widget_hide_on_delete), NULL);
+
+    vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 4);
+    gtk_container_set_border_width(GTK_CONTAINER(vbox), 6);
+    gtk_container_add(GTK_CONTAINER(analyze_window), vbox);
+
+    /* Row 1: < | Start (elapsed) | End (elapsed) | > */
+    row1 = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 4);
+    gtk_box_pack_start(GTK_BOX(vbox), row1, FALSE, FALSE, 0);
+
+    btn = gtk_button_new_with_label("<");
+    g_signal_connect_swapped(btn, "clicked", G_CALLBACK(set_back), NULL);
+    gtk_box_pack_start(GTK_BOX(row1), btn, FALSE, FALSE, 0);
+
+    gtk_box_pack_start(GTK_BOX(row1),
+		       gtk_label_new("Start (elapsed):"), FALSE, FALSE, 0);
+    start_item = gtk_entry_new();
+    gtk_entry_set_width_chars(GTK_ENTRY(start_item), 13);
+    set_entry_tag(start_item, 'e');
+    g_signal_connect(start_item, "activate",
+		     G_CALLBACK(set_start_from_entry), NULL);
+    gtk_box_pack_start(GTK_BOX(row1), start_item, FALSE, FALSE, 0);
+
+    gtk_box_pack_start(GTK_BOX(row1),
+		       gtk_label_new("End (elapsed):"), FALSE, FALSE, 0);
+    end_item = gtk_entry_new();
+    gtk_entry_set_width_chars(GTK_ENTRY(end_item), 13);
+    set_entry_tag(end_item, 'e');
+    g_signal_connect(end_item, "activate",
+		     G_CALLBACK(set_stop_from_entry), NULL);
+    gtk_box_pack_start(GTK_BOX(row1), end_item, FALSE, FALSE, 0);
+
+    btn = gtk_button_new_with_label(">");
+    g_signal_connect_swapped(btn, "clicked", G_CALLBACK(set_ahead), NULL);
+    gtk_box_pack_start(GTK_BOX(row1), btn, FALSE, FALSE, 0);
+
+    /* Signal spinner + name label */
+    {
+	GtkWidget *sig_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 4);
+	gtk_box_pack_start(GTK_BOX(row1), sig_box, FALSE, FALSE, 8);
+
+	gtk_box_pack_start(GTK_BOX(sig_box),
+			   gtk_label_new("Signal:"), FALSE, FALSE, 0);
+	signal_item = gtk_spin_button_new_with_range(
+	    0, nsig > 0 ? nsig - 1 : 0, 1);
+	gtk_spin_button_set_value(GTK_SPIN_BUTTON(signal_item), signal_choice);
+	gtk_widget_set_sensitive(signal_item, nsig > 0);
+	g_signal_connect(signal_item, "value-changed",
+			 G_CALLBACK(set_signal), NULL);
+	gtk_box_pack_start(GTK_BOX(sig_box), signal_item, FALSE, FALSE, 0);
+
+	signal_name_item = gtk_label_new(
+	    nsig > 0 ? signame[signal_choice] : "");
+	gtk_box_pack_start(GTK_BOX(sig_box), signal_name_item,
+			   FALSE, FALSE, 0);
+    }
+
+    /* Row 2: From (absolute) | date | To (absolute) | date */
+    row2 = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 4);
+    gtk_box_pack_start(GTK_BOX(vbox), row2, FALSE, FALSE, 0);
+
+    gtk_box_pack_start(GTK_BOX(row2),
+		       gtk_label_new("From:"), FALSE, FALSE, 0);
+    astart_item = gtk_entry_new();
+    gtk_entry_set_width_chars(GTK_ENTRY(astart_item), 13);
+    set_entry_tag(astart_item, 'a');
+    g_signal_connect(astart_item, "activate",
+		     G_CALLBACK(set_start_from_entry), NULL);
+    gtk_box_pack_start(GTK_BOX(row2), astart_item, FALSE, FALSE, 0);
+
+    dstart_item = gtk_entry_new();
+    gtk_entry_set_width_chars(GTK_ENTRY(dstart_item), 11);
+    set_entry_tag(dstart_item, 'd');
+    g_signal_connect(dstart_item, "activate",
+		     G_CALLBACK(set_start_from_entry), NULL);
+    gtk_box_pack_start(GTK_BOX(row2), dstart_item, FALSE, FALSE, 0);
+
     reset_start();
-    aend_item= xv_create(analyze_panel, PANEL_TEXT,
-			 PANEL_LABEL_STRING, "To: ",
-			 XV_HELP_DATA, "wave:file.analyze.aend",
-			 PANEL_VALUE_DISPLAY_LENGTH, 13,
-			 PANEL_CLIENT_DATA, (caddr_t)'a',
-			 PANEL_NOTIFY_PROC, set_stop, 0);
-    dend_item= xv_create(analyze_panel, PANEL_TEXT,
-			 XV_HELP_DATA, "wave:file.analyze.dend",
-			 PANEL_VALUE_DISPLAY_LENGTH, 13,
-			 PANEL_CLIENT_DATA, (caddr_t)'d',
-			 PANEL_NOTIFY_PROC, set_stop, 0);
+
+    gtk_box_pack_start(GTK_BOX(row2),
+		       gtk_label_new("To:"), FALSE, FALSE, 0);
+    aend_item = gtk_entry_new();
+    gtk_entry_set_width_chars(GTK_ENTRY(aend_item), 13);
+    set_entry_tag(aend_item, 'a');
+    g_signal_connect(aend_item, "activate",
+		     G_CALLBACK(set_stop_from_entry), NULL);
+    gtk_box_pack_start(GTK_BOX(row2), aend_item, FALSE, FALSE, 0);
+
+    dend_item = gtk_entry_new();
+    gtk_entry_set_width_chars(GTK_ENTRY(dend_item), 13);
+    set_entry_tag(dend_item, 'd');
+    g_signal_connect(dend_item, "activate",
+		     G_CALLBACK(set_stop_from_entry), NULL);
+    gtk_box_pack_start(GTK_BOX(row2), dend_item, FALSE, FALSE, 0);
+
     reset_stop();
-    siglist_item = xv_create(analyze_panel, PANEL_TEXT,
-			     PANEL_LABEL_STRING, "Signal list: ",
-			     XV_HELP_DATA, "wave:file.analyze.signal_list",
-			     PANEL_VALUE_DISPLAY_LENGTH, 15,
-			     PANEL_VALUE_STORED_LENGTH, 1024,
-			     PANEL_INACTIVE, nsig > 0 ? FALSE : TRUE,
-			     PANEL_NOTIFY_PROC, set_siglist, 0);
+
+    /* Signal list */
+    row3 = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 4);
+    gtk_box_pack_start(GTK_BOX(vbox), row3, FALSE, FALSE, 0);
+
+    gtk_box_pack_start(GTK_BOX(row3),
+		       gtk_label_new("Signal list:"), FALSE, FALSE, 0);
+    siglist_item = gtk_entry_new();
+    gtk_entry_set_width_chars(GTK_ENTRY(siglist_item), 15);
+    gtk_widget_set_sensitive(siglist_item, nsig > 0);
+    g_signal_connect(siglist_item, "activate",
+		     G_CALLBACK(set_siglist), NULL);
+    gtk_box_pack_start(GTK_BOX(row3), siglist_item, TRUE, TRUE, 0);
     reset_siglist();
-	      
 
-    xv_create(analyze_panel, PANEL_BUTTON,
-	      PANEL_NEXT_ROW, -1, 
-	      PANEL_LABEL_STRING, "Show scope window",
-	      XV_HELP_DATA, "wave:file.analyze.show_scope_window",
-	      PANEL_NOTIFY_PROC, show_scope_window, 0);
-    xv_create(analyze_panel, PANEL_BUTTON,
-	      PANEL_LABEL_STRING, "Show command window",
-	      XV_HELP_DATA, "wave:file.analyze.show_command_window",
-	      PANEL_NOTIFY_PROC, show_command_window, 0);
-    xv_create(analyze_panel, PANEL_BUTTON,
-	      PANEL_LABEL_STRING, "Edit menu",
-	      XV_HELP_DATA, "wave:file.analyze.edit_menu",
-	      PANEL_NOTIFY_PROC, edit_menu_file, 0);
-    xv_create(analyze_panel, PANEL_BUTTON,
-	      PANEL_LABEL_STRING, "Reread menu",
-	      XV_HELP_DATA, "wave:file.analyze.reread_menu",
-	      PANEL_NOTIFY_PROC, recreate_analyze_popup, 0);
-    xv_create(analyze_panel, PANEL_BUTTON,
-	      PANEL_LABEL_STRING, "Reload",
-	      XV_HELP_DATA, "wave:file.analyze.reload",
-	      PANEL_NOTIFY_PROC, reload, 0);
+    /* Utility buttons row */
+    btn_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 4);
+    gtk_box_pack_start(GTK_BOX(vbox), btn_box, FALSE, FALSE, 0);
 
-    for (i = 0, mep = &menu_head; mep->nme != NULL; mep = mep->nme, i++) {
-	if (i == 0)
-	    xv_create(analyze_panel, PANEL_BUTTON,
-		  PANEL_NEXT_ROW, -1, 
-		  PANEL_LABEL_STRING, mep->nme->label,
-		  XV_HELP_DATA, "wave:file.analyze.analysis_button",
-		  PANEL_NOTIFY_PROC, do_analysis,
-		  PANEL_CLIENT_DATA, (caddr_t) i, 0);
-	else
-	    xv_create(analyze_panel, PANEL_BUTTON,
-		  PANEL_LABEL_STRING, mep->nme->label,
-		  XV_HELP_DATA, "wave:file.analyze.analysis_button",
-		  PANEL_NOTIFY_PROC, do_analysis,
-		  PANEL_CLIENT_DATA, (caddr_t) i, 0);
+    btn = gtk_button_new_with_label("Show scope window");
+    g_signal_connect_swapped(btn, "clicked",
+			     G_CALLBACK(show_scope_window), NULL);
+    gtk_box_pack_start(GTK_BOX(btn_box), btn, FALSE, FALSE, 0);
+
+    btn = gtk_button_new_with_label("Show command window");
+    g_signal_connect_swapped(btn, "clicked",
+			     G_CALLBACK(show_command_window), NULL);
+    gtk_box_pack_start(GTK_BOX(btn_box), btn, FALSE, FALSE, 0);
+
+    btn = gtk_button_new_with_label("Edit menu");
+    g_signal_connect_swapped(btn, "clicked",
+			     G_CALLBACK(edit_menu_file), NULL);
+    gtk_box_pack_start(GTK_BOX(btn_box), btn, FALSE, FALSE, 0);
+
+    btn = gtk_button_new_with_label("Reread menu");
+    g_signal_connect_swapped(btn, "clicked",
+			     G_CALLBACK(recreate_analyze_popup), NULL);
+    gtk_box_pack_start(GTK_BOX(btn_box), btn, FALSE, FALSE, 0);
+
+    btn = gtk_button_new_with_label("Reload");
+    g_signal_connect_swapped(btn, "clicked",
+			     G_CALLBACK(reload), NULL);
+    gtk_box_pack_start(GTK_BOX(btn_box), btn, FALSE, FALSE, 0);
+
+    /* Analysis command buttons from menu file */
+    {
+	GtkWidget *cmd_box = gtk_flow_box_new();
+	gtk_flow_box_set_selection_mode(GTK_FLOW_BOX(cmd_box),
+					GTK_SELECTION_NONE);
+	gtk_box_pack_start(GTK_BOX(vbox), cmd_box, FALSE, FALSE, 0);
+
+	for (i = 0, mep = &menu_head; mep->nme != NULL;
+	     mep = mep->nme, i++) {
+	    GtkWidget *abtn = gtk_button_new_with_label(mep->nme->label);
+	    g_object_set_data(G_OBJECT(abtn), "menu-index",
+			      GINT_TO_POINTER(i));
+	    g_signal_connect(abtn, "clicked",
+			     G_CALLBACK(do_analysis), NULL);
+	    gtk_container_add(GTK_CONTAINER(cmd_box), abtn);
+	}
     }
 
-    window_fit(analyze_panel);
-    window_fit(analyze_frame);
+    /* --- Terminal emulator window --- */
+    if (tty == NULL) {
+	tty_window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+	gtk_window_set_title(GTK_WINDOW(tty_window), "Analysis commands");
+	gtk_window_set_transient_for(GTK_WINDOW(tty_window),
+				     GTK_WINDOW(main_window));
+	gtk_window_set_default_size(GTK_WINDOW(tty_window), 600, 250);
+	g_signal_connect(tty_window, "delete-event",
+			 G_CALLBACK(gtk_widget_hide_on_delete), NULL);
 
-    /* It appears to be necessary to create the signal name item with a
-       dummy value as above to reserve space for it in case
-       signame[signal_choice] is shorter than some other current or future
-       entry in signame[].  Here we reset the value to the correct string. */
-    xv_set(signal_name_item, PANEL_LABEL_STRING, signame[signal_choice], 0);
+	tty = vte_terminal_new();
+	vte_terminal_set_size(VTE_TERMINAL(tty), 80, 10);
+	gtk_container_add(GTK_CONTAINER(tty_window), tty);
 
-    /* The current version of XView allows us to create a Termsw at most once
-       per process, so we have to be careful not to attempt to execute the
-       following code more than once. */
-    if (tty == XV_NULL) {
-	int x, y;
-
-	x = (int)xv_get(analyze_frame, XV_X);
-	y = (int)xv_get(analyze_frame, XV_Y) +
-	    (int)xv_get(analyze_frame, XV_HEIGHT) + 75;
-	tty_icon = xv_create(XV_NULL, ICON,
-			     ICON_IMAGE, icon_image,
-			     ICON_LABEL, "Commands",
-			     NULL);
-	tty_frame = xv_create(frame, FRAME,
-			      XV_LABEL, "Analysis commands",
-			      XV_X, x, XV_Y, y,
-			      FRAME_ICON, tty_icon, 0);
-	tty = (Termsw)xv_create(tty_frame, TERMSW,
-/*			 XV_X, mmx(1), */
-			 WIN_ROWS, 10, 0);
-	window_fit(tty);
-	window_fit(tty_frame);
+	char *shell_argv[] = { "/bin/sh", NULL };
+	vte_terminal_spawn_async(VTE_TERMINAL(tty),
+	    VTE_PTY_DEFAULT, NULL, shell_argv, NULL,
+	    G_SPAWN_DEFAULT, NULL, NULL, NULL, -1, NULL, NULL, NULL);
     }
+
+    /* Set the signal name to the correct value now that the label has
+       been created with a placeholder. */
+    if (nsig > 0)
+	gtk_label_set_text(GTK_LABEL(signal_name_item),
+			   signame[signal_choice]);
 }
 
 /* Recreate analyze popup (if reread menu button was selected). */
 void recreate_analyze_popup(void)
 {
-    if (analyze_frame) {
-	xaf = (int)xv_get(analyze_frame, XV_X);
-	yaf = (int)xv_get(analyze_frame, XV_Y);
-	if (xv_destroy_safe(analyze_frame) == XV_OK) {
-	    struct MenuEntry *tmep;
+    if (analyze_window) {
+	gtk_widget_destroy(analyze_window);
+	analyze_window = NULL;
 
-	    mep = menu_head.nme;
-	    while (mep != NULL) {
-		tmep = mep->nme;
-		free(mep->command);
-		free(mep->label);
-	        free(mep);
-		mep = tmep;
-	    }
-	    menu_read = 0;
-	    create_analyze_popup();
-	    xv_set(analyze_frame, WIN_MAP, TRUE, 0);
+	struct MenuEntry *tmep;
+	mep = menu_head.nme;
+	while (mep != NULL) {
+	    tmep = mep->nme;
+	    free(mep->command);
+	    free(mep->label);
+	    free(mep);
+	    mep = tmep;
 	}
+	menu_read = 0;
+	create_analyze_popup();
+	gtk_widget_show_all(analyze_window);
+	gtk_window_present(GTK_WINDOW(analyze_window));
     }
 }
 
@@ -446,10 +500,10 @@ void recreate_analyze_popup(void)
 void analyze_proc(void)
 {
     if (analyze_popup_active < 0) create_analyze_popup();
-    wmgr_top(tty_frame);
-    xv_set(tty_frame, WIN_MAP, TRUE, 0);
-    wmgr_top(analyze_frame);
-    xv_set(analyze_frame, WIN_MAP, TRUE, 0);
+    gtk_widget_show_all(tty_window);
+    gtk_window_present(GTK_WINDOW(tty_window));
+    gtk_widget_show_all(analyze_window);
+    gtk_window_present(GTK_WINDOW(analyze_window));
     analyze_popup_active = 1;
 }
 
@@ -460,38 +514,22 @@ void edit_menu_file(void)
     int clen, elen, result;
 
     if ((editor = getenv("EDITOR")) == NULL)
-	editor = defaults_get_string("wave.texteditor",
-				     "Wave.TextEditor",
-				     EDITOR);
+	editor = EDITOR;
     elen = strlen(editor);
     if (wavemenu == NULL) {
-#ifdef NOTICE
-	Xv_notice notice = xv_create((Frame)frame, NOTICE,
-				     XV_SHOW, TRUE,
-				     NOTICE_STATUS, &result,
-#else
-	result = notice_prompt((Frame)frame, (Event *)NULL,
-#endif
-		      NOTICE_MESSAGE_STRINGS,
-		      "You are now using the system default menu file,",
-		      "which you may not edit directly.",
-		      "Press `Copy' to copy it into the current directory",
-		      "as `wavemenu' (and remember to set the WAVEMENU",
-		      "environment variable next time),",
-		      "- or -",
-		      "Press `Quit' if you prefer not to edit a menu file.",
-		      0,
-		      NOTICE_BUTTON_YES, "Copy",
-		      NOTICE_BUTTON_NO, "Quit", 0);
-#ifdef NOTICE
-	xv_destroy_safe(notice);
-#endif
-	if (result != NOTICE_YES)
+	result = wave_notice_prompt(
+	    "You are now using the system default menu file,\n"
+	    "which you may not edit directly.\n"
+	    "Press 'Yes' to copy it into the current directory\n"
+	    "as 'wavemenu' (and remember to set the WAVEMENU\n"
+	    "environment variable next time),\n"
+	    "or press 'No' if you prefer not to edit a menu file.");
+	if (!result)
 	    return;
-	
+
 	clen = strlen(menudir) + strlen(MENUFILE) + 4; /* "cp ... " */
 	if (clen < elen) clen = elen;
-	if (edit_command = malloc(clen + 10)) {  /* "wavemenu\n" + null */
+	if ((edit_command = malloc(clen + 10))) {  /* "wavemenu\n" + null */
 	    sprintf(edit_command, "cp %s/%s wavemenu\n", menudir, MENUFILE);
 	    do_command(edit_command);
 	    wavemenu = "wavemenu";
@@ -506,19 +544,22 @@ void edit_menu_file(void)
 	free(edit_command);
     }
 }
-    
+
 /* Make the analysis command window appear. */
 void show_command_window(void)
 {
-    wmgr_top(tty_frame);
-    xv_set(tty_frame, WIN_MAP, TRUE, 0);
+    if (analyze_popup_active < 0) create_analyze_popup();
+    gtk_widget_show_all(tty_window);
+    gtk_window_present(GTK_WINDOW(tty_window));
 }
 
 /* Set variables needed for analysis routines. */
-void set_signal(void)
+void set_signal(GtkWidget *widget, gpointer data)
 {
-    signal_choice = (int)xv_get(signal_item, PANEL_VALUE);
-    xv_set(signal_name_item, PANEL_LABEL_STRING, signame[signal_choice], 0);
+    (void)data;
+    signal_choice = gtk_spin_button_get_value_as_int(
+	GTK_SPIN_BUTTON(signal_item));
+    gtk_label_set_text(GTK_LABEL(signal_name_item), signame[signal_choice]);
     sig_highlight(signal_choice);
 }
 
@@ -533,9 +574,10 @@ void set_signal_choice(int i)
     if (0 <= j && j < nsig) {
 	signal_choice = j;
 	if (analyze_popup_active >= 0) {
-	    xv_set(signal_item, PANEL_VALUE, signal_choice, 0);
-	    xv_set(signal_name_item, PANEL_LABEL_STRING,
-		   signame[signal_choice], 0);
+	    gtk_spin_button_set_value(GTK_SPIN_BUTTON(signal_item),
+				     signal_choice);
+	    gtk_label_set_text(GTK_LABEL(signal_name_item),
+			       signame[signal_choice]);
 	}
 	sig_highlight(signal_choice);
     }
@@ -543,7 +585,8 @@ void set_signal_choice(int i)
 
 void set_siglist(void)
 {
-    set_siglist_from_string((char *)xv_get(siglist_item, PANEL_VALUE));
+    set_siglist_from_string(
+	(char *)gtk_entry_get_text(GTK_ENTRY(siglist_item)));
 }
 
 void set_siglist_from_string(char *s)
@@ -562,7 +605,7 @@ void set_siglist_from_string(char *s)
     if (siglistlen > maxsiglistlen) {
 	siglist = realloc(siglist, siglistlen * sizeof(int));
 	base = realloc(base, siglistlen * sizeof(int));
-	level = realloc(level, siglistlen * sizeof(XSegment));
+	level = realloc(level, siglistlen * sizeof(WaveSegment));
 	maxsiglistlen = siglistlen;
     }
     /* Now store the signal numbers in siglist. */
@@ -576,63 +619,69 @@ void set_siglist_from_string(char *s)
     reset_siglist();
 }
 
-void set_start(Panel_item item, Event *event)
+/* set_start_from_entry: callback for GtkEntry "activate" signal.
+   The entry's widget name (set via set_entry_tag) carries 'e', 'a', or 'd'
+   to distinguish which entry triggered it. */
+void set_start_from_entry(GtkWidget *widget, gpointer data)
 {
+    (void)data;
     struct ap *a;
-    char *start_string, *astart_string, *dstart_string, *p, buf[30];
+    char *start_string, *astart_string, *dstart_string, *p;
+    char buf[30];
     int i;
     WFDB_Time t;
 
-    i = (int)xv_get(item, PANEL_CLIENT_DATA);
-    if (a = get_ap()) {
+    i = get_entry_tag(widget);
+    if ((a = get_ap())) {
 	int redraw;
 
 	redraw = (display_start_time <= begin_analysis_time &&
 		  begin_analysis_time < display_start_time + nsamp);
 	switch (i) {
 	  case 'e':
-	    start_string = (char *)xv_get(start_item, PANEL_VALUE);
+	    start_string = (char *)gtk_entry_get_text(GTK_ENTRY(start_item));
 	    t = strtim(start_string);
 	    p = mstimstr(-t);
 	    if (*p == '[') {
-		*(p+13) = *(p+24) =  '\0';
-		xv_set(astart_item, PANEL_VALUE, p+1,
-		       PANEL_INACTIVE, FALSE, 0);
-		xv_set(dstart_item, PANEL_VALUE, p+14,
-		       PANEL_INACTIVE, FALSE, 0);
+		*(p+13) = *(p+24) = '\0';
+		gtk_entry_set_text(GTK_ENTRY(astart_item), p+1);
+		gtk_widget_set_sensitive(astart_item, TRUE);
+		gtk_entry_set_text(GTK_ENTRY(dstart_item), p+14);
+		gtk_widget_set_sensitive(dstart_item, TRUE);
 	    }
 	    else {
-		xv_set(astart_item, PANEL_VALUE, "",
-		       PANEL_INACTIVE, TRUE, 0);
-		xv_set(dstart_item, PANEL_VALUE, "",
-		       PANEL_INACTIVE, TRUE, 0);
+		gtk_entry_set_text(GTK_ENTRY(astart_item), "");
+		gtk_widget_set_sensitive(astart_item, FALSE);
+		gtk_entry_set_text(GTK_ENTRY(dstart_item), "");
+		gtk_widget_set_sensitive(dstart_item, FALSE);
 	    }
 	    break;
 	  case 'a':
-	    astart_string = (char *)xv_get(astart_item, PANEL_VALUE);
-	    dstart_string = (char *)xv_get(dstart_item, PANEL_VALUE);
+	    astart_string = (char *)gtk_entry_get_text(
+		GTK_ENTRY(astart_item));
+	    dstart_string = (char *)gtk_entry_get_text(
+		GTK_ENTRY(dstart_item));
 	    sprintf(buf, "[%s %s]", astart_string, dstart_string);
 	    if ((t = -strtim(buf)) <= 0L) {
-		/* tried to set a time before the beginning of the record */
-		t = 0L;	/* go to the beginning instead */
-		xv_set(start_item, PANEL_VALUE, "beginning", 0);
+		t = 0L;
+		gtk_entry_set_text(GTK_ENTRY(start_item), "beginning");
 	    }
 	    else
-		xv_set(start_item, PANEL_VALUE, mstimstr(t), 0);
-	    set_start(start_item, (Event *)NULL);
+		gtk_entry_set_text(GTK_ENTRY(start_item), mstimstr(t));
+	    /* Recurse through the 'e' path to update absolute fields. */
+	    set_start_from_entry(start_item, NULL);
 	    break;
 	  case 'd':
-	    dstart_string = (char *)xv_get(dstart_item, PANEL_VALUE);
-	    /* changed the date -- try to go to midnight on that date */
+	    dstart_string = (char *)gtk_entry_get_text(
+		GTK_ENTRY(dstart_item));
 	    sprintf(buf, "[0:0:0 %s]", dstart_string);
 	    if ((t = -strtim(buf)) <= 0L) {
-		/* tried to set a time before the beginning of the record */
-		t = 0L;	/* go to the beginning instead */
-		xv_set(start_item, PANEL_VALUE, "beginning", 0);
+		t = 0L;
+		gtk_entry_set_text(GTK_ENTRY(start_item), "beginning");
 	    }
 	    else
-		xv_set(start_item, PANEL_VALUE, mstimstr(t), 0);
-	    set_start(start_item, (Event *)NULL);
+		gtk_entry_set_text(GTK_ENTRY(start_item), mstimstr(t));
+	    set_start_from_entry(start_item, NULL);
 	    break;
 	}
 
@@ -650,63 +699,63 @@ void set_start(Panel_item item, Event *event)
     }
 }
 
-void set_stop(Panel_item item, Event *event)
+/* set_stop_from_entry: callback for end-time GtkEntry "activate" signal. */
+void set_stop_from_entry(GtkWidget *widget, gpointer data)
 {
+    (void)data;
     struct ap *a;
-    char *end_string, *aend_string, *dend_string, *p, buf[30];
+    char *end_string, *aend_string, *dend_string, *p;
+    char buf[30];
     int i;
     WFDB_Time t;
 
-    i = (int)xv_get(item, PANEL_CLIENT_DATA);
-    if (a = get_ap()) {
+    i = get_entry_tag(widget);
+    if ((a = get_ap())) {
 	int redraw;
 
 	redraw = (display_start_time <= end_analysis_time &&
 		  end_analysis_time < display_start_time + nsamp);
 	switch (i) {
 	  case 'e':
-	    end_string = (char *)xv_get(end_item, PANEL_VALUE);
+	    end_string = (char *)gtk_entry_get_text(GTK_ENTRY(end_item));
 	    t = strtim(end_string);
 	    p = mstimstr(-t);
 	    if (*p == '[') {
-		*(p+13) = *(p+24) =  '\0';
-		xv_set(aend_item, PANEL_VALUE, p+1,
-		       PANEL_INACTIVE, FALSE, 0);
-		xv_set(dend_item, PANEL_VALUE, p+14,
-		       PANEL_INACTIVE, FALSE, 0);
+		*(p+13) = *(p+24) = '\0';
+		gtk_entry_set_text(GTK_ENTRY(aend_item), p+1);
+		gtk_widget_set_sensitive(aend_item, TRUE);
+		gtk_entry_set_text(GTK_ENTRY(dend_item), p+14);
+		gtk_widget_set_sensitive(dend_item, TRUE);
 	    }
 	    else {
-		xv_set(aend_item, PANEL_VALUE, "",
-		       PANEL_INACTIVE, TRUE, 0);
-		xv_set(dend_item, PANEL_VALUE, "",
-		       PANEL_INACTIVE, TRUE, 0);
+		gtk_entry_set_text(GTK_ENTRY(aend_item), "");
+		gtk_widget_set_sensitive(aend_item, FALSE);
+		gtk_entry_set_text(GTK_ENTRY(dend_item), "");
+		gtk_widget_set_sensitive(dend_item, FALSE);
 	    }
 	    break;
 	  case 'a':
-	    aend_string = (char *)xv_get(aend_item, PANEL_VALUE);
-	    dend_string = (char *)xv_get(dend_item, PANEL_VALUE);
+	    aend_string = (char *)gtk_entry_get_text(GTK_ENTRY(aend_item));
+	    dend_string = (char *)gtk_entry_get_text(GTK_ENTRY(dend_item));
 	    sprintf(buf, "[%s %s]", aend_string, dend_string);
 	    if ((t = -strtim(buf)) <= 0L) {
-		/* tried to set a time before the beginning of the record */
-		t = 0L;	/* go to the beginning instead */
-		xv_set(end_item, PANEL_VALUE, "beginning", 0);
+		t = 0L;
+		gtk_entry_set_text(GTK_ENTRY(end_item), "beginning");
 	    }
 	    else
-		xv_set(end_item, PANEL_VALUE, mstimstr(t), 0);
-	    set_stop(end_item, (Event *)NULL);
+		gtk_entry_set_text(GTK_ENTRY(end_item), mstimstr(t));
+	    set_stop_from_entry(end_item, NULL);
 	    break;
 	  case 'd':
-	    dend_string = (char *)xv_get(dend_item, PANEL_VALUE);
-	    /* changed the date -- try to go to midnight on that date */
+	    dend_string = (char *)gtk_entry_get_text(GTK_ENTRY(dend_item));
 	    sprintf(buf, "[0:0:0 %s]", dend_string);
 	    if ((t = -strtim(buf)) <= 0L) {
-		/* tried to set a time before the beginning of the record */
-		t = 0L;	/* go to the beginning instead */
-		xv_set(end_item, PANEL_VALUE, "beginning", 0);
+		t = 0L;
+		gtk_entry_set_text(GTK_ENTRY(end_item), "beginning");
 	    }
 	    else
-		xv_set(end_item, PANEL_VALUE, mstimstr(t), 0);
-	    set_stop(end_item, (Event *)NULL);
+		gtk_entry_set_text(GTK_ENTRY(end_item), mstimstr(t));
+	    set_stop_from_entry(end_item, NULL);
 	    break;
 	}
 
@@ -731,10 +780,10 @@ void set_back(void)
     if (begin_analysis_time <= 0L || step <= 0L) return;
     if ((t0 = begin_analysis_time - step) < 0L) t0 = 0L;
     t1 = t0 + step;
-    xv_set(start_item, PANEL_VALUE, mstimstr(t0), NULL);
-    set_start(start_item, (Event *)NULL);
-    xv_set(end_item, PANEL_VALUE, mstimstr(t1), NULL);
-    set_stop(end_item, (Event *)NULL);
+    gtk_entry_set_text(GTK_ENTRY(start_item), mstimstr(t0));
+    set_start_from_entry(start_item, NULL);
+    gtk_entry_set_text(GTK_ENTRY(end_item), mstimstr(t1));
+    set_stop_from_entry(end_item, NULL);
 }
 
 void set_ahead(void)
@@ -745,10 +794,10 @@ void set_ahead(void)
     if ((te > 0L && end_analysis_time >= te) || step <= 0L) return;
     t0 = begin_analysis_time + step;
     t1 = t0 + step;
-    xv_set(end_item, PANEL_VALUE, mstimstr(t1), NULL);
-    set_stop(end_item, (Event *)NULL);
-    xv_set(start_item, PANEL_VALUE, mstimstr(t0), NULL);
-    set_start(start_item, (Event *)NULL);
+    gtk_entry_set_text(GTK_ENTRY(end_item), mstimstr(t1));
+    set_stop_from_entry(end_item, NULL);
+    gtk_entry_set_text(GTK_ENTRY(start_item), mstimstr(t0));
+    set_start_from_entry(start_item, NULL);
 }
 
 
@@ -758,18 +807,22 @@ void reset_start(void)
 	char *p;
 
 	if (begin_analysis_time == -1L) begin_analysis_time = 0L;
-	xv_set(start_item, PANEL_VALUE, begin_analysis_time == 0L ?
-	         "beginning" : mstimstr(begin_analysis_time),
-	       NULL);
+	gtk_entry_set_text(GTK_ENTRY(start_item),
+	    begin_analysis_time == 0L ? "beginning"
+				      : mstimstr(begin_analysis_time));
 	p = mstimstr(-begin_analysis_time);
 	if (*p == '[') {
-	    *(p+13) = *(p+24) =  '\0';
-	    xv_set(astart_item, PANEL_VALUE, p+1, PANEL_INACTIVE, FALSE, 0);
-	    xv_set(dstart_item, PANEL_VALUE, p+14, PANEL_INACTIVE, FALSE, 0);
+	    *(p+13) = *(p+24) = '\0';
+	    gtk_entry_set_text(GTK_ENTRY(astart_item), p+1);
+	    gtk_widget_set_sensitive(astart_item, TRUE);
+	    gtk_entry_set_text(GTK_ENTRY(dstart_item), p+14);
+	    gtk_widget_set_sensitive(dstart_item, TRUE);
 	}
 	else {
-	    xv_set(astart_item, PANEL_VALUE, "", PANEL_INACTIVE, TRUE, 0);
-	    xv_set(dstart_item, PANEL_VALUE, "", PANEL_INACTIVE, TRUE, 0);
+	    gtk_entry_set_text(GTK_ENTRY(astart_item), "");
+	    gtk_widget_set_sensitive(astart_item, FALSE);
+	    gtk_entry_set_text(GTK_ENTRY(dstart_item), "");
+	    gtk_widget_set_sensitive(dstart_item, FALSE);
 	}
     }
 }
@@ -780,18 +833,22 @@ void reset_stop(void)
 	char *p;
 
 	if (end_analysis_time == -1L) end_analysis_time = strtim("e");
-	xv_set(end_item, PANEL_VALUE,
-	       end_analysis_time == 0L ? "end" : mstimstr(end_analysis_time),
-	       NULL);
+	gtk_entry_set_text(GTK_ENTRY(end_item),
+	    end_analysis_time == 0L ? "end"
+				    : mstimstr(end_analysis_time));
 	p = mstimstr(-end_analysis_time);
 	if (*p == '[') {
-	    *(p+13) = *(p+24) =  '\0';
-	    xv_set(aend_item, PANEL_VALUE, p+1, PANEL_INACTIVE, FALSE, 0);
-	    xv_set(dend_item, PANEL_VALUE, p+14, PANEL_INACTIVE, FALSE, 0);
+	    *(p+13) = *(p+24) = '\0';
+	    gtk_entry_set_text(GTK_ENTRY(aend_item), p+1);
+	    gtk_widget_set_sensitive(aend_item, TRUE);
+	    gtk_entry_set_text(GTK_ENTRY(dend_item), p+14);
+	    gtk_widget_set_sensitive(dend_item, TRUE);
 	}
 	else {
-	    xv_set(aend_item, PANEL_VALUE, "", PANEL_INACTIVE, TRUE, 0);
-	    xv_set(dend_item, PANEL_VALUE, "", PANEL_INACTIVE, TRUE, 0);
+	    gtk_entry_set_text(GTK_ENTRY(aend_item), "");
+	    gtk_widget_set_sensitive(aend_item, FALSE);
+	    gtk_entry_set_text(GTK_ENTRY(dend_item), "");
+	    gtk_widget_set_sensitive(dend_item, FALSE);
 	}
     }
 }
@@ -814,7 +871,8 @@ void reset_siglist(void)
 	    sprintf(p, "%d ", siglist[i]);
 	    p += strlen(p);
 	}
-	xv_set(siglist_item, PANEL_VALUE, sigliststring, NULL);
+	gtk_entry_set_text(GTK_ENTRY(siglist_item),
+			   sigliststring ? sigliststring : "");
     }
     if (sig_mode)
 	set_baselines();
@@ -823,12 +881,16 @@ void reset_siglist(void)
 void reset_maxsig(void)
 {
     if (analyze_popup_active >= 0) {
-	xv_set(signal_item, PANEL_INACTIVE, nsig > 0 ? FALSE : TRUE, 0);
-	xv_set(signal_item, PANEL_MAX_VALUE, nsig > 0 ? nsig-1 : 0, 0);
-	if (signal_choice >= nsig || signal_choice < 0)
-	    xv_set(signal_item, PANEL_VALUE, signal_choice = 0, 0);
-	xv_set(signal_name_item, PANEL_INACTIVE, nsig > 0 ? FALSE : TRUE, 0);
-	xv_set(signal_name_item, PANEL_LABEL_STRING,signame[signal_choice], 0);
+	gtk_widget_set_sensitive(signal_item, nsig > 0);
+	gtk_spin_button_set_range(GTK_SPIN_BUTTON(signal_item),
+				  0, nsig > 0 ? nsig - 1 : 0);
+	if (signal_choice >= nsig || signal_choice < 0) {
+	    signal_choice = 0;
+	    gtk_spin_button_set_value(GTK_SPIN_BUTTON(signal_item), 0);
+	}
+	gtk_widget_set_sensitive(signal_name_item, nsig > 0);
+	gtk_label_set_text(GTK_LABEL(signal_name_item),
+			   signame[signal_choice]);
     }
 }
 
@@ -839,7 +901,7 @@ void add_to_siglist(int i)
 	if (++siglistlen >= maxsiglistlen) {
 	    siglist = realloc(siglist, siglistlen * sizeof(int));
 	    base = realloc(base, nsig * sizeof(int));
-	    level = realloc(level, nsig * sizeof(XSegment));
+	    level = realloc(level, nsig * sizeof(WaveSegment));
 	    maxsiglistlen = siglistlen;
 	}
 	siglist[siglistlen-1] = i;
@@ -874,6 +936,11 @@ void delete_signal_choice(void)
 /* This function executes the command string provided as its argument, after
    substituting for WAVE's internal variables (RECORD, ANNOTATOR, etc.). */
 
+static void feed_tty(const char *str, int len)
+{
+    vte_terminal_feed_child(VTE_TERMINAL(tty), str, len);
+}
+
 void do_command(char *p1)
 {
     char *p2, *tp;
@@ -883,17 +950,17 @@ void do_command(char *p1)
     if (analyze_popup_active < 0) create_analyze_popup();
     for (p2 = p1; *p2; p2++) {
 	if (*p2 == '$') {
-	    ttysw_input(tty, p1, p2-p1);
+	    feed_tty(p1, p2-p1);
 	    p1 = ++p2;
 	    if (strncmp(p1, "RECORD", 6) == 0) {
-		ttysw_input(tty, record, strlen(record));
+		feed_tty(record, strlen(record));
 		p1 = p2 += 6;
 	    }
 	    else if (strncmp(p1, "ANNOTATOR", 9) == 0) {
 		if (annotator[0])
-		    ttysw_input(tty, annotator, strlen(annotator));
+		    feed_tty(annotator, strlen(annotator));
 		else
-		    ttysw_input(tty, "\"\"", 2);
+		    feed_tty("\"\"", 2);
 		p1 = p2 += 9;
 	    }
 	    else if (strncmp(p1, "START", 5) == 0) {
@@ -902,7 +969,7 @@ void do_command(char *p1)
 		    while (*tp == ' ') tp++;
 		}
 		else tp = "0";
-		ttysw_input(tty, tp, strlen(tp));
+		feed_tty(tp, strlen(tp));
 		p1 = p2 += 5;
 	    }
 	    else if (strncmp(p1, "END", 3) == 0) {
@@ -912,7 +979,7 @@ void do_command(char *p1)
 		    tp = "0";
 		else tp = mstimstr(strtim("e"));
 		while (*tp == ' ') tp++;
-		ttysw_input(tty, tp, strlen(tp));
+		feed_tty(tp, strlen(tp));
 		p1 = p2 += 3;
 	    }
 	    else if (strncmp(p1, "DURATION", 8) == 0) {
@@ -925,15 +992,15 @@ void do_command(char *p1)
 		   in place of the duration.  Programs that accept
 		   duration arguments must be written to accept zero
 		   as meaning "unspecified". */
-		if (t1 == 0L) ttysw_input(tty, "0", 1);
+		if (t1 == 0L) feed_tty("0", 1);
 		else {
 		    if (t0 == -1L) t0 = 0L;
 		    tp = mstimstr(t1-t0);
 		    while (*tp == ' ') tp++;
-		    ttysw_input(tty, tp, strlen(tp));
+		    feed_tty(tp, strlen(tp));
 		}
 		p1 = p2 += 8;
-	    }		    
+	    }
 	    else if (strncmp(p1, "SIGNALS", 7) == 0) {
 		char s[4];
 		int nsl;
@@ -941,7 +1008,7 @@ void do_command(char *p1)
 		for (nsl = 0; nsl < siglistlen; nsl++) {
 		    sprintf(s, "%d%s", siglist[nsl],
 			    nsl < siglistlen ? " " : "");
-		    ttysw_input(tty, s, strlen(s));
+		    feed_tty(s, strlen(s));
 		}
 		p1 = p2 += 7;
 	    }
@@ -949,7 +1016,7 @@ void do_command(char *p1)
 		char s[3];
 
 		sprintf(s, "%d", signal_choice);
-		ttysw_input(tty, s, strlen(s));
+		feed_tty(s, strlen(s));
 		p1 = p2 += 6;
 	    }
 	    else if (strncmp(p1, "LEFT", 4) == 0) {
@@ -958,81 +1025,81 @@ void do_command(char *p1)
 		    tp = mstimstr(display_start_time);
 		    while (*tp == ' ') tp++;
 		}
-		ttysw_input(tty, tp, strlen(tp));
+		feed_tty(tp, strlen(tp));
 		p1 = p2 += 4;
 	    }
 	    else if (strncmp(p1, "RIGHT", 5) == 0) {
 		tp = mstimstr(display_start_time + nsamp);
 		while (*tp == ' ') tp++;
-		ttysw_input(tty, tp, strlen(tp));
+		feed_tty(tp, strlen(tp));
 		p1 = p2 += 5;
 	    }
 	    else if (strncmp(p1, "WIDTH", 5) == 0) {
 		tp = mstimstr(nsamp);
 		while (*tp == ' ') tp++;
-		ttysw_input(tty, tp, strlen(tp));
+		feed_tty(tp, strlen(tp));
 		p1 = p2 += 5;
-	    }		    
+	    }
 	    else if (strncmp(p1, "LOG", 3) == 0) {
 		if (*log_file_name == '0')
 		    sprintf(log_file_name, "log.%s", record);
-		ttysw_input(tty, log_file_name, strlen(log_file_name));
+		feed_tty(log_file_name, strlen(log_file_name));
 		p1 = p2 += 3;
 	    }
 	    else if (strncmp(p1, "WFDBCAL", 7) == 0) {
-		ttysw_input(tty, cfname, strlen(cfname));
+		feed_tty(cfname, strlen(cfname));
 		p1 = p2 += 7;
 	    }
 	    else if (strncmp(p1, "WFDB", 4) == 0) {
-		ttysw_input(tty, getwfdb(), strlen(getwfdb()));
+		feed_tty(getwfdb(), strlen(getwfdb()));
 		p1 = p2 += 4;
 	    }
 	    else if (strncmp(p1, "TSCALE", 6) == 0) {
 		char s[10];
 
 		sprintf(s, "%g", mmpersec);
-		ttysw_input(tty, s, strlen(s));
+		feed_tty(s, strlen(s));
 		p1 = p2 += 6;
 	    }
 	    else if (strncmp(p1, "VSCALE", 6) == 0) {
 		char s[10];
 
 		sprintf(s, "%g", mmpermv);
-		ttysw_input(tty, s, strlen(s));
+		feed_tty(s, strlen(s));
 		p1 = p2 += 6;
 	    }
 	    else if (strncmp(p1, "DISPMODE", 8) == 0) {
 		char s[3];
 
 		sprintf(s, "%d", (ann_mode << 1) | show_marker);
-		ttysw_input(tty, s, strlen(s));
+		feed_tty(s, strlen(s));
 		p1 = p2 += 8;
 	    }
 	    else if (strncmp(p1, "PSPRINT", 7) == 0) {
-		ttysw_input(tty, psprint, strlen(psprint));
+		feed_tty(psprint, strlen(psprint));
 		p1 = p2 += 7;
 	    }
 	    else if (strncmp(p1, "TEXTPRINT", 7) == 0) {
-		ttysw_input(tty, textprint, strlen(textprint));
+		feed_tty(textprint, strlen(textprint));
 		p1 = p2 += 9;
 	    }
 	    else if (strncmp(p1, "URL", 3) == 0) {
-		ttysw_input(tty, url, strlen(url));
+		feed_tty(url, strlen(url));
 		p1 = p2 += 3;
 	    }
 	    else
 		p1--;
 	}
     }
-    ttysw_input(tty, p1, p2-p1);
+    feed_tty(p1, p2-p1);
 }
 
-void do_analysis(Panel_item item, Event *event)
+void do_analysis(GtkWidget *widget, gpointer data)
 {
-    char *p1, *p2, *tp;
+    (void)data;
     int i, j;
 
-    i = (int)xv_get(item, PANEL_CLIENT_DATA);
+    i = GPOINTER_TO_INT(g_object_get_data(G_OBJECT(widget), "menu-index"));
     for (j=0, mep = &menu_head; j<i && mep->nme != NULL; j++, mep = mep->nme)
 	;
     if (j == i && mep->nme != NULL && mep->nme->command != NULL)
@@ -1041,37 +1108,38 @@ void do_analysis(Panel_item item, Event *event)
 
 static char fname[20];
 
-/* This function gets called once per second while the timer is running.
+/* This function gets called periodically while the timer is running.
    Once the temporary file named by fname contains readable data, it
-   waits one more second, turns off the timer, and then deletes the file. */
+   waits one more cycle, removes the timer, and then deletes the file. */
 
-Notify_value check_if_done(void)
+static guint check_timer_id;
+
+static gboolean check_if_done(gpointer data)
 {
+    (void)data;
     FILE *tfile;
     static int file_ready;
-    void reinitialize();
+    void reinitialize(void);
 
     if (file_ready) {
-	notify_set_itimer_func(analyze_frame, NOTIFY_FUNC_NULL, ITIMER_REAL,
-			       NULL, NULL);
+	check_timer_id = 0;
 	unlink(fname);
 	file_ready = 0;
 	reinitialize();
-	set_start(start_item, (Event *)NULL);
-	set_stop(end_item, (Event *)NULL);
-	return (NOTIFY_DONE);
+	set_start_from_entry(start_item, NULL);
+	set_stop_from_entry(end_item, NULL);
+	return G_SOURCE_REMOVE;
     }
     if ((tfile = fopen(fname, "r")) == NULL)
-	return (NOTIFY_DONE);
+	return G_SOURCE_CONTINUE;
     fclose(tfile);
     file_ready++;
-    return (NOTIFY_DONE);
+    return G_SOURCE_CONTINUE;
 }
 
 void reload(void)
 {
-  static char command[80];
-    static struct itimerval timer;
+    static char command[80];
 
     if (fname[0] == '\0') {
 	sprintf(fname, "/tmp/wave.XXXXXX");
@@ -1079,7 +1147,6 @@ void reload(void)
 	sprintf(command, "touch %s\n", fname);
     }
     do_command(command);
-    timer.it_value.tv_sec = timer.it_interval.tv_sec = 1;
-    notify_set_itimer_func(analyze_frame, check_if_done, ITIMER_REAL,
-			   &timer, NULL);
+    if (check_timer_id == 0)
+	check_timer_id = g_timeout_add(1000, check_if_done, NULL);
 }

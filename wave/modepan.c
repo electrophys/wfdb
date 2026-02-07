@@ -1,6 +1,6 @@
 /* file: modepan.c	G. Moody        30 April 1990
-			Last revised:	24 April 2020
-Mode panel functions for WAVE
+			Last revised:	2026
+Mode panel functions for WAVE (GTK 3 version)
 
 -------------------------------------------------------------------------------
 WAVE: Waveform analyzer, viewer, and editor
@@ -26,41 +26,19 @@ _______________________________________________________________________________
 */
 
 #include "wave.h"
-#include "xvwave.h"
+#include "gtkwave.h"
 
-Panel_item grid_item, opt_item, sig_item, ann_item, ov_item, tim_item, ts_item,
-    vs_item, redraw_item;
-Frame mode_frame;
-Panel mode_panel;
+/* GTK widgets for the View popup */
+static GtkWidget *mode_window;
 
-/* Undo any mode changes. */
-void mode_undo(void)
-{
-    xv_set(ts_item, PANEL_VALUE, tsa_index, NULL);
-    xv_set(vs_item, PANEL_VALUE, vsa_index, NULL);
-    xv_set(sig_item, PANEL_VALUE, sig_mode, NULL);
-    xv_set(ann_item, PANEL_VALUE, ann_mode, NULL);
-    xv_set(ov_item, PANEL_VALUE, overlap, NULL);
-    xv_set(tim_item, PANEL_VALUE, time_mode, NULL);
-    xv_set(grid_item, PANEL_VALUE, grid_mode, NULL);
-    xv_set(opt_item, PANEL_VALUE,
-	    (show_subtype & 1) |
-	   ((show_chan    & 1) << 1) |
-	   ((show_num     & 1) << 2) |
-	   ((show_aux     & 1) << 3) |
-	   ((show_marker  & 1) << 4) |
-	   ((show_signame & 1) << 5) |
-	   ((show_baseline& 1) << 6) |
-	   ((show_level   & 1) << 7),
-	   NULL);
-}
+/* "Show" check buttons (replaces PANEL_CHOICE with PANEL_CHOOSE_ONE=FALSE) */
+static GtkWidget *show_subtype_btn, *show_chan_btn, *show_num_btn,
+    *show_aux_btn, *show_marker_btn, *show_signame_btn,
+    *show_baseline_btn, *show_level_btn;
 
-/* Redraw and take down the window. */
-static void redraw_proc(Panel_item item, Event *event)
-{
-    dismiss_mode();
-    disp_proc(item, event);
-}
+/* Combo boxes (replace PANEL_CHOICE_STACK items) */
+static GtkWidget *ts_combo, *vs_combo, *sig_combo, *grid_combo,
+    *ann_combo, *ov_combo, *tim_combo;
 
 int mode_popup_active = -1;
 char *tchoice[] = {"0.25 mm/hour", "1 mm/hour", "5 mm/hour",
@@ -72,116 +50,235 @@ char *tchoice[] = {"0.25 mm/hour", "1 mm/hour", "5 mm/hour",
 char *vchoice[] = { "1 mm/mV", "2.5 mm/mV", "5 mm/mV", "10 mm/mV", "20 mm/mV",
    "40 mm/mV", "100 mm/mV" };
 
+/* Undo any mode changes: reset widgets to match current global state. */
+void mode_undo(void)
+{
+    if (mode_popup_active < 0) return;
+
+    gtk_combo_box_set_active(GTK_COMBO_BOX(ts_combo), tsa_index);
+    gtk_combo_box_set_active(GTK_COMBO_BOX(vs_combo), vsa_index);
+    gtk_combo_box_set_active(GTK_COMBO_BOX(sig_combo), sig_mode);
+    gtk_combo_box_set_active(GTK_COMBO_BOX(ann_combo), ann_mode);
+    gtk_combo_box_set_active(GTK_COMBO_BOX(ov_combo), overlap);
+    gtk_combo_box_set_active(GTK_COMBO_BOX(tim_combo), time_mode);
+    gtk_combo_box_set_active(GTK_COMBO_BOX(grid_combo), grid_mode);
+
+    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(show_subtype_btn),
+				 show_subtype & 1);
+    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(show_chan_btn),
+				 show_chan & 1);
+    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(show_num_btn),
+				 show_num & 1);
+    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(show_aux_btn),
+				 show_aux & 1);
+    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(show_marker_btn),
+				 show_marker & 1);
+    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(show_signame_btn),
+				 show_signame & 1);
+    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(show_baseline_btn),
+				 show_baseline & 1);
+    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(show_level_btn),
+				 show_level & 1);
+}
+
+/* Callback for "Undo changes" button. */
+static void undo_clicked(GtkWidget *widget, gpointer data)
+{
+    mode_undo();
+}
+
+/* Callback for "Redraw" button: dismiss window and redraw. */
+static void redraw_clicked(GtkWidget *widget, gpointer data)
+{
+    dismiss_mode();
+    disp_proc(".");
+}
+
+/* Callback for "Save as new defaults" button. */
+static void save_defaults_clicked(GtkWidget *widget, gpointer data)
+{
+    set_modes();
+    save_defaults();
+}
+
+/* Prevent the window from being destroyed when closed; hide it instead. */
+static gboolean on_delete_event(GtkWidget *widget, GdkEvent *event,
+				gpointer data)
+{
+    dismiss_mode();
+    return TRUE;	/* TRUE = do not destroy the window */
+}
+
+/* Helper: create a GtkComboBoxText and populate it from a NULL-terminated
+   array of strings, setting initial_active as the active item. */
+static GtkWidget *make_combo(const char **choices, int n, int initial_active)
+{
+    GtkWidget *combo = gtk_combo_box_text_new();
+    int i;
+
+    for (i = 0; i < n; i++)
+	gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(combo), choices[i]);
+    gtk_combo_box_set_active(GTK_COMBO_BOX(combo), initial_active);
+    return combo;
+}
+
 /* Set up popup window for adjusting display modes. */
 void create_mode_popup(void)
 {
-    extern void save_defaults(void);	/* in xvwave.c */
-    Icon icon;
+    GtkWidget *grid, *label, *btn_box;
+    GtkWidget *undo_btn, *redraw_btn, *save_btn;
+    int row = 0;
 
-    icon = xv_create(XV_NULL, ICON,
-		     ICON_IMAGE, icon_image,
-		     ICON_LABEL, "View",
-		     NULL);
-    mode_frame = xv_create(frame, FRAME_CMD,
-	XV_LABEL, "View",
-	FRAME_ICON, icon, 0);
-    mode_panel = xv_get(mode_frame, FRAME_CMD_PANEL, 0);
+    /* Create the top-level window. */
+    mode_window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+    gtk_window_set_title(GTK_WINDOW(mode_window), "View");
+    gtk_window_set_transient_for(GTK_WINDOW(mode_window),
+				 GTK_WINDOW(main_window));
+    gtk_window_set_destroy_with_parent(GTK_WINDOW(mode_window), TRUE);
+    g_signal_connect(mode_window, "delete-event",
+		     G_CALLBACK(on_delete_event), NULL);
+    gtk_container_set_border_width(GTK_CONTAINER(mode_window), 8);
 
-    opt_item = xv_create(mode_panel, PANEL_CHOICE,
-        PANEL_CHOOSE_ONE, FALSE,
-	XV_HELP_DATA, "wave:view.show",
-	PANEL_LABEL_STRING, "Show: ",
-	PANEL_CHOICE_STRINGS,
-	      "subtype", "`chan' field", "`num' field", "`aux' field",
-	      "markers", "signal names", "baselines", "level", NULL,
-	PANEL_VALUE, 0,
-        0);
-    ts_item = xv_create(mode_panel, PANEL_CHOICE_STACK,
-	XV_HELP_DATA, "wave:view.time_scale",
-	PANEL_LABEL_STRING, "Time scale: ",
-	PANEL_CHOICE_STRINGS,
-	      tchoice[0], tchoice[1], tchoice[2], tchoice[3], tchoice[4],
-	      tchoice[5], tchoice[6], tchoice[7], tchoice[8], tchoice[9],
-	      tchoice[10],tchoice[11],tchoice[12],tchoice[13],tchoice[14],
-	      tchoice[15],tchoice[16],tchoice[17],tchoice[18],tchoice[19],
-	      tchoice[20],tchoice[21],tchoice[22],tchoice[23],tchoice[24],
-	      tchoice[25],
-	      NULL,
-	PANEL_VALUE, DEF_TSA_INDEX,
-	PANEL_DEFAULT_VALUE, DEF_TSA_INDEX,
-	0);
-    vs_item = xv_create(mode_panel, PANEL_CHOICE_STACK,
-	XV_HELP_DATA, "wave:view.amplitude_scale",
-	PANEL_LABEL_STRING, "Amplitude scale: ",
-	PANEL_CHOICE_STRINGS,
-	      vchoice[0], vchoice[1], vchoice[2], vchoice[3], vchoice[4],
-	      vchoice[5], vchoice[6], NULL,
-	PANEL_VALUE, DEF_VSA_INDEX,
-	PANEL_DEFAULT_VALUE, DEF_VSA_INDEX,
-	0);
-    sig_item = xv_create(mode_panel, PANEL_CHOICE_STACK,
-	XV_HELP_DATA, "wave:view.draw",
-	PANEL_LABEL_STRING, "Draw: ",
-	PANEL_CHOICE_STRINGS,
-	      "all signals", "listed signals only", "valid signals only", NULL,
-	PANEL_VALUE, 0,
-	PANEL_DEFAULT_VALUE, 0,
-	0);
-    grid_item = xv_create(mode_panel, PANEL_CHOICE_STACK,
-	XV_HELP_DATA, "wave:view.grid",
-	PANEL_LABEL_STRING, "Grid: ",
-	PANEL_CHOICE_STRINGS,"None", "0.2 s", "0.5 mV", "0.2 s x 0.5 mV",
-			     "0.04 s x 0.1 mV", "1 m x 0.5 mV", "1 m x 0.1 mV",
-			     NULL,
-	PANEL_VALUE, 0,
-	PANEL_DEFAULT_VALUE, 3,
-	0);
-    ann_item = xv_create(mode_panel, PANEL_CHOICE_STACK,
-	PANEL_NEXT_ROW, -1,
-	XV_HELP_DATA, "wave:view.show_annotations",
-	PANEL_LABEL_STRING, "Show annotations: ",
-	PANEL_CHOICE_STRINGS,
-	      "centered", "attached to signals", "as a signal", NULL,
-	PANEL_VALUE, 0,
-	PANEL_DEFAULT_VALUE, 0,
-	0);
-    ov_item = xv_create(mode_panel, PANEL_CHOICE_STACK,
-	XV_HELP_DATA, "wave:view.overlap",
-	PANEL_CHOICE_STRINGS,
-	      "avoid overlap", "allow overlap", NULL,
-        PANEL_VALUE, 0,
-        PANEL_DEFAULT_VALUE, 0,
-	0);
-    tim_item = xv_create(mode_panel, PANEL_CHOICE_STACK,
-	XV_HELP_DATA, "wave:view.time_display",
-	PANEL_LABEL_STRING, "Time display: ",
-	PANEL_CHOICE_STRINGS,
-	      "elapsed", "absolute", "in sample intervals", NULL,
-	PANEL_VALUE, 0,
-	PANEL_DEFAULT_VALUE, 0,
-	0);
-    xv_create(mode_panel, PANEL_BUTTON,
-	PANEL_NEXT_ROW, -1,
-	XV_HELP_DATA, "wave:view.undo",
-	PANEL_LABEL_STRING, "Undo changes",
-	PANEL_NOTIFY_PROC, mode_undo,
-	0);
-    redraw_item = xv_create(mode_panel, PANEL_BUTTON,
-	XV_HELP_DATA, "wave:view.redraw",
-	PANEL_LABEL_STRING, "Redraw",
-	PANEL_NOTIFY_PROC, redraw_proc,
-	PANEL_CLIENT_DATA, (caddr_t) '.',
-	0);
-    xv_create(mode_panel, PANEL_BUTTON,
-	XV_HELP_DATA, "wave:view.save_as_new_defaults",
-	PANEL_LABEL_STRING, "Save as new defaults",
-	PANEL_NOTIFY_PROC, save_defaults,
-	0);
+    /* Use a GtkGrid for the layout. */
+    grid = gtk_grid_new();
+    gtk_grid_set_row_spacing(GTK_GRID(grid), 6);
+    gtk_grid_set_column_spacing(GTK_GRID(grid), 8);
+    gtk_container_add(GTK_CONTAINER(mode_window), grid);
 
-    xv_set(mode_panel, PANEL_DEFAULT_ITEM, redraw_item, NULL);
+    /* --- "Show:" check buttons (replaces multi-select PANEL_CHOICE) --- */
+    label = gtk_label_new("Show:");
+    gtk_widget_set_halign(label, GTK_ALIGN_END);
+    gtk_grid_attach(GTK_GRID(grid), label, 0, row, 1, 1);
 
-    window_fit(mode_panel);
-    window_fit(mode_frame);
+    {
+	/* Pack all check buttons into a vertical box in column 1. */
+	GtkWidget *vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 2);
+
+	show_subtype_btn  = gtk_check_button_new_with_label("subtype");
+	show_chan_btn      = gtk_check_button_new_with_label("'chan' field");
+	show_num_btn      = gtk_check_button_new_with_label("'num' field");
+	show_aux_btn      = gtk_check_button_new_with_label("'aux' field");
+	show_marker_btn   = gtk_check_button_new_with_label("markers");
+	show_signame_btn  = gtk_check_button_new_with_label("signal names");
+	show_baseline_btn = gtk_check_button_new_with_label("baselines");
+	show_level_btn    = gtk_check_button_new_with_label("level");
+
+	gtk_box_pack_start(GTK_BOX(vbox), show_subtype_btn, FALSE, FALSE, 0);
+	gtk_box_pack_start(GTK_BOX(vbox), show_chan_btn, FALSE, FALSE, 0);
+	gtk_box_pack_start(GTK_BOX(vbox), show_num_btn, FALSE, FALSE, 0);
+	gtk_box_pack_start(GTK_BOX(vbox), show_aux_btn, FALSE, FALSE, 0);
+	gtk_box_pack_start(GTK_BOX(vbox), show_marker_btn, FALSE, FALSE, 0);
+	gtk_box_pack_start(GTK_BOX(vbox), show_signame_btn, FALSE, FALSE, 0);
+	gtk_box_pack_start(GTK_BOX(vbox), show_baseline_btn, FALSE, FALSE, 0);
+	gtk_box_pack_start(GTK_BOX(vbox), show_level_btn, FALSE, FALSE, 0);
+
+	gtk_grid_attach(GTK_GRID(grid), vbox, 1, row, 1, 1);
+    }
+    row++;
+
+    /* --- Time scale --- */
+    label = gtk_label_new("Time scale:");
+    gtk_widget_set_halign(label, GTK_ALIGN_END);
+    gtk_grid_attach(GTK_GRID(grid), label, 0, row, 1, 1);
+    ts_combo = make_combo((const char **)tchoice, 26, DEF_TSA_INDEX);
+    gtk_grid_attach(GTK_GRID(grid), ts_combo, 1, row, 1, 1);
+    row++;
+
+    /* --- Amplitude scale --- */
+    label = gtk_label_new("Amplitude scale:");
+    gtk_widget_set_halign(label, GTK_ALIGN_END);
+    gtk_grid_attach(GTK_GRID(grid), label, 0, row, 1, 1);
+    vs_combo = make_combo((const char **)vchoice, 7, DEF_VSA_INDEX);
+    gtk_grid_attach(GTK_GRID(grid), vs_combo, 1, row, 1, 1);
+    row++;
+
+    /* --- Draw (signal display mode) --- */
+    label = gtk_label_new("Draw:");
+    gtk_widget_set_halign(label, GTK_ALIGN_END);
+    gtk_grid_attach(GTK_GRID(grid), label, 0, row, 1, 1);
+    {
+	static const char *sig_choices[] = {
+	    "all signals", "listed signals only", "valid signals only"
+	};
+	sig_combo = make_combo(sig_choices, 3, 0);
+    }
+    gtk_grid_attach(GTK_GRID(grid), sig_combo, 1, row, 1, 1);
+    row++;
+
+    /* --- Grid --- */
+    label = gtk_label_new("Grid:");
+    gtk_widget_set_halign(label, GTK_ALIGN_END);
+    gtk_grid_attach(GTK_GRID(grid), label, 0, row, 1, 1);
+    {
+	static const char *grid_choices[] = {
+	    "None", "0.2 s", "0.5 mV", "0.2 s x 0.5 mV",
+	    "0.04 s x 0.1 mV", "1 m x 0.5 mV", "1 m x 0.1 mV"
+	};
+	grid_combo = make_combo(grid_choices, 7, 0);
+    }
+    gtk_grid_attach(GTK_GRID(grid), grid_combo, 1, row, 1, 1);
+    row++;
+
+    /* --- Show annotations --- */
+    label = gtk_label_new("Show annotations:");
+    gtk_widget_set_halign(label, GTK_ALIGN_END);
+    gtk_grid_attach(GTK_GRID(grid), label, 0, row, 1, 1);
+    {
+	static const char *ann_choices[] = {
+	    "centered", "attached to signals", "as a signal"
+	};
+	ann_combo = make_combo(ann_choices, 3, 0);
+    }
+    gtk_grid_attach(GTK_GRID(grid), ann_combo, 1, row, 1, 1);
+    row++;
+
+    /* --- Overlap --- */
+    label = gtk_label_new("Overlap:");
+    gtk_widget_set_halign(label, GTK_ALIGN_END);
+    gtk_grid_attach(GTK_GRID(grid), label, 0, row, 1, 1);
+    {
+	static const char *ov_choices[] = {
+	    "avoid overlap", "allow overlap"
+	};
+	ov_combo = make_combo(ov_choices, 2, 0);
+    }
+    gtk_grid_attach(GTK_GRID(grid), ov_combo, 1, row, 1, 1);
+    row++;
+
+    /* --- Time display --- */
+    label = gtk_label_new("Time display:");
+    gtk_widget_set_halign(label, GTK_ALIGN_END);
+    gtk_grid_attach(GTK_GRID(grid), label, 0, row, 1, 1);
+    {
+	static const char *tim_choices[] = {
+	    "elapsed", "absolute", "in sample intervals"
+	};
+	tim_combo = make_combo(tim_choices, 3, 0);
+    }
+    gtk_grid_attach(GTK_GRID(grid), tim_combo, 1, row, 1, 1);
+    row++;
+
+    /* --- Action buttons --- */
+    btn_box = gtk_button_box_new(GTK_ORIENTATION_HORIZONTAL);
+    gtk_button_box_set_layout(GTK_BUTTON_BOX(btn_box), GTK_BUTTONBOX_START);
+    gtk_box_set_spacing(GTK_BOX(btn_box), 8);
+
+    undo_btn = gtk_button_new_with_label("Undo changes");
+    g_signal_connect(undo_btn, "clicked", G_CALLBACK(undo_clicked), NULL);
+    gtk_container_add(GTK_CONTAINER(btn_box), undo_btn);
+
+    redraw_btn = gtk_button_new_with_label("Redraw");
+    g_signal_connect(redraw_btn, "clicked", G_CALLBACK(redraw_clicked), NULL);
+    gtk_container_add(GTK_CONTAINER(btn_box), redraw_btn);
+
+    save_btn = gtk_button_new_with_label("Save as new defaults");
+    g_signal_connect(save_btn, "clicked",
+		     G_CALLBACK(save_defaults_clicked), NULL);
+    gtk_container_add(GTK_CONTAINER(btn_box), save_btn);
+
+    gtk_grid_attach(GTK_GRID(grid), btn_box, 0, row, 2, 1);
+
+    gtk_widget_show_all(grid);
     mode_popup_active = 0;
 }
 
@@ -189,7 +286,8 @@ void create_mode_popup(void)
 void show_mode(void)
 {
     if (mode_popup_active < 0) create_mode_popup();
-    xv_set(mode_frame, WIN_SHOW, TRUE, 0);
+    gtk_widget_show(mode_window);
+    gtk_window_present(GTK_WINDOW(mode_window));
     mode_popup_active = 1;
 }
 
@@ -203,7 +301,7 @@ void set_modes(void)
     if (mode_popup_active < 0) return;
 
     /* Read the current panel settings, beginning with the grid option. */
-    switch (grid_mode = (int)xv_get(grid_item, PANEL_VALUE)) {
+    switch (grid_mode = gtk_combo_box_get_active(GTK_COMBO_BOX(grid_combo))) {
       case 0: ghflag = gvflag = visible = 0; break;
       case 1: ghflag = 0; gvflag = visible = 1; break;
       case 2: ghflag = visible = 1; gvflag = 0; break;
@@ -213,32 +311,38 @@ void set_modes(void)
       case 6: ghflag = visible = 2; gvflag = 3; break;
     }
 
-    /* Next, check the annotation display options.  The bit mask assignments
-       below are determined by the order of the PANEL_CHOICE_STRINGS for
-       opt_item in create_mode_popup(), above. */
-    i = (int)xv_get(opt_item, PANEL_VALUE);
-    show_subtype =  i       & 1;
-    show_chan    = (i >> 1) & 1;
-    show_num     = (i >> 2) & 1;
-    show_aux	 = (i >> 3) & 1;
-    show_marker  = (i >> 4) & 1;
-    show_signame = (i >> 5) & 1;
-    show_baseline= (i >> 6) & 1;
-    show_level	 = (i >> 7) & 1;
+    /* Next, check the annotation display options.  Each check button
+       corresponds to one bit in the original opt_item bitmask. */
+    show_subtype  = gtk_toggle_button_get_active(
+			GTK_TOGGLE_BUTTON(show_subtype_btn)) ? 1 : 0;
+    show_chan     = gtk_toggle_button_get_active(
+			GTK_TOGGLE_BUTTON(show_chan_btn)) ? 1 : 0;
+    show_num      = gtk_toggle_button_get_active(
+			GTK_TOGGLE_BUTTON(show_num_btn)) ? 1 : 0;
+    show_aux      = gtk_toggle_button_get_active(
+			GTK_TOGGLE_BUTTON(show_aux_btn)) ? 1 : 0;
+    show_marker   = gtk_toggle_button_get_active(
+			GTK_TOGGLE_BUTTON(show_marker_btn)) ? 1 : 0;
+    show_signame  = gtk_toggle_button_get_active(
+			GTK_TOGGLE_BUTTON(show_signame_btn)) ? 1 : 0;
+    show_baseline = gtk_toggle_button_get_active(
+			GTK_TOGGLE_BUTTON(show_baseline_btn)) ? 1 : 0;
+    show_level    = gtk_toggle_button_get_active(
+			GTK_TOGGLE_BUTTON(show_level_btn)) ? 1 : 0;
 
     /* Check the signal display options next. */
     i = sig_mode;
-    sig_mode = (int)xv_get(sig_item, PANEL_VALUE);
+    sig_mode = gtk_combo_box_get_active(GTK_COMBO_BOX(sig_combo));
     if (i != sig_mode || sig_mode == 2)
 	set_baselines();
 
     /* Check the annotation display mode next. */
-    ann_mode = (int)xv_get(ann_item, PANEL_VALUE);
-    overlap = (int)xv_get(ov_item, PANEL_VALUE);
+    ann_mode = gtk_combo_box_get_active(GTK_COMBO_BOX(ann_combo));
+    overlap = gtk_combo_box_get_active(GTK_COMBO_BOX(ov_combo));
 
     /* Check the time display mode next. */
     i = time_mode;
-    time_mode = (int)xv_get(tim_item, PANEL_VALUE);
+    time_mode = gtk_combo_box_get_active(GTK_COMBO_BOX(tim_combo));
     /* The `nsig > 0' test is a bit of a kludge -- we don't want to reset the
        time_mode before the record has been opened, because we don't know if
        absolute times are available until then. */
@@ -255,15 +359,15 @@ void set_modes(void)
     /* The purpose of the complex method of computing canvas_width_sec is to
        obtain a "rational" value for it even if the frame has been resized.
        First, we determine the number of 5 mm time-grid units in the window
-       (note that the resize procedure in xvwave.c guarantees that this will
-       be an integer;  the odd calculation is intended to take care of
-       roundoff error in pixel-to-millimeter conversion).  For each scale,
-       the multiplier of u is simply the number of seconds that would be
-       represented by 5 mm.   Since u is usually a multiple of 5 (except on
-       small displays, or if the frame has been resized to a small size),
-       the calculated widths in seconds are usually integers, at worst
-       expressible as an integral number of tenths of seconds. */
-    if ((i = xv_get(ts_item, PANEL_VALUE)) >= 0) {
+       (note that the resize procedure guarantees that this will be an integer;
+       the odd calculation is intended to take care of roundoff error in
+       pixel-to-millimeter conversion).  For each scale, the multiplier of u
+       is simply the number of seconds that would be represented by 5 mm.
+       Since u is usually a multiple of 5 (except on small displays, or if
+       the frame has been resized to a small size), the calculated widths in
+       seconds are usually integers, at worst expressible as an integral
+       number of tenths of seconds. */
+    if ((i = gtk_combo_box_get_active(GTK_COMBO_BOX(ts_combo))) >= 0) {
 	int u = ((int)(canvas_width/dmmx(1) + 1)/5);	/* number of 5 mm
 							   time-grid units */
 	switch (tsa_index = i) {
@@ -350,7 +454,7 @@ void set_modes(void)
 
     /* Computation of canvas_height_mv could be as complex as above, but
        it doesn't seem so important to obtain a "rational" value here. */
-    if ((i = xv_get(vs_item, PANEL_VALUE)) >= 0 && i < 7) {
+    if ((i = gtk_combo_box_get_active(GTK_COMBO_BOX(vs_combo))) >= 0 && i < 7) {
 	mmpermv = vsa[i];
 	canvas_height_mv = canvas_height/dmmy(vsa[vsa_index = i]);
     }
@@ -364,10 +468,9 @@ void set_modes(void)
 /* Effect any mode changes that were selected and make the popup disappear. */
 void dismiss_mode(void)
 {
-    /* If the panel is currently visible, make it go away. */
-    if (mode_popup_active > 0 &&
-	(int)xv_get(mode_frame, FRAME_CMD_PUSHPIN_IN) == FALSE) {
-	xv_set(mode_frame, WIN_SHOW, FALSE, 0);
+    /* If the panel is currently visible, hide it. */
+    if (mode_popup_active > 0) {
+	gtk_widget_hide(mode_window);
 	mode_popup_active = 0;
     }
     set_modes();
@@ -419,7 +522,9 @@ char *wtimstr(WFDB_Time t)
 	    }
 	    else {
 		time_mode = 0;
-		if (tim_item) xv_set(tim_item, PANEL_VALUE, time_mode, NULL);
+		if (tim_combo)
+		    gtk_combo_box_set_active(GTK_COMBO_BOX(tim_combo),
+					    time_mode);
 	    }
 	    return (p);
         }
@@ -455,7 +560,9 @@ char *wmstimstr(WFDB_Time t)
 	    }
 	    else {
 		time_mode = 0;
-		if (tim_item) xv_set(tim_item, PANEL_VALUE, time_mode, NULL);
+		if (tim_combo)
+		    gtk_combo_box_set_active(GTK_COMBO_BOX(tim_combo),
+					    time_mode);
 	    }
 	    return (p);
 	}

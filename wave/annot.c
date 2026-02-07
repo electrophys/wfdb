@@ -1,5 +1,5 @@
 /* file: annot.c	G. Moody	  1 May 1990
-			Last revised:    24 April 2020
+			Last revised:	  2026
 Annotation list handling and display functions for WAVE
 
 -------------------------------------------------------------------------------
@@ -26,31 +26,19 @@ _______________________________________________________________________________
 */
 
 #include "wave.h"
-#include "xvwave.h"
+#include "gtkwave.h"
 #include <sys/time.h>
 #include <wfdb/ecgmap.h>
-#include <xview/defaults.h>
-#include <xview/notice.h>
 
-void set_frame_title();
+void set_frame_title(void);
 
 struct ap *get_ap(void)
 {
     struct ap *a;
 
     if ((a = (struct ap *)malloc(sizeof(struct ap))) == NULL) {
-#ifdef NOTICE
-	Xv_notice notice = xv_create((Frame)frame, NOTICE,
-				     XV_SHOW, TRUE,
-#else
-	(void)notice_prompt((Frame)frame, (Event *)NULL,
-#endif
-		      NOTICE_MESSAGE_STRINGS,
-		      "Error in allocating memory for annotations\n", 0,
-		      NOTICE_BUTTON_YES, "Continue", 0);
-#ifdef NOTICE
-	xv_destroy_safe(notice);
-#endif
+	wave_notice_prompt(
+	    "Error in allocating memory for annotations\n");
     }
     return (a);
 }
@@ -82,7 +70,7 @@ int annot_init(void)
 
     /* Free any memory that was previously allocated for annotations.
        This might take a while ... */
-    if (frame) xv_set(frame, FRAME_BUSY, TRUE, NULL);
+    if (main_window) wave_set_busy(1);
     while (ap_end) {
 	a = ap_end->previous;
 	if (ap_end->this.aux) free(ap_end->this.aux);
@@ -95,22 +83,10 @@ int annot_init(void)
 	char ts[ANLMAX+3];
 	int dummy = (int)sprintf(ts, "`%s'", af.name);
 
-#ifdef NOTICE
-	Xv_notice notice = xv_create((Frame)frame, NOTICE,
-				     XV_SHOW, TRUE,
-#else
-	(void)notice_prompt((Frame)frame, (Event *)NULL,
-#endif
-			    NOTICE_MESSAGE_STRINGS,
-			    "The annotator name:",
-			    ts,
-			    "cannot be used.  Press `Continue', then",
-			    "select an annotator name containing only",
-			    "letters, digits, tildes, and underscores.", 0,
-			    NOTICE_BUTTON_YES, "Continue", NULL);
-#ifdef NOTICE
-	xv_destroy_safe(notice);
-#endif
+	wave_notice_prompt(
+	    "The annotator name cannot be used.  Press `OK', then\n"
+	    "select an annotator name containing only\n"
+	    "letters, digits, tildes, and underscores.");
 	af.name = NULL;
 	annotator[0] = '\0';
 	set_annot_item("");
@@ -129,7 +105,7 @@ int annot_init(void)
     else setafreq(0.);
     if (nann < 1 || annopen(record, &af, 1) < 0) {
 	ap_start = annp = scope_annp = NULL;
-	if (frame) xv_set(frame, FRAME_BUSY, FALSE, NULL);
+	if (main_window) wave_set_busy(0);
 	return (annotations = 0);
     }
     if (getgvmode() & WFDB_HIGHRES) setafreq(freq);
@@ -137,7 +113,7 @@ int annot_init(void)
     if ((ap_start = annp = scope_annp = a = get_ap()) == NULL ||
 	getann(0, &(a->this))) {
 	(void)annopen(record, NULL, 0);
-	if (frame) xv_set(frame, FRAME_BUSY, FALSE, NULL);
+	if (main_window) wave_set_busy(0);
 	return (annotations = 0);
     }
 
@@ -153,21 +129,11 @@ int annot_init(void)
 	   if we run out of memory. */
 	if (a->this.aux) {
 	    if ((p = (char *)calloc(*(a->this.aux)+2, 1)) == NULL) {
-		if (frame)
-		    xv_set(frame, FRAME_BUSY, FALSE, NULL);
-		if (frame) {
-#ifdef NOTICE
-		    Xv_notice notice = xv_create((Frame)frame, NOTICE,
-						 XV_SHOW, TRUE,
-#else
-		    (void)notice_prompt((Frame)frame, (Event *)NULL,
-#endif
-		      NOTICE_MESSAGE_STRINGS,
-		      "Error in allocating memory for aux string\n", 0,
-		      NOTICE_BUTTON_YES, "Continue", 0);
-#ifdef NOTICE
-		    xv_destroy_safe(notice);
-#endif
+		if (main_window)
+		    wave_set_busy(0);
+		if (main_window) {
+		    wave_notice_prompt(
+			"Error in allocating memory for aux string\n");
 		}
 		return (annotations = 1);
 	    }
@@ -178,14 +144,14 @@ int annot_init(void)
 
     /* Return 1 if we ran out of memory while reading the annotation file. */
     if (a == NULL) {
-	if (frame) xv_set(frame, FRAME_BUSY, FALSE, NULL);
+	if (main_window) wave_set_busy(0);
 	return (annotations = 1);
     }
 
     /* Return 2 if the entire annotation file has been read successfully. */
     else {
 	free(a);	/* release last (unneeded) ap structure */
-	if (frame) xv_set(frame, FRAME_BUSY, FALSE, NULL);
+	if (main_window) wave_set_busy(0);
 	return (annotations = 2);
     }
 }
@@ -278,12 +244,15 @@ void show_annotations(WFDB_Time left, int dt)
     char buf[5], *p;
     int n, s, x, y, ytop, xs = -1, ys;
     WFDB_Time t, right = left + dt;
+    cairo_t *cr;
 
     if (annotations == 0) return;
 
     /* Find the first annotation to be displayed. */
     (void)locate_annotation(left, -128);  /* -128 is the lowest chan value */
     if (annp == NULL) return;
+
+    cr = wave_begin_paint();
 
     /* Display all of the annotations in the window. */
     while (annp->this.time < right) {
@@ -329,8 +298,8 @@ void show_annotations(WFDB_Time left, int dt)
 		    }
 		    p1++;
 		}
-	    }	
-	    break;		
+	    }
+	    break;
 	  case RHYTHM:
 	    y = ytop = abase + linesp;
 	    if (!show_aux && annp->this.aux) p = annp->this.aux+1;
@@ -359,7 +328,7 @@ void show_annotations(WFDB_Time left, int dt)
 	    int yy = y + annp->this.num*vscalea;
 
 	    if (xs >= 0)
-		XDrawLine(display, osb, draw_ann, xs, ys, x, yy);
+		wave_draw_line(cr, WAVE_COLOR_ANNOTATION, xs, ys, x, yy);
 	    xs = x;
 	    ys = yy;
 	}
@@ -386,40 +355,65 @@ void show_annotations(WFDB_Time left, int dt)
 
 		maxwidth = (int)(((annp->next)->this.time-annp->this.time)*
 				 tscale)
-		          - XTextWidth(font, " ", 1);
+		          - wave_text_width(" ");
 
-	        while (n > 3 && XTextWidth(font, p, n) > maxwidth)
+	        while (n > 3 && wave_text_width(p) > maxwidth)
 		    n--;
 	    }
-	    XDrawString(display, osb,
-			annp->this.anntyp == LINK ? draw_sig : draw_ann,
-			x, y, p, n);
+	    {
+		/* Draw only the first n characters of p. */
+		char tmp[256];
+		int len = strlen(p);
+		if (n < len) {
+		    if (n >= (int)sizeof(tmp)) n = (int)sizeof(tmp) - 1;
+		    memcpy(tmp, p, n);
+		    tmp[n] = '\0';
+		    wave_draw_string(cr,
+			annp->this.anntyp == LINK ?
+			    WAVE_COLOR_SIGNAL : WAVE_COLOR_ANNOTATION,
+			x, y, tmp);
+		} else {
+		    wave_draw_string(cr,
+			annp->this.anntyp == LINK ?
+			    WAVE_COLOR_SIGNAL : WAVE_COLOR_ANNOTATION,
+			x, y, p);
+		}
+	    }
 
 	    if (annp->this.anntyp == LINK) {
-		int xx = x + XTextWidth(font, p, n), yy = y + linesp/4;
-
-		XDrawLine(display, osb, draw_sig, x, yy, xx, yy);
+		char tmp[256];
+		int len = strlen(p);
+		if (n < len) {
+		    if (n >= (int)sizeof(tmp)) n = (int)sizeof(tmp) - 1;
+		    memcpy(tmp, p, n);
+		    tmp[n] = '\0';
+		} else {
+		    strncpy(tmp, p, sizeof(tmp) - 1);
+		    tmp[sizeof(tmp) - 1] = '\0';
+		}
+		int xx = x + wave_text_width(tmp), yy = y + linesp/4;
+		wave_draw_line(cr, WAVE_COLOR_SIGNAL, x, yy, xx, yy);
 	    }
-	
+
 	    if (show_subtype) {
 		sprintf(buf, "%d", annp->this.subtyp); p = buf; y += linesp;
-		XDrawString(display, osb, draw_ann, x, y, p, strlen(p));
+		wave_draw_string(cr, WAVE_COLOR_ANNOTATION, x, y, p);
 	    }
 	    if (show_chan) {
 		sprintf(buf, "%d", annp->this.chan); p = buf; y += linesp;
-		XDrawString(display, osb, draw_ann, x, y, p, strlen(p));
+		wave_draw_string(cr, WAVE_COLOR_ANNOTATION, x, y, p);
 	    }
 	    if (show_num) {
 		sprintf(buf, "%d", annp->this.num); p = buf; y += linesp;
-		XDrawString(display, osb, draw_ann, x, y, p, strlen(p));
+		wave_draw_string(cr, WAVE_COLOR_ANNOTATION, x, y, p);
 	    }
 	    if (show_aux && annp->this.aux != NULL) {
 		p = annp->this.aux + 1; y += linesp;
-		XDrawString(display, osb, draw_ann, x, y, p, strlen(p));
+		wave_draw_string(cr, WAVE_COLOR_ANNOTATION, x, y, p);
 	    }
 	}
 	if (show_marker && annp->this.anntyp != NOTQRS) {
-	    XSegment marker[2];
+	    WaveSegment marker[2];
 
 	    marker[0].x1 = marker[0].x2 = marker[1].x1 = marker[1].x2 = x;
 	    if (ann_mode == 1 && (unsigned)annp->this.chan < nsig) {
@@ -455,25 +449,31 @@ void show_annotations(WFDB_Time left, int dt)
 	    }
 	    marker[0].y2 = ytop - linesp;
 	    marker[1].y1 = y + mmy(2);
-	    XDrawSegments(display, osb, draw_ann, marker, 2);
+	    wave_draw_segments(cr, WAVE_COLOR_ANNOTATION, marker, 2);
 	}
 	if (annp->next == NULL) break;
 	annp = annp->next;
-    
+
     }
+
+    wave_end_paint(cr);
 }
 
 void clear_annotation_display(void)
 {
-    if (ann_mode == 1 || (use_overlays && show_marker)) {
-	XFillRectangle(display, osb, clear_ann,
+    cairo_t *cr = wave_begin_paint();
+
+    if (ann_mode == 1 || show_marker) {
+	wave_fill_rect(cr, WAVE_COLOR_BACKGROUND,
 		       0, 0, canvas_width+mmx(10), canvas_height);
-	if (!use_overlays)
-	    do_disp();
+	wave_end_paint(cr);
+	do_disp();
     }
-    else
-	XFillRectangle(display, osb, clear_ann,
+    else {
+	wave_fill_rect(cr, WAVE_COLOR_BACKGROUND,
 		       0, abase-mmy(8), canvas_width+mmx(10), mmy(13));
+	wave_end_paint(cr);
+    }
 }
 
 /* This function locates an annotation at time t, attached to signal s, in the
@@ -548,19 +548,9 @@ void delete_annotation(WFDB_Time t, int s)
     if (locate_annotation(t, s)) {
 	if (annp->this.anntyp <= ACMAX) {	/* not a marker */
 	    if (accept_edit == 0) {
-#ifdef NOTICE
-		Xv_notice notice = xv_create((Frame)frame, NOTICE,
-					     XV_SHOW, TRUE,
-#else
-		(void)notice_prompt((Frame)frame, (Event *)NULL,
-#endif
-		     NOTICE_MESSAGE_STRINGS,
-		     "You may not edit annotations unless you first",
-		     "enable editing from the `Edit' menu.", 0,
-		     NOTICE_BUTTON_YES, "Continue", NULL);
-#ifdef NOTICE
-		xv_destroy_safe(notice);
-#endif
+		wave_notice_prompt(
+		    "You may not edit annotations unless you first\n"
+		    "enable editing from the 'Edit' menu.");
 		return;
 	    }
 	    annp->this.anntyp ^= 0x80;		/* MSB of anntyp is "phantom"
@@ -598,19 +588,9 @@ void delete_annotation(WFDB_Time t, int s)
 void move_annotation(struct ap *a, WFDB_Time t)
 {
     if (a->this.anntyp <= ACMAX && accept_edit == 0) {
-#ifdef NOTICE
-	Xv_notice notice = xv_create((Frame)frame, NOTICE,
-				     XV_SHOW, TRUE,
-#else
-	(void)notice_prompt((Frame)frame, (Event *)NULL,
-#endif
-	     NOTICE_MESSAGE_STRINGS,
-	     "You may not edit annotations unless you first",
-	     "enable editing from the `Edit' menu.", 0,
-	     NOTICE_BUTTON_YES, "Continue", NULL);
-#ifdef NOTICE
-	xv_destroy_safe(notice);
-#endif
+	wave_notice_prompt(
+	    "You may not edit annotations unless you first\n"
+	    "enable editing from the 'Edit' menu.");
 	return;
     }
     /* Remove the annotation from the list by reconstructing the links
@@ -645,7 +625,7 @@ static void do_insertion(struct ap *a)
 	}
     }
     else {			/* insert before annp */
-	a->next = annp;    
+	a->next = annp;
 	a->previous = annp->previous;
 	annp->previous = a;
 	if (a->previous) (a->previous)->next = a;
@@ -659,19 +639,9 @@ static void do_insertion(struct ap *a)
 void insert_annotation(struct ap *a)
 {
     if (accept_edit == 0 && a->this.anntyp <= ACMAX) {
-#ifdef NOTICE
-	Xv_notice notice = xv_create((Frame)frame, NOTICE,
-				     XV_SHOW, TRUE,
-#else
-	(void)notice_prompt((Frame)frame, (Event *)NULL,
-#endif
-	        NOTICE_MESSAGE_STRINGS,
-	        "You may not edit annotations unless you first",
-	        "enable editing from the `Edit' menu.", 0,
-	        NOTICE_BUTTON_YES, "Continue", NULL);
-#ifdef NOTICE
-	xv_destroy_safe(notice);
-#endif
+	wave_notice_prompt(
+	    "You may not edit annotations unless you first\n"
+	    "enable editing from the 'Edit' menu.");
 	return;
     }
     if (locate_annotation(a->this.time, a->this.chan)) {
@@ -740,77 +710,34 @@ void change_annotations(void)
     struct ap *a;
 
     if (accept_edit == 0) {
-#ifdef NOTICE
-	Xv_notice notice = xv_create((Frame)frame, NOTICE,
-				     XV_SHOW, TRUE,
-#else
-	(void)notice_prompt((Frame)frame, (Event *)NULL,
-#endif
-		    NOTICE_MESSAGE_STRINGS,
-		    "You may not edit annotations unless you first",
-		    "enable editing from the `Edit' menu.", 0,
-		    NOTICE_BUTTON_YES, "Continue", NULL);
-#ifdef NOTICE
-	xv_destroy_safe(notice);
-#endif
+	wave_notice_prompt(
+	    "You may not edit annotations unless you first\n"
+	    "enable editing from the 'Edit' menu.");
 	return;
     }
     if (begin_analysis_time == -1L || end_analysis_time == -1L ||
 	begin_analysis_time >= end_analysis_time) {
-#ifdef NOTICE
-	Xv_notice notice = xv_create((Frame)frame, NOTICE,
-				     XV_SHOW, TRUE,
-#else
-	(void)notice_prompt((Frame)frame, (Event *)NULL,
-#endif
-		    NOTICE_MESSAGE_STRINGS,
-		    "You must specify a range by inserting `<' and `>'",
-		    "markers (or by setting the Start and End times",
-		    "in the Analyze panel).", 0,
-		     NOTICE_BUTTON_YES, "Continue", NULL);
-#ifdef NOTICE
-	xv_destroy_safe(notice);
-#endif
+	wave_notice_prompt(
+	    "You must specify a range by inserting '<' and '>'\n"
+	    "markers (or by setting the Start and End times\n"
+	    "in the Analyze panel).");
 	return;
     }
     if (ann_template.anntyp == BEGIN_ANALYSIS ||
 	ann_template.anntyp == END_ANALYSIS) {
-#ifdef NOTICE
-	Xv_notice notice = xv_create((Frame)frame, NOTICE,
-				     XV_SHOW, TRUE,
-#else
-	(void)notice_prompt((Frame)frame, (Event *)NULL,
-#endif
-		    NOTICE_MESSAGE_STRINGS,
-		    "Select a different annotation type.", 0,
-		     NOTICE_BUTTON_YES, "Continue", NULL);
-#ifdef NOTICE
-	xv_destroy_safe(notice);
-#endif
+	wave_notice_prompt("Select a different annotation type.");
 	return;
     }
     if (begin_analysis_time < display_start_time ||
 	end_analysis_time > display_start_time + nsamp) {
 	int result;
 
-#ifdef NOTICE
-	Xv_notice notice = xv_create((Frame)frame, NOTICE,
-				     XV_SHOW, TRUE,
-				     NOTICE_STATUS, &result,
-#else
-	result = notice_prompt((Frame)frame, (Event *)NULL,
-#endif
-		    NOTICE_MESSAGE_STRINGS,
-		    "The range of this action is not limited to visible",
-		    "annotations.  Press `Cancel' to continue without",
-		    "changing any annotations, or `Confirm' to make",
-		    "changes anyway.", 0,
-		    NOTICE_BUTTON_YES, "Cancel",
-		    NOTICE_BUTTON_NO, "Confirm", NULL);
-#ifdef NOTICE
-	xv_destroy_safe(notice);
-#endif
-	if (result == NOTICE_YES) return;
+	result = wave_notice_prompt(
+	    "The range of this action is not limited to visible\n"
+	    "annotations.  Press 'Cancel' to continue without\n"
+	    "changing any annotations, or 'OK' to make\n"
+	    "changes anyway.");
+	if (!result) return;
     }
     (void)locate_annotation(begin_analysis_time, -128);
     a = annp;
@@ -879,38 +806,29 @@ int post_changes(void)
 	sprintf(afname, "%s.%s", record, af.name);
 
 	/* If the file already exists in the current directory, rename it. */
-	if (tfile = fopen(afname, "r")) {
+	if ((tfile = fopen(afname, "r"))) {
 	    fclose(tfile);		/* yes -- try to do so */
 
 	    /* Generate a name for a backup file by appending a `~'. */
 	    sprintf(afbackup, "%s~", afname);
 	    if (rename(afname, afbackup)) {
-#ifdef NOTICE
-		Xv_notice notice = xv_create((Frame)frame, NOTICE,
-					     XV_SHOW, TRUE,
-					     NOTICE_STATUS, &result,
-#else
-		result = notice_prompt((Frame)frame, (Event *)NULL,
-#endif
-			     NOTICE_MESSAGE_STRINGS,
-			     "Your changes cannot be saved unless you remove,",
-			     "or obtain permission to rename, the file named",
-			     afname,
-			     "in the current directory.",
-			     "",
-			     "You may attempt to correct this problem from",
-			     "another window after pressing `Continue', or",
-			     "you may exit immediately and discard your",
-			     "changes by pressing `Exit'.", 0,
-			     NOTICE_BUTTON_YES, "Continue",
-			     NOTICE_BUTTON_NO, "Exit", NULL);
-#ifdef NOTICE
-		xv_destroy_safe(notice);
-#endif
-		if (result == NOTICE_YES) return (0);
+		char msg[512];
+		snprintf(msg, sizeof(msg),
+		    "Your changes cannot be saved unless you remove,\n"
+		    "or obtain permission to rename, the file named\n"
+		    "%s\n"
+		    "in the current directory.\n"
+		    "\n"
+		    "You may attempt to correct this problem from\n"
+		    "another window after pressing 'OK', or\n"
+		    "you may exit immediately and discard your\n"
+		    "changes by pressing 'Cancel'.",
+		    afname);
+		result = wave_notice_prompt(msg);
+		if (!result) return (0);
 		else {
 		    finish_log();
-		    xv_destroy_safe(frame);
+		    gtk_widget_destroy(main_window);
 		    exit(1);
 		}
 	    }
@@ -924,30 +842,20 @@ int post_changes(void)
     if (annopen(record, &af, 1)) {
 	/* An error from annopen is most likely to result from not being able
 	   to create the output file.  Warn the user and try again later. */
-#ifdef NOTICE
-	Xv_notice notice = xv_create((Frame)frame, NOTICE,
-				     XV_SHOW, TRUE,
-				     NOTICE_STATUS, &result,
-#else
-	result = notice_prompt((Frame)frame, (Event *)NULL,
-#endif
-			       NOTICE_MESSAGE_STRINGS,
-			       "Your changes cannot be saved until you obtain",
-			       "write permission in the current directory.",
-			       "",
- 			       "You may attempt to correct this problem from",
-			       "another window after pressing `Continue', or",
-			       "you may exit immediately and discard your",
-			       "changes by pressing `Exit'.", 0,
-			       NOTICE_BUTTON_YES, "Continue",
-			       NOTICE_BUTTON_NO, "Exit", NULL);
-#ifdef NOTICE
-	xv_destroy_safe(notice);
-#endif
-	if (result == NOTICE_YES) return (0);
+	char msg[512];
+	snprintf(msg, sizeof(msg),
+	    "Your changes cannot be saved until you obtain\n"
+	    "write permission in the current directory.\n"
+	    "\n"
+	    "You may attempt to correct this problem from\n"
+	    "another window after pressing 'OK', or\n"
+	    "you may exit immediately and discard your\n"
+	    "changes by pressing 'Cancel'.");
+	result = wave_notice_prompt(msg);
+	if (!result) return (0);
 	else {
 	    finish_log();
-	    xv_destroy_safe(frame);
+	    gtk_widget_destroy(main_window);
 	    exit(1);
 	}
     }
@@ -956,39 +864,26 @@ int post_changes(void)
 
     /* Write the annotation list to the output file.  This might take a while
        .... */
-    xv_set(frame, FRAME_BUSY, TRUE, NULL);
+    wave_set_busy(1);
     while (a) {
 	if (isann(a->this.anntyp) && putann(0, &(a->this))) {
 	    /* An error from putann is most likely to be the result of file
 	       space exhaustion.  Warn the user and try again later. */
-#ifdef NOTICE
-	    Xv_notice notice;
-#endif
-	    xv_set(frame, FRAME_BUSY, FALSE, NULL);
-#ifdef NOTICE
-	    notice = xv_create((Frame)frame, NOTICE,
-			       XV_SHOW, TRUE,
-			       NOTICE_STATUS, &result,
-#else
-	    result = notice_prompt((Frame)frame, (Event *)NULL,
-#endif
-			       NOTICE_MESSAGE_STRINGS,
-			       "Your changes cannot be saved until additional",
-			       "file space is made available.",
-			       "",
-			       "You may attempt to correct this problem from",
-			       "another window after pressing `Continue', or",
-			       "you may exit immediately and discard your",
-			       "changes by pressing `Exit'.", 0,
-			       NOTICE_BUTTON_YES, "Continue",
-			       NOTICE_BUTTON_NO, "Exit", NULL);
-#ifdef NOTICE
-	    xv_destroy_safe(notice);
-#endif
-	    if (result == NOTICE_YES) return (0);
+	    wave_set_busy(0);
+	    char msg[512];
+	    snprintf(msg, sizeof(msg),
+		"Your changes cannot be saved until additional\n"
+		"file space is made available.\n"
+		"\n"
+		"You may attempt to correct this problem from\n"
+		"another window after pressing 'OK', or\n"
+		"you may exit immediately and discard your\n"
+		"changes by pressing 'Cancel'.");
+	    result = wave_notice_prompt(msg);
+	    if (!result) return (0);
 	    else {
 		finish_log();
-		xv_destroy_safe(frame);
+		gtk_widget_destroy(main_window);
 		exit(1);
 	    }
 	}
@@ -999,7 +894,7 @@ int post_changes(void)
     (void)annopen(record, NULL, 0);	/* force flush and close of output */
 
     changes = 0;
-    xv_set(frame, FRAME_BUSY, FALSE, NULL);
+    wave_set_busy(0);
 
     /* Set time of last update to current time. */
     tupdate = time((time_t *)NULL);
@@ -1027,7 +922,7 @@ void set_frame_title(void)
 	sprintf(frame_title, "Record %s ", record);
     if (description[0] != '\0')
 	strcat(frame_title, description);
-    xv_set(frame, FRAME_LABEL, frame_title, NULL);
+    wave_set_frame_title(frame_title);
 }
 
 /* Reset the base frame footer. */
@@ -1042,16 +937,16 @@ void set_frame_footer(void)
 				 "Grid intervals: 1 min x 0.5 mV",
 				 "Grid intervals: 1 min x 0.1 mV" };
 
-    xv_set(frame, FRAME_RIGHT_FOOTER, grid_desc[grid_mode], NULL);
+    wave_set_right_footer(grid_desc[grid_mode]);
     if (attached && (attached->this).aux &&
 	display_start_time <= (attached->this).time &&
 	(attached->this).time < display_start_time + nsamp)
-        xv_set(frame, FRAME_LEFT_FOOTER, attached->this.aux + 1, NULL);
+        wave_set_left_footer(attached->this.aux + 1);
     else if (time_mode) {
 	int tm_save = time_mode;
 
 	time_mode = 0;
-        xv_set(frame, FRAME_LEFT_FOOTER, wtimstr(display_start_time), NULL);
+        wave_set_left_footer(wtimstr(display_start_time));
 	time_mode = tm_save;
     }
     else {
@@ -1059,15 +954,15 @@ void set_frame_footer(void)
 
 	if (*p == '[') {
 	   time_mode = 1;
-	   xv_set(frame, FRAME_LEFT_FOOTER, wtimstr(display_start_time), NULL);
+	   wave_set_left_footer(wtimstr(display_start_time));
 	   time_mode = 0;
 	}
 	else
-            xv_set(frame, FRAME_LEFT_FOOTER, "", NULL);
+            wave_set_left_footer("");
     }
 }
 
-    
+
 /* Return 1 if p[] would not be a legal annotator name, 0 otherwise. */
 int badname(char *p)
 {
@@ -1093,9 +988,11 @@ int read_anntab(void)
     int a;
     FILE *atfile;
 
-    if ((atfname =
-	 defaults_get_string("wave.anntab","Wave.Anntab",getenv("ANNTAB"))) &&
-	(atfile = fopen(atfname, "r"))) {
+    /* Try WAVE_ANNTAB first, then fall back to ANNTAB. */
+    atfname = getenv("WAVE_ANNTAB");
+    if (atfname == NULL)
+	atfname = getenv("ANNTAB");
+    if (atfname && (atfile = fopen(atfname, "r"))) {
 	while (fgets(buf, 256, atfile)) {
 	    p1 = strtok(buf, " \t");
 	    if (*p1 == '#') continue;
@@ -1140,4 +1037,4 @@ int write_anntab(void)
     }
     else
 	return (-1);
-}    
+}

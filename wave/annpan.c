@@ -1,6 +1,6 @@
 /* file: annpan.c	G. Moody	1 May 1990
-			Last revised:	29 April 1999
-Annotation template panel functions for WAVE
+			Last revised:	2026
+Annotation template panel functions for WAVE (GTK 3 version)
 
 -------------------------------------------------------------------------------
 WAVE: Waveform analyzer, viewer, and editor
@@ -26,12 +26,14 @@ _______________________________________________________________________________
 */
 
 #include "wave.h"
-#include "xvwave.h"
-#include <xview/notice.h>
+#include "gtkwave.h"
 
-Frame ann_frame;
-Panel ann_panel;
-Panel_item anntyp_item, subtyp_item, num_item, chan_item, aux_item;
+static GtkWidget *ann_window;		/* annotation template popup window */
+static GtkWidget *anntyp_item;		/* type combo box */
+static GtkWidget *aux_item;		/* aux text entry */
+static GtkWidget *subtyp_item;		/* subtype spin button */
+static GtkWidget *chan_item;		/* chan spin button */
+static GtkWidget *num_item;		/* num spin button */
 
 int ann_popup_active = -1;
 
@@ -39,43 +41,93 @@ int ann_popup_active = -1;
 static void dismiss_ann_template(void)
 {
     if (ann_popup_active > 0) {
-	xv_set(ann_frame, WIN_MAP, FALSE, 0);
+	gtk_widget_hide(ann_window);
 	ann_popup_active = 0;
     }
 }
 
-/* Update the annotation template following a selection in the popup window. */
-static void ann_select(Panel_item item, Event *event)
+/* Callback wrapper for the Dismiss button. */
+static void dismiss_ann_template_cb(GtkWidget *widget, gpointer data)
 {
-    int a;
-    static char client_data, m[2], tmp_aux[257];
+    (void)widget;
+    (void)data;
+    dismiss_ann_template();
+}
 
-    switch (a = (int)xv_get(item, PANEL_CLIENT_DATA)) {
-      case 't': ann_template.anntyp = (int)xv_get(item, PANEL_VALUE); break;
-      case 's':	ann_template.subtyp = (int)xv_get(item, PANEL_VALUE); break;
-      case 'n': ann_template.num    = (int)xv_get(item, PANEL_VALUE); break;
-      case 'c': ann_template.chan   = (int)xv_get(item, PANEL_VALUE); break;
-      case 'a': strcpy(tmp_aux+1, (char *)xv_get(item, PANEL_VALUE));
-	if (tmp_aux[0] = strlen(tmp_aux+1))
-	    ann_template.aux = tmp_aux;
-	else
-	    ann_template.aux = NULL;
-	break;
-    }
+/* Handle window close (delete-event) by hiding instead of destroying. */
+static gboolean ann_window_delete(GtkWidget *widget, GdkEvent *event,
+				  gpointer data)
+{
+    (void)widget;
+    (void)event;
+    (void)data;
+    dismiss_ann_template();
+    return TRUE;	/* prevent destruction */
+}
+
+/* Update ann_template when the type combo box changes. */
+static void anntyp_changed(GtkComboBoxText *combo, gpointer data)
+{
+    (void)data;
+    ann_template.anntyp = gtk_combo_box_get_active(GTK_COMBO_BOX(combo));
+}
+
+/* Update ann_template when the aux entry changes. */
+static void aux_changed(GtkEntry *entry, gpointer data)
+{
+    static char tmp_aux[257];
+
+    (void)data;
+    const char *text = gtk_entry_get_text(entry);
+    strncpy(tmp_aux + 1, text, 255);
+    tmp_aux[256] = '\0';
+    if ((tmp_aux[0] = (char)strlen(tmp_aux + 1)) != 0)
+	ann_template.aux = tmp_aux;
+    else
+	ann_template.aux = NULL;
+}
+
+/* Update ann_template when the subtype spin button changes. */
+static void subtyp_changed(GtkSpinButton *spin, gpointer data)
+{
+    (void)data;
+    ann_template.subtyp = gtk_spin_button_get_value_as_int(spin);
+}
+
+/* Update ann_template when the chan spin button changes. */
+static void chan_changed(GtkSpinButton *spin, gpointer data)
+{
+    (void)data;
+    ann_template.chan = gtk_spin_button_get_value_as_int(spin);
+}
+
+/* Update ann_template when the num spin button changes. */
+static void num_changed(GtkSpinButton *spin, gpointer data)
+{
+    (void)data;
+    ann_template.num = gtk_spin_button_get_value_as_int(spin);
+}
+
+/* Callback wrapper for the "Change all in range" button. */
+static void change_annotations_cb(GtkWidget *widget, gpointer data)
+{
+    (void)widget;
+    (void)data;
+    change_annotations();
 }
 
 static char *mstr[54];
 
 static void create_mstr_array(void)
 {
-    char *dp, mbuf[5], *mp, *msp;
+    char *dp, mbuf[5], *mp;
     int i;
     unsigned int l, lm;
 
     mstr[0] = ".    (Deleted annotation)";
     for (i = 1; i <= ACMAX; i++) {
 	if ((mp = annstr(i)) == NULL) {
-	    sprintf(mbuf, "[%d]", i);
+	    snprintf(mbuf, sizeof(mbuf), "[%d]", i);
 	    mp = mbuf;
 	}
 	if ((dp = anndesc(i)) == NULL)
@@ -83,13 +135,13 @@ static void create_mstr_array(void)
 	lm = strlen(mp);
 	l = strlen(dp) + 6;
 	if (lm > 4) l += lm - 4;
- 	if ((mstr[i] = (char *)malloc(l)) == NULL)
+	if ((mstr[i] = (char *)malloc(l)) == NULL)
 	    break;
 	strcpy(mstr[i], mp);
 	do {
 	    mstr[i][lm] = ' ';
 	} while (++lm < 5);
-	strcpy(mstr[i]+lm, dp);
+	strcpy(mstr[i] + lm, dp);
     }
     mstr[ACMAX+1] = ":    (Index mark)";
     mstr[ACMAX+2] = "<    (Start of analysis)";
@@ -100,129 +152,168 @@ static void create_mstr_array(void)
 /* Set up popup window for defining an annotation template. */
 static void create_ann_template_popup(void)
 {
-    Icon icon;
+    GtkWidget *grid, *label, *button;
+    int i, row;
 
     create_mstr_array();
     ann_template.anntyp = 1;
-    icon = xv_create(XV_NULL, ICON,
-		     ICON_IMAGE, icon_image,
-		     ICON_LABEL, "Template",
-		     NULL);
-    ann_frame = xv_create(frame, FRAME,
-			  XV_LABEL, "Annotation Template",
-			  FRAME_ICON, icon, 0);
-    ann_panel = xv_create(ann_frame, PANEL, 0);
-    anntyp_item = xv_create(ann_panel, PANEL_CHOICE,
-			    PANEL_DISPLAY_LEVEL, PANEL_CURRENT,
-			    PANEL_LABEL_STRING, "Type: ",
-			    XV_HELP_DATA, "wave:annot.type",
-			    PANEL_CHOICE_STRINGS,
-			     mstr[ 0], mstr[ 1], mstr[ 2], mstr[ 3], mstr[ 4],
-			     mstr[ 5], mstr[ 6], mstr[ 7], mstr[ 8], mstr[ 9],
-			     mstr[10], mstr[11], mstr[12], mstr[13], mstr[14],
-			     mstr[15], mstr[16], mstr[17], mstr[18], mstr[19],
-			     mstr[20], mstr[21], mstr[22], mstr[23], mstr[24],
-			     mstr[25], mstr[26], mstr[27], mstr[28], mstr[29],
-			     mstr[30], mstr[31], mstr[32], mstr[33], mstr[34],
-			     mstr[35], mstr[36], mstr[37], mstr[38], mstr[39],
-			     mstr[40], mstr[41], mstr[42], mstr[43], mstr[44],
-			     mstr[45], mstr[46], mstr[47], mstr[48], mstr[49],
-			     mstr[50], mstr[51], mstr[52], mstr[53],
-			     NULL,
-			    PANEL_VALUE, 1,
-			    PANEL_NOTIFY_PROC, ann_select,
-			    PANEL_CLIENT_DATA, (caddr_t) 't',
-			    0);
-    aux_item    = xv_create(ann_panel, PANEL_TEXT,
-			    PANEL_LABEL_STRING, "Text: ",
-			    XV_HELP_DATA, "wave:annot.text",
-			    PANEL_VALUE_DISPLAY_LENGTH, 20,
-			    PANEL_VALUE_STORED_LENGTH, 255,
-			    PANEL_VALUE, "",
-			    PANEL_NOTIFY_PROC, ann_select,
-			    PANEL_CLIENT_DATA, (caddr_t) 'a',
-			    0);
-    subtyp_item = xv_create(ann_panel, PANEL_NUMERIC_TEXT,
-			    PANEL_LABEL_STRING, "Subtype: ",
-			    XV_HELP_DATA, "wave:annot.subtype",
-			    PANEL_VALUE, 0,
-			    PANEL_MIN_VALUE, -128,
-			    PANEL_MAX_VALUE, 127,
-			    PANEL_NOTIFY_PROC, ann_select,
-			    PANEL_CLIENT_DATA, (caddr_t) 's',
-			    0);
-    chan_item   = xv_create(ann_panel, PANEL_NUMERIC_TEXT,
-			    PANEL_LABEL_STRING, "`Chan' field: ",
-			    XV_HELP_DATA, "wave:annot.chan",
-			    PANEL_VALUE, 0,
-			    PANEL_MIN_VALUE, -128,
-			    PANEL_MAX_VALUE, 127,
-			    PANEL_NOTIFY_PROC, ann_select,
-			    PANEL_CLIENT_DATA, (caddr_t) 'c',
-			    0);
-    num_item    = xv_create(ann_panel, PANEL_NUMERIC_TEXT,
-			    PANEL_LABEL_STRING, "`Num' field: ",
-			    XV_HELP_DATA, "wave:annot.num",
-			    PANEL_VALUE, 0,
-			    PANEL_MIN_VALUE, -128,
-			    PANEL_MAX_VALUE, 127,
-			    PANEL_NOTIFY_PROC, ann_select,
-			    PANEL_CLIENT_DATA, (caddr_t) 'n',
-			    0);
-    xv_create(ann_panel, PANEL_BUTTON,
-	      PANEL_LABEL_STRING, "Change all in range",
-	      XV_HELP_DATA, "wave:annot.change",
-	      PANEL_NOTIFY_PROC, change_annotations,
-	      0);
-    xv_create(ann_panel, PANEL_BUTTON,
-	      PANEL_LABEL_STRING, "Dismiss",
-	      XV_HELP_DATA, "wave:annot.dismiss",
-	      PANEL_NOTIFY_PROC, dismiss_ann_template,
-	      0);
-    window_fit(ann_panel);
-    window_fit(ann_frame);
+
+    /* Create the popup window. */
+    ann_window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+    gtk_window_set_title(GTK_WINDOW(ann_window), "Annotation Template");
+    gtk_window_set_transient_for(GTK_WINDOW(ann_window),
+				 GTK_WINDOW(main_window));
+    gtk_window_set_destroy_with_parent(GTK_WINDOW(ann_window), TRUE);
+    g_signal_connect(ann_window, "delete-event",
+		     G_CALLBACK(ann_window_delete), NULL);
+
+    /* Use a grid for layout. */
+    grid = gtk_grid_new();
+    gtk_grid_set_row_spacing(GTK_GRID(grid), 4);
+    gtk_grid_set_column_spacing(GTK_GRID(grid), 8);
+    gtk_container_set_border_width(GTK_CONTAINER(grid), 8);
+    gtk_container_add(GTK_CONTAINER(ann_window), grid);
+
+    row = 0;
+
+    /* Type: combo box with 54 annotation type entries. */
+    label = gtk_label_new("Type:");
+    gtk_widget_set_halign(label, GTK_ALIGN_END);
+    gtk_grid_attach(GTK_GRID(grid), label, 0, row, 1, 1);
+
+    anntyp_item = gtk_combo_box_text_new();
+    gtk_widget_set_tooltip_text(anntyp_item,
+	"Select the annotation type for the template");
+    for (i = 0; i < 54; i++) {
+	if (mstr[i])
+	    gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(anntyp_item),
+					   mstr[i]);
+	else
+	    gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(anntyp_item),
+					   "(undefined)");
+    }
+    gtk_combo_box_set_active(GTK_COMBO_BOX(anntyp_item), 1);
+    g_signal_connect(anntyp_item, "changed",
+		     G_CALLBACK(anntyp_changed), NULL);
+    gtk_widget_set_hexpand(anntyp_item, TRUE);
+    gtk_grid_attach(GTK_GRID(grid), anntyp_item, 1, row, 1, 1);
+    row++;
+
+    /* Text: entry for aux string. */
+    label = gtk_label_new("Text:");
+    gtk_widget_set_halign(label, GTK_ALIGN_END);
+    gtk_grid_attach(GTK_GRID(grid), label, 0, row, 1, 1);
+
+    aux_item = gtk_entry_new();
+    gtk_widget_set_tooltip_text(aux_item,
+	"Enter auxiliary text for the annotation template");
+    gtk_entry_set_max_length(GTK_ENTRY(aux_item), 255);
+    gtk_entry_set_width_chars(GTK_ENTRY(aux_item), 20);
+    g_signal_connect(aux_item, "changed",
+		     G_CALLBACK(aux_changed), NULL);
+    gtk_widget_set_hexpand(aux_item, TRUE);
+    gtk_grid_attach(GTK_GRID(grid), aux_item, 1, row, 1, 1);
+    row++;
+
+    /* Subtype: spin button, range -128 to 127. */
+    label = gtk_label_new("Subtype:");
+    gtk_widget_set_halign(label, GTK_ALIGN_END);
+    gtk_grid_attach(GTK_GRID(grid), label, 0, row, 1, 1);
+
+    subtyp_item = gtk_spin_button_new_with_range(-128, 127, 1);
+    gtk_widget_set_tooltip_text(subtyp_item,
+	"Set the annotation subtype field");
+    gtk_spin_button_set_value(GTK_SPIN_BUTTON(subtyp_item), 0);
+    g_signal_connect(subtyp_item, "value-changed",
+		     G_CALLBACK(subtyp_changed), NULL);
+    gtk_grid_attach(GTK_GRID(grid), subtyp_item, 1, row, 1, 1);
+    row++;
+
+    /* Chan: spin button, range -128 to 127. */
+    label = gtk_label_new("'Chan' field:");
+    gtk_widget_set_halign(label, GTK_ALIGN_END);
+    gtk_grid_attach(GTK_GRID(grid), label, 0, row, 1, 1);
+
+    chan_item = gtk_spin_button_new_with_range(-128, 127, 1);
+    gtk_widget_set_tooltip_text(chan_item,
+	"Set the annotation 'chan' field");
+    gtk_spin_button_set_value(GTK_SPIN_BUTTON(chan_item), 0);
+    g_signal_connect(chan_item, "value-changed",
+		     G_CALLBACK(chan_changed), NULL);
+    gtk_grid_attach(GTK_GRID(grid), chan_item, 1, row, 1, 1);
+    row++;
+
+    /* Num: spin button, range -128 to 127. */
+    label = gtk_label_new("'Num' field:");
+    gtk_widget_set_halign(label, GTK_ALIGN_END);
+    gtk_grid_attach(GTK_GRID(grid), label, 0, row, 1, 1);
+
+    num_item = gtk_spin_button_new_with_range(-128, 127, 1);
+    gtk_widget_set_tooltip_text(num_item,
+	"Set the annotation 'num' field");
+    gtk_spin_button_set_value(GTK_SPIN_BUTTON(num_item), 0);
+    g_signal_connect(num_item, "value-changed",
+		     G_CALLBACK(num_changed), NULL);
+    gtk_grid_attach(GTK_GRID(grid), num_item, 1, row, 1, 1);
+    row++;
+
+    /* "Change all in range" button. */
+    button = gtk_button_new_with_label("Change all in range");
+    gtk_widget_set_tooltip_text(button,
+	"Change all annotations in the selected range to match the template");
+    g_signal_connect(button, "clicked",
+		     G_CALLBACK(change_annotations_cb), NULL);
+    gtk_grid_attach(GTK_GRID(grid), button, 0, row, 1, 1);
+
+    /* Dismiss button. */
+    button = gtk_button_new_with_label("Dismiss");
+    gtk_widget_set_tooltip_text(button,
+	"Hide the annotation template window");
+    g_signal_connect(button, "clicked",
+		     G_CALLBACK(dismiss_ann_template_cb), NULL);
+    gtk_grid_attach(GTK_GRID(grid), button, 1, row, 1, 1);
 }
 
 /* Make the annotation template popup window appear. */
 void show_ann_template(void)
 {
     if (ann_popup_active < 0) create_ann_template_popup();
-    wmgr_top(ann_frame);
-    xv_set(ann_frame, WIN_MAP, TRUE, 0);
+    gtk_widget_show_all(ann_window);
+    gtk_window_present(GTK_WINDOW(ann_window));
     ann_popup_active = 1;
 }
 
-/* Set the annotation template window `Type' item. */
+/* Set the annotation template window 'Type' item. */
 void set_anntyp(int i)
 {
     if (ann_popup_active < 0) create_ann_template_popup();
-    xv_set(anntyp_item, PANEL_VALUE, i, NULL);
+    gtk_combo_box_set_active(GTK_COMBO_BOX(anntyp_item), i);
 }
 
-/* Set the annotation template window `Aux' item. */
+/* Set the annotation template window 'Aux' item. */
 void set_ann_aux(char *s)
 {
     if (ann_popup_active >= 0)
-	xv_set(aux_item, PANEL_VALUE, s ? s+1 : "", NULL);
+	gtk_entry_set_text(GTK_ENTRY(aux_item), s ? s + 1 : "");
 }
 
-/* Set the annotation template window `Subtype' item. */
+/* Set the annotation template window 'Subtype' item. */
 void set_ann_subtyp(int i)
 {
     if (ann_popup_active >= 0)
-	xv_set(subtyp_item, PANEL_VALUE, i, NULL);
+	gtk_spin_button_set_value(GTK_SPIN_BUTTON(subtyp_item), i);
 }
 
-/* Set the annotation template window `Chan' item. */
+/* Set the annotation template window 'Chan' item. */
 void set_ann_chan(int i)
 {
     if (ann_popup_active >= 0)
-	xv_set(chan_item, PANEL_VALUE, i, NULL);
+	gtk_spin_button_set_value(GTK_SPIN_BUTTON(chan_item), i);
 }
 
-/* Set the annotation template window `Num' item. */
+/* Set the annotation template window 'Num' item. */
 void set_ann_num(int i)
 {
     if (ann_popup_active >= 0)
-	xv_set(num_item, PANEL_VALUE, i, NULL);
+	gtk_spin_button_set_value(GTK_SPIN_BUTTON(num_item), i);
 }

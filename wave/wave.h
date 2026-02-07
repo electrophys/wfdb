@@ -1,5 +1,5 @@
 /* file: wave.h		G. Moody	26 April 1990
-               		Last revised:   24 April 2020
+               		Last revised:   2026
 Constants, macros, global variables, and function prototypes for WAVE
 
 -------------------------------------------------------------------------------
@@ -31,6 +31,10 @@ _______________________________________________________________________________
 #include <wfdb/wfdb.h>	/* WFDB library constants, typedefs, and prototypes */
 #include <wfdb/ecgcodes.h>	/* needed for definition of ACMAX */
 
+#ifndef WAVEVERSION
+#define WAVEVERSION "6.12"
+#endif
+
 /* Constants */
 
 /* WAVE attempts to intuit the user's next display request, and maintains
@@ -39,11 +43,13 @@ _______________________________________________________________________________
    to conserve memory, but do not reduce it below 2. */
 #define MAX_DISPLAY_LISTS	8
 
-/* Bits for display mode (passed from main() to initialize_graphics()). */
-#define MODE_MONO	1    /* use monochrome mode even on a color screen */
-#define MODE_GREY	2    /* use shades of grey even on a color screen */
-#define MODE_SHARED	4    /* use shared color map only */
-#define MODE_OVERLAY	8    /* use overlays */
+/* Bits for display mode (passed from main() to initialize_graphics()).
+   These are retained for command-line compatibility but have no effect
+   in the GTK version (Cairo provides full RGBA rendering). */
+#define MODE_MONO	1
+#define MODE_GREY	2
+#define MODE_SHARED	4
+#define MODE_OVERLAY	8
 
 /* Mask bits for next_match() and previous_match(). */
 #define M_ANNTYP	1
@@ -68,7 +74,7 @@ _______________________________________________________________________________
 #define RNLMAX	79	/* length of longest permissible record name */
 #define DSLMAX	80	/* length of longest permissible description in log */
 
-/* Default array indices for scale settings (see modepan.c and xvwave.c). */
+/* Default array indices for scale settings (see modepan.c and gtkwave.c). */
 #define DEF_TSA_INDEX 12
 #define DEF_COARSE_TSA_INDEX 6
 #define MAX_COARSE_TSA_INDEX 8
@@ -89,19 +95,13 @@ floating-point results. */
 #define millivolts(A)	((A)*(canvas_height/canvas_height_mv))
 #define seconds(A)	((A)*(canvas_width/canvas_width_sec))
 
-/* The name of the default text editor is difficult to specify portably.  Any
-   system with the XView libraries should have `textedit', but it may be in
-   /usr/openwin/bin, /usr/openwin/bin/xview, /usr/bin/xview, or somewhere else.
-   Rather than specifying a possibly erroneous absolute path, we just give the
-   filename, and hope it's in the user's PATH.  Of course, the user may prefer
-   `emacs', or `vi', or something else;  an alternative can be specified using
-   the EDITOR environment variable or the `Wave.TextEditor' resource. */
+/* Default text editor. */
 #ifndef EDITOR
-#define EDITOR		"textedit"
+#define EDITOR		"xdg-open"
 #endif
 
 /* Definitions and declarations of global variables appear below.  When
-   compiling `xvwave.c', INIT is defined;  at other times, INIT must not be
+   compiling `gtkwave.c', INIT is defined;  at other times, INIT must not be
    defined.  If INIT is defined, COMMON becomes an empty string and the
    statements beginning with COMMON are syntactically definitions (i.e.,
    storage is allocated);  otherwise, COMMON becomes `extern' and these
@@ -187,9 +187,6 @@ COMMON double mmpermv;			/* amplitude scale for export */
 COMMON double mmpersec;			/* time scale for export */
 COMMON int abase;			/* baseline ordinate for annotation
 					   display */
-COMMON int use_overlays;		/* if non-zero, the grid, cursor,
-					   annotations, and signals can be
-					   erased independently */
 COMMON int ghflag;			/* 1: horizontal grid lines enabled */
 COMMON int gvflag;			/* 1: vertical grid lines enabled */
 COMMON int visible;			/* 1: grid is visible */
@@ -270,9 +267,9 @@ struct ap {
 };
 COMMON struct ap *ap_start, *ap_end, *annp, *attached, *scope_annp;
 
-/* Function prototypes.  There are a few more in `xvwave.h', which include
-   all those that use X or XView objects in their argument lists. */
+/* Function prototypes.  Additional prototypes are in gtkwave.h. */
 extern int record_init(char *record_name);	/* in init.c */
+extern void alloc_sigdata(int ns);		/* in init.c */
 extern void set_baselines(void);		/* in init.c */
 extern void calibrate(void);			/* in init.c */
 extern void set_record_item(char *record_name);	/* in mainpan.c */
@@ -285,6 +282,7 @@ extern void create_mode_popup(void);		/* in modepan.c */
 extern void show_mode(void);			/* in modepan.c */
 extern void set_modes(void);			/* in modepan.c */
 extern void dismiss_mode(void);			/* in modepan.c */
+extern void mode_undo(void);			/* in modepan.c */
 extern WFDB_Time wstrtim(char *tstring);	/* in modepan.c */
 extern char *wtimstr(WFDB_Time t);		/* in modepan.c */
 extern char *wmstimstr(WFDB_Time t);		/* in modepan.c */
@@ -315,6 +313,7 @@ extern void clear_cache(void);			/* in signal.c */
 extern int sigy(int sig, int x);		/* in signal.c */
 extern struct ap *get_ap(void);			/* in annot.c */
 extern int annot_init(void);			/* in annot.c */
+extern int read_anntab(void);			/* in annot.c */
 extern WFDB_Time next_match(struct WFDB_ann *template,/* in annot.c */
 			    int mask);
 extern WFDB_Time previous_match(struct WFDB_ann *template,/* in annot.c */
@@ -331,6 +330,8 @@ extern void change_annotations(void);		/* in annot.c */
 extern void check_post_update(void);		/* in annot.c */
 extern int post_changes(void);			/* in annot.c */
 extern void set_frame_title(void);		/* in annot.c */
+extern void set_frame_footer(void);		/* in annot.c */
+extern int badname(char *p);			/* in annot.c */
 extern void analyze_proc(void);			/* in analyze.c */
 extern void reset_start(void);			/* in analyze.c */
 extern void reset_stop(void);			/* in analyze.c */
@@ -347,10 +348,3 @@ extern void save_scope_params(int use_overlays,	/* in scope.c */
 			      int use_color,
 			      int grey);
 extern void show_scope_window(void);		/* in scope.c */
-extern void strip_x_args(int *argc,char **argv);/* in xvwave.c */
-extern int initialize_graphics(int mode);	/* in xvwave.c */
-extern void hide_grid(void);			/* in xvwave.c */
-extern void unhide_grid(void);			/* in xvwave.c */
-extern void display_and_process_events(void);	/* in xvwave.c */
-extern void quit_proc(void);			/* in xvwave.c */
-extern void sync_other_wave_processes(void);	/* in xvwave.c */
