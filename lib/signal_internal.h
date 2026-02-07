@@ -161,6 +161,22 @@ struct sigmapinfo {
 #define sbuf		(ctx->sbuf)
 #define sample_vflag	(ctx->sample_vflag)
 
+/* Resampling state */
+#define mticks		(ctx->mticks)
+#define nticks		(ctx->nticks)
+#define mnticks		(ctx->mnticks)
+#define rgvstat		(ctx->rgvstat)
+#define rgvtime		(ctx->rgvtime)
+#define gvtime		(ctx->gvtime)
+#define gv0		(ctx->gv0)
+#define gv1		(ctx->gv1)
+
+/* getinfo iteration index */
+#define getinfo_index	(ctx->getinfo_index)
+
+/* sample() function cache */
+#define sample_tt	(ctx->sample_tt)
+
 /* Output signals */
 #define maxosig		(ctx->maxosig)
 #define maxogroup	(ctx->maxogroup)

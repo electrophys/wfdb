@@ -98,6 +98,10 @@ may be attached to the same signal provided that their num fields are unique.
 #include "wfdb_context.h"
 #include "ecgmap.h"
 
+/* Use context field instead of file-scope static for macro temporary */
+#undef wfdb_mt
+#define wfdb_mt (ctx->wfdb_mt)
+
 #include <limits.h>
 
 /* Annotation word format */
@@ -761,7 +765,9 @@ int iannsettime(WFDB_Time t)
    except that they use the descriptive strings (tstring[]).
 */
 
-static char *cstring[ACMAX+1] = {  /* ECG mnemonics for each code */
+/* Default annotation tables (used to initialize context arrays) */
+
+static const char * const default_cstring[ACMAX+1] = {
         " ",	"N",	"L",	"R",	"a",		/* 0 - 4 */
 	"V",	"F",	"J",	"A",	"S",		/* 5 - 9 */
 	"E",	"j",	"/",	"Q",	"~",		/* 10 - 14 */
@@ -774,49 +780,7 @@ static char *cstring[ACMAX+1] = {  /* ECG mnemonics for each code */
 	"[45]",	"[46]",	"[47]",	"[48]",	"[49]"		/* 45 - 49 */
 };
 
-/* ecgstr: convert an anntyp value to a mnemonic string */
-char *ecgstr(int code)
-{
-    static char buf[14];
-
-    if (0 <= code && code <= ACMAX)
-	return (cstring[code]);
-    else {
-	(void)sprintf(buf,"[%d]", code);
-	return (buf);
-    }
-}
-
-/* strecg: convert a mnemonic string to an anntyp value */
-int strecg(const char *str)
-{
-    int code;
-
-    if (str == NULL) str = "";
-    for (code = 1; code <= ACMAX; code++)
-	if (strcmp(str, cstring[code]) == 0)
-	    return (code);
-    return (NOTQRS);
-}
-
-/* setecgstr: set the mnemonic string associated with the specified anntyp */
-int setecgstr(int code, const char *string)
-{
-    if (NOTQRS <= code && code <= ACMAX) {
-	if (string == NULL) string = "";
-	cstring[code] = NULL;   /* This statement (and the corresponding
-				   statements in setannstr and setanndesc)
-				   leak memory if the function is called
-				   more than once with the same value for
-				   code -- which is unlikely. */
-	SSTRCPY(cstring[code], string);
-	return (0);
-    }
-    wfdb_error("setecgstr: illegal annotation code %d\n", code);
-    return (-1);
-}
-
-static char *astring[ACMAX+1] = {  /* mnemonic strings for each code */
+static const char * const default_astring[ACMAX+1] = {
         " ",	"N",	"L",	"R",	"a",		/* 0 - 4 */
 	"V",	"F",	"J",	"A",	"S",		/* 5 - 9 */
 	"E",	"j",	"/",	"Q",	"~",		/* 10 - 14 */
@@ -829,56 +793,7 @@ static char *astring[ACMAX+1] = {  /* mnemonic strings for each code */
 	"[45]",	"[46]",	"[47]",	"[48]",	"[49]"		/* 45 - 49 */
 };
 
-char *annstr(int code)
-{
-    static char buf[14];
-
-    if (0 <= code && code <= ACMAX)
-	return (astring[code]);
-    else {
-	(void)sprintf(buf,"[%d]", code);
-	return (buf);
-    }
-}
-
-int strann(const char *str)
-{
-    int code;
-
-    if (str == NULL) str = "";
-    for (code = 1; code <= ACMAX; code++)
-	if (strcmp(str, astring[code]) == 0)
-	    return (code);
-    return (NOTQRS);
-}
-
-int setannstr_ctx(WFDB_Context *ctx, int code, const char *string)
-{
-    int mflag = 0;
-
-    if (code > 0) mflag = 1;
-    else code = -code;
-    if (code <= ACMAX) {
-	if (string == NULL) string = "";
-	if (astring[code] == NULL || strcmp(astring[code], string)) {
-	    astring[code] = NULL;
-	    SSTRCPY(astring[code], string);
-	    if (mflag) ctx->modified[code] = 1;
-	}
-	return (0);
-    }
-    else {
-	wfdb_error("setannstr: illegal annotation code %d\n", code);
-	return (-1);
-    }
-}
-
-int setannstr(int code, const char *string)
-{
-    return setannstr_ctx(wfdb_get_default_context(), code, string);
-}
-
-static char *tstring[ACMAX+1] = {  /* descriptive strings for each code */
+static const char * const default_tstring[ACMAX+1] = {
     "",
     "Normal beat",
     "Left bundle branch block beat",
@@ -894,9 +809,9 @@ static char *tstring[ACMAX+1] = {  /* descriptive strings for each code */
     "Paced beat",
     "Unclassifiable beat",
     "Change in signal quality",
-    (char *)NULL,
+    NULL,
     "Isolated QRS-like artifact",
-    (char *)NULL,
+    NULL,
     "ST segment change",
     "T-wave change",
     "Systole",
@@ -921,28 +836,164 @@ static char *tstring[ACMAX+1] = {  /* descriptive strings for each code */
     "Waveform onset",
     "Waveform end",
     "R-on-T premature ventricular contraction",
-    (char *)NULL,
-    (char *)NULL,
-    (char *)NULL,
-    (char *)NULL,
-    (char *)NULL,
-    (char *)NULL,
-    (char *)NULL,
-    (char *)NULL
+    NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL
 };
 
-char *anndesc(int code)
+/* Override cstring/astring/tstring to use context arrays */
+#define cstring (ctx->cstring)
+#define astring (ctx->astring)
+#define tstring (ctx->tstring)
+
+/* Initialize annotation tables on first use */
+static void init_ann_tables(WFDB_Context *ctx)
 {
+    int i;
+    if (cstring[1] != NULL)
+	return;		/* already initialized */
+    for (i = 0; i <= ACMAX; i++) {
+	cstring[i] = (char *)default_cstring[i];
+	astring[i] = (char *)default_astring[i];
+	tstring[i] = (char *)default_tstring[i];
+    }
+}
+
+/* ecgstr: convert an anntyp value to a mnemonic string */
+char *ecgstr_ctx(WFDB_Context *ctx, int code)
+{
+    init_ann_tables(ctx);
+    if (0 <= code && code <= ACMAX)
+	return (cstring[code]);
+    else {
+	(void)sprintf(ctx->ecgstr_buf, "[%d]", code);
+	return (ctx->ecgstr_buf);
+    }
+}
+
+char *ecgstr(int code)
+{
+    return ecgstr_ctx(wfdb_get_default_context(), code);
+}
+
+/* strecg: convert a mnemonic string to an anntyp value */
+int strecg_ctx(WFDB_Context *ctx, const char *str)
+{
+    int code;
+
+    init_ann_tables(ctx);
+    if (str == NULL) str = "";
+    for (code = 1; code <= ACMAX; code++)
+	if (strcmp(str, cstring[code]) == 0)
+	    return (code);
+    return (NOTQRS);
+}
+
+int strecg(const char *str)
+{
+    return strecg_ctx(wfdb_get_default_context(), str);
+}
+
+/* setecgstr: set the mnemonic string associated with the specified anntyp */
+int setecgstr_ctx(WFDB_Context *ctx, int code, const char *string)
+{
+    init_ann_tables(ctx);
+    if (NOTQRS <= code && code <= ACMAX) {
+	if (string == NULL) string = "";
+	cstring[code] = NULL;   /* This statement (and the corresponding
+				   statements in setannstr and setanndesc)
+				   leak memory if the function is called
+				   more than once with the same value for
+				   code -- which is unlikely. */
+	SSTRCPY(cstring[code], string);
+	return (0);
+    }
+    wfdb_error("setecgstr: illegal annotation code %d\n", code);
+    return (-1);
+}
+
+int setecgstr(int code, const char *string)
+{
+    return setecgstr_ctx(wfdb_get_default_context(), code, string);
+}
+
+char *annstr_ctx(WFDB_Context *ctx, int code)
+{
+    init_ann_tables(ctx);
+    if (0 <= code && code <= ACMAX)
+	return (astring[code]);
+    else {
+	(void)sprintf(ctx->annstr_buf, "[%d]", code);
+	return (ctx->annstr_buf);
+    }
+}
+
+char *annstr(int code)
+{
+    return annstr_ctx(wfdb_get_default_context(), code);
+}
+
+int strann_ctx(WFDB_Context *ctx, const char *str)
+{
+    int code;
+
+    init_ann_tables(ctx);
+    if (str == NULL) str = "";
+    for (code = 1; code <= ACMAX; code++)
+	if (strcmp(str, astring[code]) == 0)
+	    return (code);
+    return (NOTQRS);
+}
+
+int strann(const char *str)
+{
+    return strann_ctx(wfdb_get_default_context(), str);
+}
+
+int setannstr_ctx(WFDB_Context *ctx, int code, const char *string)
+{
+    int mflag = 0;
+
+    init_ann_tables(ctx);
+    if (code > 0) mflag = 1;
+    else code = -code;
+    if (code <= ACMAX) {
+	if (string == NULL) string = "";
+	if (astring[code] == NULL || strcmp(astring[code], string)) {
+	    astring[code] = NULL;
+	    SSTRCPY(astring[code], string);
+	    if (mflag) ctx->modified[code] = 1;
+	}
+	return (0);
+    }
+    else {
+	wfdb_error("setannstr: illegal annotation code %d\n", code);
+	return (-1);
+    }
+}
+
+int setannstr(int code, const char *string)
+{
+    return setannstr_ctx(wfdb_get_default_context(), code, string);
+}
+
+char *anndesc_ctx(WFDB_Context *ctx, int code)
+{
+    init_ann_tables(ctx);
     if (0 <= code && code <= ACMAX)
 	return (tstring[code]);
     else
 	return ("illegal annotation code");
 }
 
+char *anndesc(int code)
+{
+    return anndesc_ctx(wfdb_get_default_context(), code);
+}
+
 int setanndesc_ctx(WFDB_Context *ctx, int code, const char *string)
 {
     int mflag = 0;
 
+    init_ann_tables(ctx);
     if (code > 0) mflag = 1;
     else code = -code;
     if (code <= ACMAX) {
@@ -1170,56 +1221,67 @@ void oannclose(WFDB_Annotator n)
 
 int wfdb_isann(int code)
 {
+    WFDB_Context *ctx = wfdb_get_default_context();
     return (isann(code));
 }
 
 int wfdb_isqrs(int code)
 {
+    WFDB_Context *ctx = wfdb_get_default_context();
     return (isqrs(code));
 }
 
 int wfdb_setisqrs(int code, int newval)
 {
+    WFDB_Context *ctx = wfdb_get_default_context();
     return (setisqrs(code, newval));
 }
 
 int wfdb_map1(int code)
 {
+    WFDB_Context *ctx = wfdb_get_default_context();
     return (map1(code));
 }
 
 int wfdb_setmap1(int code, int newval)
 {
+    WFDB_Context *ctx = wfdb_get_default_context();
     return (setmap1(code, newval));
 }
 
 int wfdb_map2(int code)
 {
+    WFDB_Context *ctx = wfdb_get_default_context();
     return (map2(code));
 }
 
 int wfdb_setmap2(int code, int newval)
 {
+    WFDB_Context *ctx = wfdb_get_default_context();
     return (setmap2(code, newval));
 }
 
 int wfdb_ammap(int code)
 {
+    WFDB_Context *ctx = wfdb_get_default_context();
     return (ammap(code));
 }
 
 int wfdb_mamap(int code, int subtype)
 {
+    WFDB_Context *ctx = wfdb_get_default_context();
     return (mamap(code, subtype));
 }
 
 int wfdb_annpos(int code)
 {
+    WFDB_Context *ctx = wfdb_get_default_context();
     return (annpos(code));
 }
 
 int wfdb_setannpos(int code, int newval)
 {
+    WFDB_Context *ctx = wfdb_get_default_context();
     return (setannpos(code, newval));
 }
 

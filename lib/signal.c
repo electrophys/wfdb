@@ -904,11 +904,6 @@ int getgvmode(void)
 /* An application can specify the input sampling frequency it prefers by
    calling setifreq after opening the input record. */
 
-static long mticks, nticks, mnticks;
-static int rgvstat;
-static WFDB_Time rgvtime, gvtime;
-static WFDB_Sample *gv0, *gv1;
-
 int setifreq_ctx(WFDB_Context *ctx, WFDB_Frequency f)
 {
     WFDB_Frequency error, g = sfreq;
@@ -1713,7 +1708,6 @@ char *getinfo_ctx(WFDB_Context *ctx, char *record)
 {
     char *buf = NULL, *p;
     size_t bufsize = 0;
-    static int i;
     WFDB_FILE *ifile;
 
     if (record)
@@ -1730,7 +1724,7 @@ char *getinfo_ctx(WFDB_Context *ctx, char *record)
 	    ninfo = 0;
 	}
 
-	i = 0;
+	getinfo_index = 0;
 	nimax = 16;	       /* initial allotment of info string pointers */
 	SALLOC(pinfo, nimax, sizeof(char *));
 
@@ -1783,8 +1777,8 @@ char *getinfo_ctx(WFDB_Context *ctx, char *record)
 	}
 	SFREE(buf);
     }
-    if (i < ninfo)
-	return pinfo[i++];
+    if (getinfo_index < ninfo)
+	return pinfo[getinfo_index++];
     else
 	return (NULL);
 }
@@ -1807,14 +1801,13 @@ any order. */
 
 WFDB_Sample sample_ctx(WFDB_Context *ctx, WFDB_Signal s, WFDB_Time t)
 {
-    static WFDB_Sample v;
-    static WFDB_Time tt;
+    WFDB_Sample v;
     int nsig = (nvsig > nisig) ? nvsig : nisig;
 
     /* Allocate the sample buffer on the first call. */
     if (sbuf == NULL) {
 	SALLOC(sbuf, nsig, BUFLN*sizeof(WFDB_Sample));
-	tt = (WFDB_Time)-1L;
+	sample_tt = (WFDB_Time)-1L;
     }
 
     /* If the caller requested a sample from an unavailable signal, return
@@ -1836,10 +1829,10 @@ WFDB_Sample sample_ctx(WFDB_Context *ctx, WFDB_Signal s, WFDB_Time t)
        If we do this, we must be sure that the buffer is refilled so that
        any subsequent requests for samples between t - BUFLN+1 and t will
        receive correct responses. */
-    if (t <= tt - BUFLN || t > tt + BUFLN) {
-	tt = t - BUFLN;
-	if (tt < 0L) tt = -1L;
-	if (isigsettime(tt+1) < 0) {
+    if (t <= sample_tt - BUFLN || t > sample_tt + BUFLN) {
+	sample_tt = t - BUFLN;
+	if (sample_tt < 0L) sample_tt = -1L;
+	if (isigsettime(sample_tt+1) < 0) {
 	    sample_vflag = 0;
 	    return (WFDB_INVALID_SAMPLE);
 	}
@@ -1847,11 +1840,11 @@ WFDB_Sample sample_ctx(WFDB_Context *ctx, WFDB_Signal s, WFDB_Time t)
     /* If the requested sample is not yet in the buffer, read and buffer
        more samples.  If we reach the end of the record, clear sample_vflag
        and return the last valid value. */
-    while (t > tt)
-        if (getvec(sbuf + nsig * ((++tt)&(BUFLN-1))) < 0) {
-	    --tt;
+    while (t > sample_tt)
+        if (getvec(sbuf + nsig * ((++sample_tt)&(BUFLN-1))) < 0) {
+	    --sample_tt;
 	    sample_vflag = 0;
-	    return (*(sbuf + nsig * (tt&(BUFLN-1)) + s));
+	    return (*(sbuf + nsig * (sample_tt&(BUFLN-1)) + s));
 	}
 
     /* The requested sample is in the buffer.  Set sample_vflag and

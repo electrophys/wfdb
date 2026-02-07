@@ -490,8 +490,17 @@ extern WFDB_Frequency getiaorigfreq_ctx(WFDB_Context *ctx,
 					  WFDB_Annotator a);
 extern void iannclose_ctx(WFDB_Context *ctx, WFDB_Annotator a);
 extern void oannclose_ctx(WFDB_Context *ctx, WFDB_Annotator a);
+extern char *ecgstr_ctx(WFDB_Context *ctx, int annotation_code);
+extern int strecg_ctx(WFDB_Context *ctx,
+		       const char *annotation_mnemonic_string);
+extern int setecgstr_ctx(WFDB_Context *ctx, int annotation_code,
+			  const char *annotation_mnemonic_string);
+extern char *annstr_ctx(WFDB_Context *ctx, int annotation_code);
+extern int strann_ctx(WFDB_Context *ctx,
+		       const char *annotation_mnemonic_string);
 extern int setannstr_ctx(WFDB_Context *ctx, int annotation_code,
 			  const char *annotation_mnemonic_string);
+extern char *anndesc_ctx(WFDB_Context *ctx, int annotation_code);
 extern int setanndesc_ctx(WFDB_Context *ctx, int annotation_code,
 			   const char *annotation_description);
 

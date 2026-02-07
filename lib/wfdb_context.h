@@ -76,6 +76,12 @@ struct WFDB_Context {
     struct cle *prev_cle;
 
     /* Annotation state (from annot.c) */
+    char *cstring[ACMAX+1];	/* ECG mnemonic strings */
+    char *astring[ACMAX+1];	/* annotation mnemonic strings */
+    char *tstring[ACMAX+1];	/* annotation descriptive strings */
+    char ecgstr_buf[14];	/* ecgstr return buffer */
+    char annstr_buf[14];	/* annstr return buffer */
+    int wfdb_mt;		/* ecgmap.h macro temporary */
     unsigned maxiann;		/* max allowed number of input annotators */
     unsigned niaf;		/* number of open input annotators */
     struct iadata **iad;	/* input annotator data */
@@ -179,6 +185,18 @@ struct WFDB_Context {
     struct isdata **vsd;
     WFDB_Sample *ovec;
     struct sigmapinfo *smi;
+
+    /* Resampling state (from signal.c) */
+    long mticks, nticks, mnticks;
+    int rgvstat;
+    WFDB_Time rgvtime, gvtime;
+    WFDB_Sample *gv0, *gv1;
+
+    /* getinfo iteration index */
+    int getinfo_index;
+
+    /* sample() function cache */
+    WFDB_Time sample_tt;
 
     /* Format I/O helpers */
     int _l;		/* macro temp for low byte of word */
