@@ -81,16 +81,19 @@ sufficiently long).
 */
 
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <math.h>
 #include <wfdb/wfdb.h>
 #include <wfdb/ecgmap.h>
 #define PBLEN	12	/* size of predictor array */
 
-char *pname, *prog_name();
+char *pname;
+char *prog_name(char *s);
+void help(void);
+void getnormal(WFDB_Annotation *ap);
 
-main(argc, argv)
-int argc;
-char *argv[];
+int main(int argc, char *argv[])
 {
     char *record = NULL;
     static double alpha = 0.75, bestpe, pe[PBLEN], rrmax, sps, worstpe;
@@ -99,7 +102,6 @@ char *argv[];
     static WFDB_Anninfo an[2];
     static WFDB_Annotation in_ann, out_ann;
     static WFDB_Time from, from0, next, to;
-    void help();
 
     pname = prog_name(argv[0]);
 
@@ -315,8 +317,7 @@ char *argv[];
     }
 }
 
-getnormal(ap)
-WFDB_Annotation *ap;
+void getnormal(WFDB_Annotation *ap)
 {
     do {
 	if (getann(0, ap) < 0) {
@@ -326,23 +327,12 @@ WFDB_Annotation *ap;
     } while (map2(ap->anntyp) != NORMAL);
 }
 
-char *prog_name(s)
-char *s;
+char *prog_name(char *s)
 {
     char *p = s + strlen(s);
 
-#ifdef MSDOS
-    while (p >= s && *p != '\\' && *p != ':') {
-	if (*p == '.')
-	    *p = '\0';		/* strip off extension */
-	if ('A' <= *p && *p <= 'Z')
-	    *p += 'a' - 'A';	/* convert to lower case */
-	p--;
-    }
-#else
     while (p >= s && *p != '/')
 	p--;
-#endif
     return (p+1);
 }
 
@@ -359,7 +349,7 @@ static char *help_strings[] = {
 NULL
 };
 
-void help()
+void help(void)
 {
     int i;
 

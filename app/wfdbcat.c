@@ -27,19 +27,15 @@ _______________________________________________________________________________
 #include <wfdb/wfdb.h>
 #include <wfdb/wfdblib.h>
 
-#ifndef __STDC__
-extern void exit();
-#endif
-
 #ifndef BUFSIZE
 #define BUFSIZE 1024	/* bytes read at a time */
 #endif
 
-main(argc, argv)
-int argc;
-char *argv[];
+char *prog_name(char *s);
+
+int main(int argc, char *argv[])
 {
-    char *pname, *prog_name();
+    char *pname;
     int i = 0;
     size_t n;
     static char buf[BUFSIZE];
@@ -66,22 +62,11 @@ char *argv[];
     /*NOTREACHED*/
 }
 
-char *prog_name(s)
-char *s;
+char *prog_name(char *s)
 {
     char *p = s + strlen(s);
 
-#ifdef MSDOS
-    while (p >= s && *p != '\\' && *p != ':') {
-	if (*p == '.')
-	    *p = '\0';		/* strip off extension */
-	if ('A' <= *p && *p <= 'Z')
-	    *p += 'a' - 'A';	/* convert to lower case */
-	p--;
-    }
-#else
     while (p >= s && *p != '/')
 	p--;
-#endif
     return (p+1);
 }

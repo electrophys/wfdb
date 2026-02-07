@@ -25,6 +25,8 @@ _______________________________________________________________________________
 
 
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <wfdb/wfdb.h>
 
 #define WFDBXMLPROLOG  "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" \
@@ -70,10 +72,13 @@ WFDB_Siginfo *s;
 WFDB_Time t;
 
 void process_start(char *tstring);
+void process_info(void);
+int process_record(void);
+char *prog_name(char *s);
 
-main(int argc, char **argv)
+int main(int argc, char **argv)
 {
-    char *ofname, *info, *p, *pname, *record, *prog_name();
+    char *ofname, *info, *p, *pname, *record;
     int i, in_msrec = 0, nsegments;
     WFDB_Seginfo *seg, *sp;
 
@@ -388,8 +393,7 @@ int process_record(void)
     return (0);
 }
 
-char *prog_name(s)
-char *s;
+char *prog_name(char *s)
 {
     char *p = s + strlen(s);
 

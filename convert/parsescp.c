@@ -237,6 +237,9 @@ _______________________________________________________________________________
 */
 
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <ctype.h>
 
 #ifndef NOWFDB
 #include <wfdb/wfdb.h>
@@ -248,6 +251,36 @@ _______________________________________________________________________________
 
 #define VERSION_STRING	"#ECG/1.0"
 #define min(A, B)	(((A) <= (B)) ? (A) : (B))
+
+/* Forward declarations */
+unsigned short get16(char *p);
+void put16(unsigned short val, char *p);
+unsigned long get32(char *p);
+unsigned short getcrc(char *p, long length);
+int crcok(char *p, long length, unsigned short crcref, char *description);
+void lowpass(void);
+int ncompare(const void *a, const void *b);
+int write_output(void);
+int write_wfdb_record(void);
+void help(void);
+void hexdump(unsigned char *p, long len);
+int section0(unsigned char *p, long len);
+int section1(unsigned char *p, long len);
+int section2(unsigned char *p, long len);
+int section3(unsigned char *p, long len);
+int section4(unsigned char *p, long len);
+int section5(unsigned char *p, long len);
+int section6(unsigned char *p, long len);
+int Huffdecode(unsigned char *p, long len, int section);
+unsigned long getbits(short *x, unsigned char *p, unsigned long ibits);
+int section7(unsigned char *p, long len);
+int section8(unsigned char *p, long len);
+int section9(unsigned char *p, long len);
+void prval(FILE *ofile, short val);
+void precgmeas(FILE *ofile);
+int section10(unsigned char *p, long len);
+int section11(unsigned char *p, long len);
+char *prog_name(char *s);
 
 /* Define SWAP if this program is compiled for a little-endian CPU (e.g., HP)
    but don't do so on a big-endian CPU (e.g., Intel x86) */
@@ -472,7 +505,7 @@ struct ECGmeas {	/* sets of measurements in section 10 */
    filtered output can do so, by using the -l option.  Note that the filter
    is applied only to the .ecg file, not to the text-format samples. */
 
-void lowpass()
+void lowpass(void)
 {
     int i, j;
     short *in, *out;
@@ -504,7 +537,7 @@ int ncompare(const void *a, const void *b)
     return (*(const short *)a - *(const short *)b);
 }
 
-int write_output()
+int write_output(void)
 {
     char dname[16];		/* name of .des file */
     char ename[16];		/* name of .ecg file */
@@ -516,7 +549,6 @@ int write_output()
     FILE *tfile; /* (optional, text) ECG signal file (for debugging) */
     int i;
     static char ecgprolog[512];	/* prolog for .ecg file */
-    void precgmeas();
 
     if (recname[0] == '\0') strcpy(recname, "ecg");  /* default record name */
     sprintf(dname, "%s.des", recname);
@@ -715,7 +747,7 @@ int write_output()
 }
 
 
-int write_wfdb_record()
+int write_wfdb_record(void)
 {
 #ifdef NOWFDB
     fprintf(stderr, "Warning: this version of %s was not compiled with"
@@ -778,7 +810,7 @@ int write_wfdb_record()
 #endif
 }
 
-void help()
+void help(void)
 {
     fprintf(stderr, "usage: %s -o RECORD [OPTIONS ...] <SCPFILE\n",
 	    pname);
@@ -813,14 +845,13 @@ void help()
 int aflag = 0;
 int skip[12];
 
-main(int argc, char **argv)
+int main(int argc, char **argv)
 {
     unsigned short crc, sec_id;
     unsigned long bytesread, length, sec_len;
     unsigned char desc[20], header[6], *data, *p;
     int i, j, k, m;
     FILE *ofile, *vfile;
-    char *prog_name();
 
     pname = prog_name(argv[0]);
 
@@ -2457,8 +2488,7 @@ int section11(unsigned char *p, long len)
     return (1);
 }
 
-char *prog_name(s)
-char *s;
+char *prog_name(char *s)
 {
     char *p = s + strlen(s);
 

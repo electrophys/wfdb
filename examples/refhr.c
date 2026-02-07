@@ -32,9 +32,7 @@ program is suitable for input to `mxm'.
 #include <wfdb/wfdb.h>
 #include <wfdb/ecgmap.h>
 
-main(argc, argv)
-int argc;
-char *argv[];
+int main(int argc, char *argv[])
 {
     char hr_string[20];	/* temporary storage for heart rate measurements */
     double sps;		/* sampling frequency (samples per second) */

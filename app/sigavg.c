@@ -38,12 +38,12 @@ WFDB_Sample *v, *vb;
 WFDB_Siginfo *s;
 WFDB_Time from = 0L, to = 0L;
 
-char *prog_name();
-void help(), init(), memerr();
+char *prog_name(char *s);
+void help(void);
+void init(int argc, char **argv);
+void memerr(void);
 
-main(argc, argv)
-int argc;
-char *argv[];
+int main(int argc, char *argv[])
 {
     int i, j, nbeats = 0;
     WFDB_Annotation annot;
@@ -231,29 +231,18 @@ void init(int argc, char **argv)
     }
 }
 
-void memerr()
+void memerr(void)
 {
     (void)fprintf(stderr, "%s: insufficient memory\n", pname);
     exit(2);
 }
 
-char *prog_name(s)
-char *s;
+char *prog_name(char *s)
 {
     char *p = s + strlen(s);
 
-#ifdef MSDOS
-    while (p >= s && *p != '\\' && *p != ':') {
-	if (*p == '.')
-	    *p = '\0';		/* strip off extension */
-	if ('A' <= *p && *p <= 'Z')
-	    *p += 'a' - 'A';	/* convert to lower case */
-	p--;
-    }
-#else
     while (p >= s && *p != '/')
 	p--;
-#endif
     return (p+1);
 }
 
@@ -274,7 +263,7 @@ static char *help_strings[] = {
 NULL
 };
 
-void help()
+void help(void)
 {
     int i;
 

@@ -405,7 +405,7 @@ then
     fi
 else
     CC=${CROSS_COMPILE}gcc
-    wflags="-Wno-implicit -Wformat "
+    wflags="-Wformat "
 fi
 echo "$CC"
 sed "s|CC = gcc|CC = $CC|" <site.def >site.tmp
@@ -657,11 +657,9 @@ then
     mv site.tmp site-slib.def
 fi
 
-sed "s/WFDB_NETFILES 1/WFDB_NETFILES $NETFILES/" < ../lib/wfdb.h0 | \
-    sed "s/WFDBMAJOR/$MAJOR/" | \
-    sed "s/WFDBMINOR/$MINOR/" | \
-    sed "s/WFDBRELEASE/$RELEASE/" | \
-    sed "s/WFDB_NETFILES_LIBCURL 1/WFDB_NETFILES_LIBCURL $NETFILES_LIBCURL/" \
+sed "s/@WFDBMAJOR@/$MAJOR/;s/@WFDBMINOR@/$MINOR/;s/@WFDBRELEASE@/$RELEASE/" \
+    < ../lib/wfdb.h0 | \
+    sed "s/@WFDB_NETFILES@/$NETFILES/;s/@WFDB_NETFILES_LIBCURL@/$NETFILES_LIBCURL/" \
       >../lib/wfdb.h
 
 sed "s/^LC =/LC = $LC/" <site.def | sed "s/^LL =/LL = $LL/" | \

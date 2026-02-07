@@ -24,15 +24,17 @@ _______________________________________________________________________________
 */
 
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <wfdb/wfdb.h>
 
 #define EDFMAXBLOCK	61440	/* maximum data block length, in bytes */
 
 char *pname;
 
-main(argc, argv)
-int argc;
-char **argv;
+void help(void);
+
+int main(int argc, char *argv[])
 {
     char buf[100];
     char *header, *ofname = NULL, *p, *block, **blockp, *record = NULL;
@@ -46,7 +48,6 @@ char **argv;
     WFDB_Siginfo *si;
     static char *month_name[] = {  "JAN", "FEB", "MAR", "APR", "MAY", "JUN",
 				   "JUL", "AUG", "SEP", "OCT", "NOV", "DEC" };
-    void help();
 
     /* Interpret the command line. */
     pname = argv[0];
@@ -452,7 +453,7 @@ static char *help_strings[] = {
 NULL
 };
 
-void help()
+void help(void)
 {
     int i;
 

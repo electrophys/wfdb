@@ -2,7 +2,7 @@
 #include <wfdb/wfdb.h>
 #include <wfdb/ecgmap.h>
 
-main()
+int main(void)
 {
     WFDB_Anninfo an[2];
     char record[8], iann[10], oann[10];

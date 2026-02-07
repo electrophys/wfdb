@@ -45,19 +45,7 @@ Beginning with version 8.3, calopen() uses the default calibration file name
 environment variable is not set.
 */
 
-#include "wfdblib.h"
-
-/* Calibration list entries each contain a WFDB_Calinfo record (crec) and
-   a forward pointer (next). */
-static struct cle {
-    double low;		/* low level of calibration pulse in physical units */
-    double high;	/* high level of calibration pulse in physical units */
-    double scale;	/* customary plotting scale (physical units per cm) */
-    char *sigtype;	/* signal type */
-    char *units;	/* physical units */
-    int caltype;	/* calibration pulse type (see definitions above) */
-    struct cle *next;
-} *first_cle, *this_cle, *prev_cle;
+#include "wfdb_context.h"
 
 /* Function calopen reads the specified calibration file;  if called with
    a NULL argument, it takes the value of the environment variable WFDBCAL
@@ -66,8 +54,9 @@ static struct cle {
    otherwise, the "+" is discarded before attempting to open the file,
    which may be in any directory in the WFDB path.  If the file can be read,
    its contents are appended to the calibration list. */
-FINT calopen(const char *cfname)
+int calopen(const char *cfname)
 {
+    WFDB_Context *ctx = wfdb_get_default_context();
     WFDB_FILE *cfile;
     char *buf = NULL, *p1, *p2, *p3, *p4, *p5, *p6;
     size_t bufsize = 0;
@@ -105,44 +94,44 @@ FINT calopen(const char *cfname)
 
 	/* This line appears to be a correctly formatted entry.  Allocate
 	   memory for a calibration list entry. */
-	SUALLOC(this_cle, 1, (sizeof(struct cle)));
+	SUALLOC(ctx->this_cle, 1, (sizeof(struct cle)));
 
 	/* "*" is a wildcard that matches any signal type. */
 	if (strcmp(p1, "*") == 0)
 	    p1++;
 
 	/* Fill in the fields of the new calibration list entry. */
-	SSTRCPY(this_cle->sigtype, p1);
+	SSTRCPY(ctx->this_cle->sigtype, p1);
 	if (strcmp(p2, "-") == 0) {
-	    this_cle->caltype = WFDB_AC_COUPLED;
-	    this_cle->low = 0.0;
+	    ctx->this_cle->caltype = WFDB_AC_COUPLED;
+	    ctx->this_cle->low = 0.0;
 	}
 	else {
-	    this_cle->caltype = WFDB_DC_COUPLED;
-	    this_cle->low = strtod(p2, NULL);
+	    ctx->this_cle->caltype = WFDB_DC_COUPLED;
+	    ctx->this_cle->low = strtod(p2, NULL);
 	}
 	if (strcmp(p3, "-") == 0)
-	    this_cle->high = this_cle->low = 0.0;
+	    ctx->this_cle->high = ctx->this_cle->low = 0.0;
 	else
-	    this_cle->high = strtod(p3, NULL);
+	    ctx->this_cle->high = strtod(p3, NULL);
 	if (strcmp(p4, "square") == 0)
-	    this_cle->caltype |= WFDB_CAL_SQUARE;
+	    ctx->this_cle->caltype |= WFDB_CAL_SQUARE;
 	else if (strcmp(p4, "sine") == 0)
-	    this_cle->caltype |= WFDB_CAL_SINE;
+	    ctx->this_cle->caltype |= WFDB_CAL_SINE;
 	else if (strcmp(p4, "sawtooth") == 0)
-	    this_cle->caltype |= WFDB_CAL_SAWTOOTH;
+	    ctx->this_cle->caltype |= WFDB_CAL_SAWTOOTH;
 	/* otherwise pulse shape is undefined */
-	this_cle->scale = strtod(p5, NULL);
-	SSTRCPY(this_cle->units, p6);
-	this_cle->next = NULL;
+	ctx->this_cle->scale = strtod(p5, NULL);
+	SSTRCPY(ctx->this_cle->units, p6);
+	ctx->this_cle->next = NULL;
 
 	/* Append the new entry to the end of the list. */
-	if (first_cle) {
-	    prev_cle->next = this_cle;
-	    prev_cle = this_cle;
+	if (ctx->first_cle) {
+	    ctx->prev_cle->next = ctx->this_cle;
+	    ctx->prev_cle = ctx->this_cle;
 	}
 	else
-	    first_cle = prev_cle = this_cle;
+	    ctx->first_cle = ctx->prev_cle = ctx->this_cle;
     }
 
     SFREE(buf);
@@ -158,18 +147,21 @@ FINT calopen(const char *cfname)
    of finding a match.  If a match is found, it is copied into the caller's
    WFDB_Calinfo structure.  The caller must not write over the storage
    addressed by the desc and units fields. */
-FINT getcal(const char *desc, const char *units, WFDB_Calinfo *cal)
+int getcal(const char *desc, const char *units, WFDB_Calinfo *cal)
 {
-    for (this_cle = first_cle; this_cle; this_cle = this_cle->next) {
-	if ((desc == NULL || strncmp(desc, this_cle->sigtype,
-				     strlen(this_cle->sigtype)) == 0) &&
-	    (units == NULL || strcmp(units, this_cle->units) == 0)) {
-	    cal->low = this_cle->low;
-	    cal->high = this_cle->high;
-	    cal->scale = this_cle->scale;
-	    cal->sigtype = this_cle->sigtype;
-	    cal->units = this_cle->units;
-	    cal->caltype = this_cle->caltype;
+    WFDB_Context *ctx = wfdb_get_default_context();
+
+    for (ctx->this_cle = ctx->first_cle; ctx->this_cle;
+	 ctx->this_cle = ctx->this_cle->next) {
+	if ((desc == NULL || strncmp(desc, ctx->this_cle->sigtype,
+				     strlen(ctx->this_cle->sigtype)) == 0) &&
+	    (units == NULL || strcmp(units, ctx->this_cle->units) == 0)) {
+	    cal->low = ctx->this_cle->low;
+	    cal->high = ctx->this_cle->high;
+	    cal->scale = ctx->this_cle->scale;
+	    cal->sigtype = ctx->this_cle->sigtype;
+	    cal->units = ctx->this_cle->units;
+	    cal->caltype = ctx->this_cle->caltype;
 	    return (0);
 	}
     }
@@ -178,30 +170,33 @@ FINT getcal(const char *desc, const char *units, WFDB_Calinfo *cal)
 
 /* Function putcal appends the caller's WFDB_Calinfo structure to the end of
    the calibration list. */
-FINT putcal(const WFDB_Calinfo *cal)
+int putcal(const WFDB_Calinfo *cal)
 {
-    SUALLOC(this_cle, 1, sizeof(struct cle));
-    SSTRCPY(this_cle->sigtype, cal->sigtype);
-    this_cle->caltype = cal->caltype;
-    this_cle->low = cal->low;
-    this_cle->high = cal->high;
-    this_cle->scale = cal->scale;
-    SSTRCPY(this_cle->units, cal->units);
-    this_cle->next = NULL;
+    WFDB_Context *ctx = wfdb_get_default_context();
 
-    if (first_cle) {
-	prev_cle->next = this_cle;
-	prev_cle = this_cle;
+    SUALLOC(ctx->this_cle, 1, sizeof(struct cle));
+    SSTRCPY(ctx->this_cle->sigtype, cal->sigtype);
+    ctx->this_cle->caltype = cal->caltype;
+    ctx->this_cle->low = cal->low;
+    ctx->this_cle->high = cal->high;
+    ctx->this_cle->scale = cal->scale;
+    SSTRCPY(ctx->this_cle->units, cal->units);
+    ctx->this_cle->next = NULL;
+
+    if (ctx->first_cle) {
+	ctx->prev_cle->next = ctx->this_cle;
+	ctx->prev_cle = ctx->this_cle;
     }
     else
-	first_cle = prev_cle = this_cle;
+	ctx->first_cle = ctx->prev_cle = ctx->this_cle;
     return (0);
 }
 
 /* Function newcal generates a calibration file based on the contents of the
    calibration list. */
-FINT newcal(const char *cfname)
+int newcal(const char *cfname)
 {
+    WFDB_Context *ctx = wfdb_get_default_context();
     WFDB_FILE *cfile;
     int errflag;
 
@@ -213,22 +208,23 @@ FINT newcal(const char *cfname)
 	return (-1);
     }
 
-    for (this_cle = first_cle; this_cle; this_cle = this_cle->next) {
+    for (ctx->this_cle = ctx->first_cle; ctx->this_cle;
+	 ctx->this_cle = ctx->this_cle->next) {
 	const char *pulsetype;
 
 	/* If sigtype is an empty string (matches anything), write it
 	   as "*". */
-	wfdb_fprintf(cfile, "%s\t", (this_cle->sigtype[0]
-				     ? this_cle->sigtype : "*"));
-	if (this_cle->caltype & WFDB_DC_COUPLED)
-	    (void)wfdb_fprintf(cfile, "%g ", this_cle->low);
+	wfdb_fprintf(cfile, "%s\t", (ctx->this_cle->sigtype[0]
+				     ? ctx->this_cle->sigtype : "*"));
+	if (ctx->this_cle->caltype & WFDB_DC_COUPLED)
+	    (void)wfdb_fprintf(cfile, "%g ", ctx->this_cle->low);
 	else
 	    (void)wfdb_fprintf(cfile, "- ");
-	if (this_cle->high != this_cle->low)
-	    (void)wfdb_fprintf(cfile, "%g ", this_cle->high);
+	if (ctx->this_cle->high != ctx->this_cle->low)
+	    (void)wfdb_fprintf(cfile, "%g ", ctx->this_cle->high);
 	else
 	    (void)wfdb_fprintf(cfile, "- ");
-	switch (this_cle->caltype & (~WFDB_DC_COUPLED)) {
+	switch (ctx->this_cle->caltype & (~WFDB_DC_COUPLED)) {
 	  case WFDB_CAL_SQUARE:	pulsetype = "square"; break;
 	  case WFDB_CAL_SINE:	pulsetype = "sine"; break;
 	  case WFDB_CAL_SAWTOOTH:	pulsetype = "sawtooth"; break;
@@ -236,8 +232,8 @@ FINT newcal(const char *cfname)
 	}
 	(void)wfdb_fprintf(cfile, "%s %g %s\r\n",
 		      pulsetype,
-		      this_cle->scale,
-		      this_cle->units);
+		      ctx->this_cle->scale,
+		      ctx->this_cle->units);
     }
 
     errflag = wfdb_ferror(cfile);
@@ -251,15 +247,15 @@ FINT newcal(const char *cfname)
 }
 
 /* Function flushcal empties the calibration list. */
-FVOID flushcal(void)
+void flushcal(void)
 {
-    while (first_cle) {
-	SFREE(first_cle->sigtype);
-	SFREE(first_cle->units);
-	this_cle = first_cle->next;
-	SFREE(first_cle);
-	first_cle = this_cle;
+    WFDB_Context *ctx = wfdb_get_default_context();
+
+    while (ctx->first_cle) {
+	SFREE(ctx->first_cle->sigtype);
+	SFREE(ctx->first_cle->units);
+	ctx->this_cle = ctx->first_cle->next;
+	SFREE(ctx->first_cle);
+	ctx->first_cle = ctx->this_cle;
     }
 }
-
-	

@@ -31,7 +31,7 @@ This file contains definitions of the following WFDB library functions:
 
 #include "wfdblib.h"
 
-FINT wfdbinit(char *record, const WFDB_Anninfo *aiarray, unsigned int nann,
+int wfdbinit(char *record, const WFDB_Anninfo *aiarray, unsigned int nann,
 	      WFDB_Siginfo *siarray, unsigned int nsig)
 {
     int stat;
@@ -41,7 +41,7 @@ FINT wfdbinit(char *record, const WFDB_Anninfo *aiarray, unsigned int nann,
     return (stat);
 }
 
-FVOID wfdbquit(void)
+void wfdbquit(void)
 {
     wfdb_anclose();	/* close annotation files, reset variables */
     wfdb_oinfoclose();	/* close info file */
@@ -51,7 +51,7 @@ FVOID wfdbquit(void)
     wfdb_freeinfo();	/* release info strings */
 }
 
-FVOID wfdbflush(void)	/* write all buffered output to files */
+void wfdbflush(void)	/* write all buffered output to files */
 {
     wfdb_oaflush();	/* flush buffered output annotations */
     wfdb_osflush();	/* flush buffered output samples */

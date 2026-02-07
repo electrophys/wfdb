@@ -29,11 +29,11 @@ This program is a drastically pruned version of wfdbdesc.
 #include <stdio.h>
 #include <wfdb/wfdb.h>
 
-main(argc, argv)
-int argc;
-char *argv[];
+char *prog_name(char *s);
+
+int main(int argc, char *argv[])
 {
-    char *info, *p, *pname, *prog_name();
+    char *info, *p, *pname;
     int i, msrec = 0, nsig;
     FILE *ifile;
     WFDB_Siginfo *s;
@@ -67,22 +67,11 @@ char *argv[];
     exit(0);	/*NOTREACHED*/
 }
 
-char *prog_name(s)
-char *s;
+char *prog_name(char *s)
 {
     char *p = s + strlen(s);
 
-#ifdef MSDOS
-    while (p >= s && *p != '\\' && *p != ':') {
-	if (*p == '.')
-	    *p = '\0';		/* strip off extension */
-	if ('A' <= *p && *p <= 'Z')
-	    *p += 'a' - 'A';	/* convert to lower case */
-	p--;
-    }
-#else
     while (p >= s && *p != '/')
 	p--;
-#endif
     return (p+1);
 }

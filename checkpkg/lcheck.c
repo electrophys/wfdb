@@ -26,7 +26,7 @@ _______________________________________________________________________________
 #include <stdio.h>
 #include <wfdb/wfdb.h>
 
-char *info, *pname, *prog_name();
+char *info, *pname, *prog_name(char *s);
 int n, nsig, i, j, framelen, errors = 0, istat, vflag = 0;
 char headerversion[40];
 char *libversion;
@@ -36,13 +36,11 @@ WFDB_Annotation annot;
 WFDB_Calinfo cal;
 WFDB_Siginfo *si;
 WFDB_Sample *vector;
-void help(), list_untested();
+void help(void), list_untested(void);
 void check_annotations(char *record);
 void check_signals(char *record, char *orec, int fmt, int split_info);
 
-main(argc, argv)
-int argc;
-char *argv[];
+int main(int argc, char *argv[])
 {
 
   pname = prog_name(argv[0]);
@@ -719,23 +717,12 @@ void check_signals(char *record, char *orec, int ofmt, int split_info)
   setanndesc(-1, "Normal beat");
 }
 
-char *prog_name(s)
-char *s;
+char *prog_name(char *s)
 {
     char *p = s + strlen(s);
 
-#ifdef MSDOS
-    while (p >= s && *p != '\\' && *p != ':') {
-	if (*p == '.')
-	    *p = '\0';		/* strip off extension */
-	if ('A' <= *p && *p <= 'Z')
-	    *p += 'a' - 'A';	/* convert to lower case */
-	p--;
-    }
-#else
     while (p >= s && *p != '/')
 	p--;
-#endif
     return (p+1);
 }
 
@@ -746,7 +733,7 @@ static char *help_strings[] = {
  NULL
 };
 
-void help()
+void help(void)
 {
     int i;
 
@@ -755,7 +742,7 @@ void help()
 	(void)fprintf(stderr, "%s\n", help_strings[i]);
 }
 
-void list_untested()
+void list_untested(void)
 {
     printf(
    "This program does not (yet) test the following WFDB library functions:\n");

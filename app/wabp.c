@@ -53,6 +53,7 @@ onset.
 */
 
 #include <stdio.h>
+#include <ctype.h>
 #include <wfdb/wfdb.h>
 #include <wfdb/ecgcodes.h>
 
@@ -64,6 +65,8 @@ onset.
 #define TmDEF	   5	/* minimum threshold value (default) */
 
 char *pname;		/* the name by which this program was invoked */
+char *prog_name(char *s);
+void help(void);
 int *ebuf;
 int nsig;		/* number of input signals */
 int SLPwindow;          /* Slope window size */
@@ -158,9 +161,8 @@ int main(int argc, char **argv)
     WFDB_Annotation annot;
     WFDB_Siginfo *s;
     WFDB_Time from = 0L, next_minute, spm, t, tpq, to = 0L, tt, t1;
-    char *p, *prog_name();
+    char *p;
     static int gvmode = 0;
-    void help();
 
     pname = prog_name(argv[0]);
 
@@ -408,23 +410,12 @@ int main(int argc, char **argv)
     exit(0);
 }
 
-char *prog_name(s)
-char *s;
+char *prog_name(char *s)
 {
     char *p = s + strlen(s);
 
-#ifdef MSDOS
-    while (p >= s && *p != '\\' && *p != ':') {
-	if (*p == '.')
-	    *p = '\0';		/* strip off extension */
-	if ('A' <= *p && *p <= 'Z')
-	    *p += 'a' - 'A';	/* convert to lower case */
-	p--;
-    }
-#else
     while (p >= s && *p != '/')
 	p--;
-#endif
     return (p+1);
 }
 
@@ -446,7 +437,7 @@ static char *help_strings[] = {
 NULL
 };
 
-void help()
+void help(void)
 {
     int i;
 

@@ -137,7 +137,7 @@ WFDB_Sample ltsamp(WFDB_Time t)
     return (lbuf[t&(BUFLN-1)]);
 }
 
-main(int argc, char **argv)
+int main(int argc, char **argv)
 { 
     char *p;
     char *record = NULL;	     /* input record name */
@@ -161,8 +161,8 @@ main(int argc, char **argv)
     WFDB_Siginfo *s;
     WFDB_Time from = 0L, next_minute, spm, t, tj, tpq, to = 0L, tt, t1;
     static int gvmode = WFDB_GVPAD | WFDB_LOWRES;
-    char *prog_name();
-    void help();
+    char *prog_name(char *s);
+    void help(void);
 
     pname = prog_name(argv[0]);
 
@@ -451,23 +451,12 @@ main(int argc, char **argv)
     exit(0);
 }
 
-char *prog_name(s)
-char *s;
+char *prog_name(char *s)
 {
     char *p = s + strlen(s);
 
-#ifdef MSDOS
-    while (p >= s && *p != '\\' && *p != ':') {
-	if (*p == '.')
-	    *p = '\0';		/* strip off extension */
-	if ('A' <= *p && *p <= 'Z')
-	    *p += 'a' - 'A';	/* convert to lower case */
-	p--;
-    }
-#else
     while (p >= s && *p != '/')
 	p--;
-#endif
     return (p+1);
 }
 
@@ -494,7 +483,7 @@ static char *help_strings[] = {
 NULL
 };
 
-void help()
+void help(void)
 {
     int i;
 

@@ -24,6 +24,9 @@ _______________________________________________________________________________
 */
 
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
 #include <math.h>	/* declarations of pow(), sqrt() */
 #include <wfdb/wfdb.h>
 #include <wfdb/ecgcodes.h>
@@ -32,25 +35,19 @@ _______________________________________________________________________________
 #define mkstemp mktemp
 #endif
 
-/* Define the WFDB path component separator (OS-dependent). */
-#ifdef MSDOS		/* for MS-DOS, OS/2, etc. */
-# define PSEP	';'
-#else
-#ifdef MAC		/* for Macintosh */
-# define PSEP	';'
-#else			/* for UNIX, etc. */
-# define PSEP	':'
-#endif
-#endif
+/* Define the WFDB path component separator. */
+#define PSEP	':'
 
-char *pname, *prog_name();
+char *pname;
+char *prog_name(char *s);
+void help(void);
+void nst(char *irec, char *nrec, char *protocol, char *orec, double snr);
+
 double *gn;
 int format = 16, nisig, nnsig, *nse, *vin, *vout, *z, *zz;
 WFDB_Siginfo *si;
 
-main(argc, argv)
-int argc;
-char *argv[];
+int main(int argc, char *argv[])
 {
     static char answer[20], buf[256], *wfdbp, irec[10], nrec[21], nnrec[20],
         orec[10], refaname[10], *protocol, tfname[20], *p, *s;
@@ -60,7 +57,6 @@ char *argv[];
     WFDB_Time t, t0, tf, dt;
     WFDB_Anninfo ai;
     static WFDB_Annotation annot;
-    void help(), nst();
 
     pname = prog_name(argv[0]);
     for (i = 1; i < argc; i++) {
@@ -303,13 +299,6 @@ char *argv[];
 	(void)setsampfreq(0.);
 
 	(void)fprintf(stderr, "Generating protocol annotation file ...");
-#ifdef MSDOS
-	for (p = tfname; *p; p++)
-	    if (*p == '.') {
-		*p = '\0';
-		break;
-	    }
-#endif
 	ai.name = protocol = tfname;
 	ai.stat = WFDB_WRITE;
 	if (annopen(nrec+1, &ai, 1) < 0)
@@ -416,9 +405,7 @@ char *argv[];
     exit(0);	/*NOTREACHED*/
 }
 
-void nst(irec, nrec, protocol, orec, snr)
-char *irec, *nrec, *protocol, *orec;
-double snr;
+void nst(char *irec, char *nrec, char *protocol, char *orec, double snr)
 {
     char buf[80], ofname[20], *p;
     int errct = 0, i;
@@ -542,23 +529,12 @@ double snr;
     wfdbquit();
 }
 
-char *prog_name(s)
-char *s;
+char *prog_name(char *s)
 {
     char *p = s + strlen(s);
 
-#ifdef MSDOS
-    while (p >= s && *p != '\\' && *p != ':') {
-	if (*p == '.')
-	    *p = '\0';		/* strip off extension */
-	if ('A' <= *p && *p <= 'Z')
-	    *p += 'a' - 'A';	/* convert to lower case */
-	p--;
-    }
-#else
     while (p >= s && *p != '/')
 	p--;
-#endif
     return (p+1);
 }
 
@@ -583,7 +559,7 @@ static char *help_strings[] = {
 NULL
 };
 
-void help()
+void help(void)
 {
     int i;
 

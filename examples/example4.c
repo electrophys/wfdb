@@ -1,16 +1,14 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <wfdb/wfdb.h>
 #include <wfdb/ecgmap.h>
 
-main(argc, argv)
-int argc;
-char *argv[];
+int main(int argc, char *argv[])
 {
     int rr, *rrhist, rrmax;
     WFDB_Time t;
     WFDB_Anninfo a;
     WFDB_Annotation annot;
-    void *calloc();
 
     if (argc < 3) {
         fprintf(stderr, "usage: %s annotator record\n", argv[0]);

@@ -28,16 +28,9 @@ generates header files.
 */
 
 #include <stdio.h>
-#ifdef __STDC__
+#include <stdlib.h>
+#include <string.h>
 #define RB	"rb"
-#else
-#ifdef MSDOS
-#define RB	"rb"
-#else
-#define RB	"r"
-extern void exit();
-#endif
-#endif
 
 #include <wfdb/wfdb.h>
 
@@ -46,15 +39,16 @@ extern void exit();
 
 char *pname;
 
-main(argc, argv)
-int argc;
-char *argv[];
+char *prog_name(char *s);
+int getcvec(int *v);
+void help(void);
+
+int main(int argc, char *argv[])
 {
-    char dfname[FNLEN], *ifname = NULL, *p, *record = NULL, *prog_name();
-    int cflag = 0, i, v[2], getcvec();
+    char dfname[FNLEN], *ifname = NULL, *p, *record = NULL;
+    int cflag = 0, i, v[2];
     long t = 0L, start_time = 0L, end_time = 0L;
     static WFDB_Siginfo dfarray[2];
-    void help();
 
     pname = prog_name(argv[0]);
     (void)setsampfreq(250.);
@@ -194,8 +188,7 @@ char *argv[];
     exit(0);	/*NOTREACHED*/
 }
 
-int getcvec(v)
-int *v;
+int getcvec(int *v)
 {
     int x, y;
     static int v0, v1;
@@ -229,23 +222,12 @@ int *v;
     return (2);
 }
 
-char *prog_name(s)
-char *s;
+char *prog_name(char *s)
 {
     char *p = s + strlen(s);
 
-#ifdef MSDOS
-    while (p >= s && *p != '\\' && *p != ':') {
-	if (*p == '.')
-	    *p = '\0';		/* strip off extension */
-	if ('A' <= *p && *p <= 'Z')
-	    *p += 'a' - 'A';	/* convert to lower case */
-	p--;
-    }
-#else
     while (p >= s && *p != '/')
 	p--;
-#endif
     return (p+1);
 }
 
@@ -266,7 +248,7 @@ static char *help_strings[] = {
     NULL
 };
 
-void help()
+void help(void)
 {
     int i;
 

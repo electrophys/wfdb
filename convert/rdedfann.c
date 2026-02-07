@@ -34,19 +34,24 @@ and then produce a WFDB-compatible annotation file 'foo.edf.qrs':
 */
 
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <wfdb/wfdb.h>
 
 char *pname;
 double sfreq = 0.0;
 int state;
 
-main(int argc, char **argv)
+char *prog_name(char *s);
+int proc(int x, int xflag);
+void help(void);
+
+int main(int argc, char **argv)
 {
-    char *record = NULL, *prog_name();
     int aindex = 0, alen = 0, framelen = 0, i, nsig, s, vflag = 0, xflag = 0;
+    char *record = NULL;
     WFDB_Sample *frame;
     WFDB_Siginfo *si;
-    void help();
 
     pname = prog_name(argv[0]);
     for (i = 1; i < argc; i++) {
@@ -153,7 +158,7 @@ main(int argc, char **argv)
     exit(0);	/*NOTREACHED*/
 }
 
-proc(int x, int xflag)
+int proc(int x, int xflag)
 {
     static char onset[1024], duration[1024], text[1024];
     static char *onsetp, *durationp, *textp;
@@ -225,8 +230,7 @@ proc(int x, int xflag)
     }
 }
 
-char *prog_name(s)
-char *s;
+char *prog_name(char *s)
 {
     char *p = s + strlen(s);
 
@@ -255,7 +259,7 @@ static char *help_strings[] = {
 NULL
 };
 
-void help()
+void help(void)
 {
     int i;
 

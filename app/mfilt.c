@@ -25,6 +25,8 @@ _______________________________________________________________________________
 */
 
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <wfdb/wfdb.h>
 
 char *pname;	/* name by which this program was invoked */
@@ -40,18 +42,18 @@ WFDB_Time to = 0L; /* (if > 0) sample following last sample to be processed */
 WFDB_Time spm;	/* samples per minute */
 WFDB_Time tt;	/* time to print next progress indicator */
 
-char *prog_name();
-void help(), init(), memerr();
+char *prog_name(char *s);
+void help(void);
+void init(int argc, char *argv[]);
+void memerr(void);
 
-int icmp(x, y)
-int *x, *y;
+int icmp(const void *px, const void *py)
 {
+    const int *x = px, *y = py;
     return (*y - *x);
 }
 
-main(argc, argv)
-int argc;
-char *argv[];
+int main(int argc, char *argv[])
 {
     int i = 0, j, s;
     WFDB_Time t;
@@ -71,7 +73,7 @@ char *argv[];
 	for (s = 0; s < nsig; s++) {
 	    for (j = 0; j < flen; j++)
 		vtemp[j] = vin[j][s];
-	    qsort((char *)vtemp, flen, sizeof(int), icmp);
+	    qsort(vtemp, flen, sizeof(int), icmp);
 	    if (flen & 1)	/* odd length -- median is middle element */
 		vout[s] = vtemp[median];
 	    else    /* even length -- median is avg. of two middle elements */
@@ -95,9 +97,7 @@ char *argv[];
     exit(0);	/*NOTREACHED*/
 }
 
-void init(argc, argv)
-int argc;
-char *argv[];
+void init(int argc, char *argv[])
 {
     char *irec = "16", *ofname, *orec = "16", *p;
     int format, i;
@@ -226,29 +226,18 @@ char *argv[];
     tt = from + spm;		/* time to print next progress indicator */
 }
 
-void memerr()
+void memerr(void)
 {
     (void)fprintf(stderr, "%s: insufficient memory\n", pname);
     exit(2);
 }
 
-char *prog_name(s)
-char *s;
+char *prog_name(char *s)
 {
     char *p = s + strlen(s);
 
-#ifdef MSDOS
-    while (p >= s && *p != '\\' && *p != ':') {
-	if (*p == '.')
-	    *p = '\0';		/* strip off extension */
-	if ('A' <= *p && *p <= 'Z')
-	    *p += 'a' - 'A';	/* convert to lower case */
-	p--;
-    }
-#else
     while (p >= s && *p != '/')
 	p--;
-#endif
     return (p+1);
 }
 
@@ -268,7 +257,7 @@ static char *help_strings[] = {
 NULL
 };
 
-void help()
+void help(void)
 {
     int i;
 

@@ -37,17 +37,17 @@ WFDB_Siginfo *si = NULL;
 int mflag = 0;
 int spm;
 
-main(argc, argv)
-int argc;
-char *argv[];
+char *prog_name(char *s);
+void help(void);
+void map_sig(char *record, WFDB_Siginfo *si, int nsig, int **map, int length);
+void map_ann(char *record, WFDB_Anninfo *ai, int nann, int **map, int length);
+void write_map(int **map, int nsig, int nann, int length);
+void write_script(int **map, int nsig, int nann, int length);
+
+int main(int argc, char *argv[])
 {
-    char *record = NULL, *prog_name();
+    char *record = NULL;
     int i, j, length, **map = NULL, nann = 0, nsig;
-    void help();
-    void map_sig(char *record, WFDB_Siginfo *si, int nsig,int **map,int length);
-    void map_ann(char *record, WFDB_Anninfo *ai, int nann,int **map,int length);
-    void write_map(int **map, int nsig, int nann, int length);
-    void write_script(int **map, int nsig, int nann, int length);
 
     pname = prog_name(argv[0]);
 
@@ -442,23 +442,12 @@ void write_script(int **map, int nsig, int nann, int length)
 	       2.*(i+1), si[i].desc);
 }
 
-char *prog_name(s)
-char *s;
+char *prog_name(char *s)
 {
     char *p = s + strlen(s);
 
-#ifdef MSDOS
-    while (p >= s && *p != '\\' && *p != ':') {
-	if (*p == '.')
-	    *p = '\0';		/* strip off extension */
-	if ('A' <= *p && *p <= 'Z')
-	    *p += 'a' - 'A';	/* convert to lower case */
-	p--;
-    }
-#else
     while (p >= s && *p != '/')
 	p--;
-#endif
     return (p+1);
 }
 
@@ -469,7 +458,7 @@ static char *help_strings[] = {
 NULL
 };
 
-void help()
+void help(void)
 {
     int i;
 

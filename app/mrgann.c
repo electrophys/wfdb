@@ -45,10 +45,8 @@ first annotator is copied, and a warning message is written to the standard
 output.  */
 
 #include <stdio.h>
-#ifndef __STDC__
-extern void exit();
-#endif
-
+#include <stdlib.h>
+#include <string.h>
 #include <wfdb/wfdb.h>
 
 /* mode definitions */
@@ -63,13 +61,13 @@ static int ateof[2], map0 = -1, map1 = -1, vflag;
 static WFDB_Frequency sfreq, ffreq, afreq = 0;
 static WFDB_Anninfo ai[3];
 static WFDB_Annotation annot[2];
-void help(), mergeann();
+char *prog_name(char *s);
+void help(void);
+void mergeann(int mode, WFDB_Time tf);
+int init(void);
 
-main(argc, argv)	
-int argc;
-char *argv[];
+int main(int argc, char *argv[])
 {
-    char *prog_name();
     WFDB_Time tf = (WFDB_Time)(-1);
     int i, mode = UNINITIALIZED, next_mode = MERGE;
 
@@ -180,7 +178,7 @@ char *argv[];
     exit(0);	/*NOTREACHED*/
 }
 
-init()
+int init(void)
 {
     WFDB_Frequency af1, af2;
     if (record == NULL || ai[0].name == NULL ||
@@ -211,9 +209,7 @@ init()
     ateof[1] = getann(1, &annot[1]);
 }
 
-void mergeann(mode, tf)
-int mode;
-WFDB_Time tf;
+void mergeann(int mode, WFDB_Time tf)
 {
     switch (mode) {
       case DISCARD_ALL:
@@ -290,23 +286,12 @@ WFDB_Time tf;
     }
 }
 
-char *prog_name(s)
-char *s;
+char *prog_name(char *s)
 {
     char *p = s + strlen(s);
 
-#ifdef MSDOS
-    while (p >= s && *p != '\\' && *p != ':') {
-	if (*p == '.')
-	    *p = '\0';		/* strip off extension */
-	if ('A' <= *p && *p <= 'Z')
-	    *p += 'a' - 'A';	/* convert to lower case */
-	p--;
-    }
-#else
     while (p >= s && *p != '/')
 	p--;
-#endif
     return (p+1);
 }
 
@@ -327,7 +312,7 @@ static char *help_strings[] = {
 NULL
 };
 
-void help()
+void help(void)
 {
     int i;
 

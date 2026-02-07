@@ -27,11 +27,7 @@ _______________________________________________________________________________
 #include <stdio.h>
 #include <math.h>
 
-#ifdef __STDC__
 #include <stdlib.h>
-#else
-extern void exit();
-#endif
 
 #ifndef BSD
 # include <string.h>
@@ -89,12 +85,11 @@ char *prolog[] = {
 
 char *pname;		/* name by which this program was invoked */
 
-main(argc, argv)
-int argc;
-char *argv[];
+char *prog_name(char *s);
+
+int main(int argc, char *argv[])
 {
     static char buf[256];
-    char *prog_name();
     FILE *ifile;
     int i;
     static long n, nd;
@@ -162,22 +157,11 @@ char *argv[];
     exit(0);	/*NOTREACHED*/
 }
 
-char *prog_name(s)
-char *s;
+char *prog_name(char *s)
 {
     char *p = s + strlen(s);
 
-#ifdef MSDOS
-    while (p >= s && *p != '\\' && *p != ':') {
-	if (*p == '.')
-	    *p = '\0';		/* strip off extension */
-	if ('A' <= *p && *p <= 'Z')
-	    *p += 'a' - 'A';	/* convert to lower case */
-	p--;
-    }
-#else
     while (p >= s && *p != '/')
 	p--;
-#endif
     return (p+1);
 }

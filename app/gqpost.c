@@ -72,7 +72,7 @@ void cleanup(int status);
 char *pname;			/* name of this program, used in messages */
 char *record = NULL;		/* name of input record */
 
-main(int argc, char **argv)
+int main(int argc, char **argv)
 {
     FILE *config = NULL;
     int dt, i, meanrr, meanrrd, minrrd, state = 0, thresh = 20;
@@ -267,18 +267,8 @@ char *prog_name(char *s)
 {
     char *p = s + strlen(s);
 
-#ifdef MSDOS
-    while (p >= s && *p != '\\' && *p != ':') {
-	if (*p == '.')
-	    *p = '\0';		/* strip off extension */
-	if ('A' <= *p && *p <= 'Z')
-	    *p += 'a' - 'A';	/* convert to lower case */
-	p--;
-    }
-#else
     while (p >= s && *p != '/')
 	p--;
-#endif
     return (p+1);
 }
 
@@ -306,7 +296,7 @@ static char *help_strings[] = {
 NULL
 };
 
-void help()
+void help(void)
 {
     int i;
 

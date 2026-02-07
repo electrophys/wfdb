@@ -76,11 +76,12 @@ and then compare its output with the reference annotations by:
 
 char *pname;
 
-main(argc, argv)
-int argc;
-char *argv[];
+char *prog_name(char *s);
+void help(void);
+
+int main(int argc, char *argv[])
 {
-    char *p, *record = NULL, *prog_name();
+    char *p, *record = NULL;
     int filter, i, minutes = 0, nsig, time = 0,
         slopecrit, sign, maxslope = 0, nslope = 0,
         qtime, maxtime, t0, t1, t2, t3, t4, t5, t6, t7, t8, t9,
@@ -90,7 +91,6 @@ char *argv[];
     WFDB_Annotation annot;
     static int gvmode = WFDB_LOWRES;
     static WFDB_Siginfo *s;
-    void help();
 
     pname = prog_name(argv[0]);
 
@@ -268,23 +268,12 @@ char *argv[];
     exit(0);	/*NOTREACHED*/
 }
 
-char *prog_name(s)
-char *s;
+char *prog_name(char *s)
 {
     char *p = s + strlen(s);
 
-#ifdef MSDOS
-    while (p >= s && *p != '\\' && *p != ':') {
-	if (*p == '.')
-	    *p = '\0';		/* strip off extension */
-	if ('A' <= *p && *p <= 'Z')
-	    *p += 'a' - 'A';	/* convert to lower case */
-	p--;
-    }
-#else
     while (p >= s && *p != '/')
 	p--;
-#endif
     return (p+1);
 }
 
@@ -303,7 +292,7 @@ static char *help_strings[] = {
 NULL
 };
 
-void help()
+void help(void)
 {
     int i;
 

@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <wfdb/wfdb.h>
 
-main()
+int main(void)
 {
     char answer[32], record[8], directory[32];
     int i, nsig = 0;
@@ -113,12 +113,11 @@ main()
     exit(0);
 }
 
-adinit() { printf("%s\n", timstr(0L)); }
+void adinit(void) { printf("%s\n", timstr(0L)); }
 
-adget(i)
-int i;
+int adget(int i)
 {
     return (i);
 }
 
-adquit() { ; }
+void adquit(void) { ; }

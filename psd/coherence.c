@@ -71,20 +71,23 @@ where FILENAME is the name of the input file, and OPTIONS may include:
 */
 
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <math.h>
-#if defined(__STDC__) || defined(_WINDOWS)
-# include <stdlib.h>
-#else
-# ifdef HAVE_MALLOC_H
-# include <malloc.h>
-# else
-extern char *calloc();
-# endif
-#endif
 
-/* Function types. */
-int load();
-void coherence(), lremv(), fft842();
+/* Function prototypes. */
+int load(double *xx, double *yy, int nnn);
+void coherence(int nnn, double sfx, double sfy);
+void lremv(double *xx, int nnn);
+void r2tx(int nthpo, double *cr0, double *cr1, double *ci0, double *ci1);
+void r4tx(int nthpo, double *cr0, double *cr1, double *cr2, double *cr3,
+	  double *ci0, double *ci1, double *ci2, double *ci3);
+void r8tx(int nx, int nthpo, int length,
+	  double *cr0, double *cr1, double *cr2, double *cr3,
+	  double *cr4, double *cr5, double *cr6, double *cr7,
+	  double *ci0, double *ci1, double *ci2, double *ci3,
+	  double *ci4, double *ci5, double *ci6, double *ci7);
+void fft842(int in, int n, double *x, double *y);
 
 double *xx, *yy, *gxx, *gyy, *gxyre, *gxyim, *phi, *weight;
 double sampfreq = 250.0;
@@ -92,12 +95,10 @@ FILE *ifile = NULL;
 int npfft;	/* points per Fourier transform segment (a power of 2) */
 int vflag;	/* print column headings if non-zero */
 
-main(argc, argv)
-int argc;
-char *argv[];
+int main(int argc, char *argv[])
 {
     int i, pps = 1024;
-    double sfx = 1.0, sfy = 1.0, atof();
+    double sfx = 1.0, sfy = 1.0;
 
     for (i = 1; i < argc; i++) {
 	if (*argv[i] == '-') switch (*(argv[i]+1)) {
@@ -198,9 +199,7 @@ char *argv[];
     exit(0);
 }
 
-void coherence(nnn, sfx, sfy)
-int nnn;	/* number of points per segment */
-double sfx, sfy;/* scale factors for input data */
+void coherence(int nnn, double sfx, double sfy)
 {
     double df, dt, sf, temp1, temp2, temp3, temp4;
     int i, nloaded, nd2, nffts;
@@ -278,9 +277,7 @@ double sfx, sfy;/* scale factors for input data */
 }
 
 /* This function loads the data arrays. */
-int load(xx, yy, nnn)
-double *xx, *yy;/* arrays to be filled */
-int nnn;	/* number of values to be loaded into each array (<= npfft) */
+int load(double *xx, double *yy, int nnn)
 {
     int i, nloaded, nd2 = nnn/2;
     static long pos;
@@ -301,9 +298,7 @@ int nnn;	/* number of values to be loaded into each array (<= npfft) */
 
 /* This function computes and removes the DC component and the slope of an
    array. */
-void lremv(xx, nnn)
-double *xx;	/* input data array */
-int nnn;	/* number of values in data array */
+void lremv(double *xx, int nnn)
 {
     int i;
     double fln;
@@ -323,9 +318,7 @@ int nnn;	/* number of values in data array */
 	xx[i] -= (i+1)*slope + fln;
 }
 
-void r2tx(nthpo, cr0, cr1, ci0, ci1)
-int nthpo;
-double *cr0, *cr1, *ci0, *ci1;
+void r2tx(int nthpo, double *cr0, double *cr1, double *ci0, double *ci1)
 {
     int i;
     double temp;
@@ -336,9 +329,8 @@ double *cr0, *cr1, *ci0, *ci1;
     }
 }
 
-void r4tx(nthpo, cr0, cr1, cr2, cr3, ci0, ci1, ci2, ci3)
-int nthpo;
-double *cr0, *cr1, *cr2, *cr3, *ci0, *ci1, *ci2, *ci3;
+void r4tx(int nthpo, double *cr0, double *cr1, double *cr2, double *cr3,
+	  double *ci0, double *ci1, double *ci2, double *ci3)
 {
     int i;
     double i1, i2, i3, i4, r1, r2, r3, r4;
@@ -363,11 +355,11 @@ double *cr0, *cr1, *cr2, *cr3, *ci0, *ci1, *ci2, *ci3;
     }
 }
 
-void r8tx(nx, nthpo, length, cr0, cr1, cr2, cr3, cr4, cr5, cr6, cr7, ci0, ci1,
-	  ci2, ci3, ci4, ci5, ci6, ci7)
-int nx, nthpo, length;
-double *cr0, *cr1, *cr2, *cr3, *cr4, *cr5, *cr6, *cr7;
-double *ci0, *ci1, *ci2, *ci3, *ci4, *ci5, *ci6, *ci7;
+void r8tx(int nx, int nthpo, int length,
+	  double *cr0, double *cr1, double *cr2, double *cr3,
+	  double *cr4, double *cr5, double *cr6, double *cr7,
+	  double *ci0, double *ci1, double *ci2, double *ci3,
+	  double *ci4, double *ci5, double *ci6, double *ci7)
 {
     double scale = 2.0*M_PI/length, arg, tr, ti;
     double c1, c2, c3, c4, c5, c6, c7;
@@ -463,10 +455,7 @@ double *ci0, *ci1, *ci2, *ci3, *ci4, *ci5, *ci6, *ci7;
     }
 }
 
-void fft842(in, n, x, y)
-int in;		/* 0: forward FFT; non-zero: inverse FFT */
-int n;		/* number of points */
-double *x, *y;	/* arrays of points */
+void fft842(int in, int n, double *x, double *y)
 {
     double temp;
     int i, j, ij, j1, j2, j3, j4, j5, j6, j7, j8, j9, j10, j11, j12, j13, j14,

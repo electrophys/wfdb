@@ -60,13 +60,23 @@ understanding of algorithm errors.
 			   comparison */
 
 int aflag, sflag, s0flag, s1flag, vflag, xflag;
-char *lzmstimstr(), *zmstimstr();
+char *lzmstimstr(WFDB_Time t);
+char *zmstimstr(WFDB_Time t);
+char *prog_name(char *s);
+void help(void);
+void epicmp(unsigned int stat, unsigned int type);
+void find_episode(unsigned int annotator, unsigned int type);
+void find_exclusions(unsigned int stat, unsigned int type);
+WFDB_Time find_overlap(unsigned int annotator, unsigned int type);
+int find_reference_extremum(int mode);
+void stdc(int mode);
+void pstat(char *s, long a, long b);
+void tstat(char *s, WFDB_Time a, WFDB_Time b);
+void print_results(int type);
+void init(int argc, char *argv[]);
 
-main(argc, argv)
-int argc;
-char *argv[];
+int main(int argc, char *argv[])
 {
-    void epicmp(), init(), print_results(), stdc();
 
     /* Read and interpret command-line arguments. */
     init(argc, argv);
@@ -119,13 +129,11 @@ long STP, FN, PTP, FP;
 WFDB_Anninfo an[2];
 
 /* Perform an episode-by-episode comparison. */
-void epicmp(stat, type)
-unsigned int stat, type;
+void epicmp(unsigned int stat, unsigned int type)
 {
     int i;
     unsigned int a, b;
-    WFDB_Time duration, overlap, find_overlap();
-    void find_episode(), find_exclusions();
+    WFDB_Time duration, overlap;
 
     /* Find and mark any intervals to be excluded from the comparison. */
     if (xflag)
@@ -287,8 +295,7 @@ unsigned int stat, type;
 int lflag;
 WFDB_Time min_length;
 
-void find_episode(annotator, type)
-unsigned int annotator, type;
+void find_episode(unsigned int annotator, unsigned int type)
 {
     int stat, stcount = 0;
     WFDB_Time tt;
@@ -412,8 +419,7 @@ unsigned int annotator, type;
    positive predictivity comparisons, from which intervals of reference-marked
    atrial flutter are excluded. */
 
-void find_exclusions(stat, type)
-unsigned int stat, type;
+void find_exclusions(unsigned int stat, unsigned int type)
 {
     nexcl = 0;
     if (stat == 1 && type == AFE) {
@@ -452,8 +458,7 @@ unsigned int stat, type;
    overlap_ex0 and overlap_ex1 if the period of overlap includes the times
    ep_ex0[1-annotator] and ep_ex1[1-annotator]. */
 
-WFDB_Time find_overlap(annotator, type)
-unsigned int annotator, type;
+WFDB_Time find_overlap(unsigned int annotator, unsigned int type)
 {
     WFDB_Time overlap = 0L, o_start, o_end;
 
@@ -530,8 +535,7 @@ int sigref, stref;	/* signal number and ST deviation for the most recent
 /* This function finds the next reference ST extremum annotation and sets the
    variables tref, sigref, and stref appropriately. */
 
-int find_reference_extremum(mode)
-int mode;	/* 0: signal 0 only, 1: signal 1 only, 2: both signals */
+int find_reference_extremum(int mode)
 {
     WFDB_Annotation refann;
 
@@ -577,8 +581,7 @@ char *sd0fname, *sd1fname, *sdfname;
    measurement that is nearest in time to each reference measurement.
    Each pair of measurements is recorded in the output file. */
 
-void stdc(mode)
-int mode;	/* 0: signal 0 only, 1: signal 1 only, 2: both signals */
+void stdc(int mode)
 {
     char *ofname;
     WFDB_Annotation testann;
@@ -653,9 +656,7 @@ int mode;	/* 0: signal 0 only, 1: signal 1 only, 2: both signals */
 /* `pstat' prints a statistic described by s, defined as the quotient of a and
    b expressed in percentage units.  Undefined values are indicated by `-'. */
 
-void pstat(s, a, b)
-char *s;
-long a, b;
+void pstat(char *s, long a, long b)
 {
     if (!lflag) {
 	(void)fprintf(ofile, "%s:", s);
@@ -671,9 +672,7 @@ long a, b;
 /* `tstat' prints a statistic as above, but prints the numerator and
    denominator as times. */
 
-void tstat(s, a, b)
-char *s;
-WFDB_Time a, b;
+void tstat(char *s, WFDB_Time a, WFDB_Time b)
 {
     if (!lflag) {
 	(void)fprintf(ofile, "%s:", s);
@@ -686,8 +685,7 @@ WFDB_Time a, b;
     else (void)fprintf(ofile, " %3d", (int)((100.*a)/b + 0.5));
 }
 
-char *lzmstimstr(t)
-WFDB_Time t;
+char *lzmstimstr(WFDB_Time t)
 {
     char *p = zmstimstr(t);
 
@@ -696,14 +694,12 @@ WFDB_Time t;
     return (p);
 }
 
-char *zmstimstr(t)
-WFDB_Time t;
+char *zmstimstr(WFDB_Time t)
 {
     return (t ? mstimstr(t) : "       0.000");
 }
 
-void print_results(type)
-int type;
+void print_results(int type)
 {
     char *ofname;
 
@@ -812,13 +808,9 @@ int type;
 	(void)fclose(ofile);
 }
 
-void init(argc, argv)
-int argc;
-char *argv[];
+void init(int argc, char *argv[])
 {
     int i;
-    char *prog_name();
-    void help();
 
     pname = prog_name(argv[0]);
     for (i = 1; i < argc; i++) {
@@ -1010,7 +1002,7 @@ static char *help_strings[] = {
 NULL
 };
 
-void help()
+void help(void)
 {
     int i;
 
@@ -1019,22 +1011,11 @@ void help()
 	(void)fprintf(stderr, "%s\n", help_strings[i]);
 }
 
-char *prog_name(s)
-char *s;
+char *prog_name(char *s)
 {
     char *p = s + strlen(s);
 
-#ifdef MSDOS
-    while (p >= s && *p != '\\' && *p != ':') {
-	if (*p == '.')
-	    *p = '\0';		/* strip off extension */
-	if ('A' <= *p && *p <= 'Z')
-	    *p += 'a' - 'A';	/* convert to lower case */
-	p--;
-    }
-#else
     while (p >= s && *p != '/')
 	p--;
-#endif
     return (p+1);
 }

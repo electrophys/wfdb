@@ -4,9 +4,7 @@
 
 #define abs(A)	((A) >= 0 ? (A) : -(A))
 
-main(argc, argv)
-int argc;
-char *argv[];
+int main(int argc, char *argv[])
 {
     int filter, time=0, slopecrit, sign, maxslope=0, nsig, nslope=0,
         qtime, maxtime, t0, t1, t2, t3, t4, t5, t6, t7, t8, t9,

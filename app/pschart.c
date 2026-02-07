@@ -173,23 +173,44 @@ struct pscolor Gc = { 0.2, 0.2, 0.2 };	/* alternate grid: dark grey */
 struct pscolor lc = { 0.0, 0.0, 0.0 };	/* labels: black */
 struct pscolor sc = { 0.0, 0.0, 0.3 };	/* signals: dark blue */
 
-char *prog_name();
-int printstrip(), setpagedim(), setpagetitle();
-void append_scale(), cont(), ejectpage(), flush_cont(), grid(), Grid(), help(),
-    label(), larger(), move(), newpage(), plabel(), process(), rlabel(),
-    rtlabel(), setbar1(), setbar2(), setcourier(), setitalic(), setmargins(),
-    setrgbcolor(), setroman(), smaller(), tlabel();
+char *prog_name(char *s);
+int printstrip(WFDB_Time t0, WFDB_Time t1, char *record, char *title);
+int setpagedim(void);
+int setpagetitle(WFDB_Time t);
+void append_scale(char *desc, char *units, double scale);
+void cont(int x, int y);
+void ejectpage(void);
+void flush_cont(void);
+void grid(int x0, int y0, int x1, int y1, double xtick, double ytick);
+void Grid(int x0, int y0, int x1, int y1, double xtick, double ytick);
+void help(void);
+void label(char *s);
+void larger(void);
+void move(int x, int y);
+void newpage(void);
+void plabel(char *s, int t);
+void process(FILE *cfile);
+void rlabel(char *s);
+void rtlabel(char *s);
+void setbar1(int ya, int yd);
+void setbar2(int y);
+void setcourier(double size);
+void setitalic(double size);
+void setmargins(void);
+void setrgbcolor(struct pscolor *color);
+void setroman(double size);
+void smaller(void);
+void tlabel(char *s);
+void sendprolog(void);
 
-main(argc, argv)
-int argc;
-char *argv[];
+int main(int argc, char *argv[])
 {
-    char *p, *getenv();
+    char *p;
     FILE *cfile = NULL;
     int i, j;
     struct pscolor *colorp;
     struct tm *now;
-    time_t t, time();
+    time_t t;
 
     t = time((time_t *)NULL);    /* get current time from system clock */
     now = localtime(&t);
@@ -567,10 +588,9 @@ int usflag = 0;		/* if non-zero, uncalibrated signals were plotted */
 #define rhpage()	((eflag == 0) || (page & 1))
 
 /* Read and execute commands from a file. */
-void process(cfile)
-FILE *cfile;
+void process(FILE *cfile)
 {
-    char *tokptr, *strtok();
+    char *tokptr;
     int i;
     WFDB_Time t0, t1, tt;
     static char combuf[256];
@@ -723,9 +743,7 @@ double t_height;	/* height (mm) of space alloted per trace */
    returns 2 if completely successful, 1 if the signals were plotted but not
    the annotations, or 0 if nothing was printed. */
 
-int printstrip(t0, t1, record, title)
-WFDB_Time t0, t1;
-char *record, *title;
+int printstrip(WFDB_Time t0, WFDB_Time t1, char *record, char *title)
 {
     char *ts;
     double curr_s_top;
@@ -1210,7 +1228,7 @@ char *record, *title;
    are in millimeters and refer to the imageable area (centered on the page),
    not to the physical size of the paper.  Except for `lwletter', the defined
    page sizes are those used by the Sun SPARCprinter. */
-int setpagedim()
+int setpagedim(void)
 {
     if (strcmp(ptype, "A4") == 0) {
 	p_width = 201.85;
@@ -1265,8 +1283,7 @@ int setpagedim()
 }
 
 /* setpagetitle() sets a page title based on its time argument. */
-int setpagetitle(t)
-WFDB_Time t;
+int setpagetitle(WFDB_Time t)
 {
     int hours, minutes, seconds, days, months, year = -1;
     char *s;
@@ -1285,7 +1302,7 @@ WFDB_Time t;
 
 /* setmargins() determines the default margins and the strip width from the
    page size. */
-void setmargins()
+void setmargins(void)
 {
     s_defwidth = 25.0 * ((int)((p_width - 50.0)/25.0));
     tmargin = 20.0;
@@ -1295,10 +1312,7 @@ void setmargins()
     footer_y = 0.5*bmargin;
 }
 
-void append_scale(desc, units, scale)
-char *desc;
-char *units;
-double scale;
+void append_scale(char *desc, char *units, double scale)
 {
     char *sctbuf, *scp;
 
@@ -1344,17 +1358,13 @@ double scale;
    (xtick and ytick) are in millimeters (converted to printer coordinates by
    the PostScript `grid' procedure to minimize roundoff error). */   
 
-void grid(x0, y0, x1, y1, xtick, ytick)
-int x0, y0, x1, y1;
-double xtick, ytick;
+void grid(int x0, int y0, int x1, int y1, double xtick, double ytick)
 {
     (void)printf("%d %d %d %d %g %g grid\n", x0, y0, x1, y1, xtick, ytick);
 }
 
 /* As above, but print the alternate grid. */
-void Grid(x0, y0, x1, y1, xtick, ytick)
-int x0, y0, x1, y1;
-double xtick, ytick;
+void Grid(int x0, int y0, int x1, int y1, double xtick, double ytick)
 {
     (void)printf("%d %d %d %d %g %g Grid\n", x0, y0, x1, y1, xtick, ytick);
 }
@@ -1366,11 +1376,9 @@ double xtick, ytick;
    of each page seems to fix this problem completely, with a relatively
    low overhead.
 */
-void newpage()
+void newpage(void)
 {
-    char *getenv();
     double cox, coy, pnx, pny;
-    void sendprolog();
 
     lmargin = rhpage() ? imargin + boff : omargin - boff;
     rmargin = rhpage() ? omargin - boff : imargin + boff;
@@ -1433,7 +1441,7 @@ void newpage()
 
 /* If anything has been printed on the current page, print the header as
    appropriate and eject the page. */
-void ejectpage()
+void ejectpage(void)
 {
     flush_cont();
     if (s_top != -9999.) {
@@ -1516,8 +1524,7 @@ void ejectpage()
     }
 }
 
-void setrgbcolor(color)
-struct pscolor *color;
+void setrgbcolor(struct pscolor *color)
 {
   static struct pscolor currentcolor = { -1.0, -1.0, -1.0 };
 
@@ -1542,15 +1549,13 @@ struct pscolor *color;
 }
 
 static int bya, byd;
-void setbar1(ya, yd)
-int ya, yd;
+void setbar1(int ya, int yd)
 {
     bya = ya; byd = yd;
 }
 
-void setbar2(y)
-int y;
-{   
+void setbar2(int y)
+{
     if (Mflag < 2)	/* draw bars across all signals */
 	(void)printf("%d %d %d %d sb\n", bya, y+mm(5.), y-mm(3.), byd);
     else {		/* draw bars across one signal only */
@@ -1565,9 +1570,7 @@ int y;
 /* Text-printing functions. */
 
 /* Low-level text-printing function. */
-void plabel(s, t)
-char *s;
-int t;
+void plabel(char *s, int t)
 {
     flush_cont();
     (void)putchar('(');
@@ -1583,23 +1586,20 @@ int t;
 }
 
 /* Print a string beginning at the current point. */
-void label(s)
-char *s;
+void label(char *s)
 {
     plabel(s, 't');
 }
 
 /* Print a string ending at the current point. */
-void rlabel(s)
-char *s;
+void rlabel(char *s)
 {
     plabel(s, 'b');
 }
 
 /* Print a string using small caps for the lower-case letters, beginning at
    the current point. */
-void tlabel(s)
-char *s;
+void tlabel(char *s)
 {
     int big = 1;
     static char c[2];
@@ -1620,8 +1620,7 @@ char *s;
 }
 
 /* As above, but ending at the current point. */
-void rtlabel(s)
-char *s;
+void rtlabel(char *s)
 {
     int big = 1;
     static char c[2], *p;
@@ -1647,38 +1646,35 @@ char *s;
 char style;		/* type style: I (italic), R (roman), S (sans serif) */
 double fsize;		/* font size in printer's points */
 
-void setitalic(size)
-double size;
+void setitalic(double size)
 {
     flush_cont();
     fsize = size; style = 'I';
     (void)printf("%g %c\n", fsize, style); 
 }
 
-void setroman(size)
-double size;
+void setroman(double size)
 {
     flush_cont();
     fsize = size; style = 'R';
-    (void)printf("%g %c\n", fsize, style); 
+    (void)printf("%g %c\n", fsize, style);
 }
 
-void setcourier(size)
-double size;
+void setcourier(double size)
 {
     flush_cont();
     fsize = size; style = 'C';
     (void)printf("%g %c\n", fsize, style);
 }
 
-void smaller()	/* change to a font 20% smaller in the current style */
+void smaller(void)	/* change to a font 20% smaller in the current style */
 {
     flush_cont();
     fsize *= 0.8;
     (void)printf("%g %c\n", fsize, style);
 }
 
-void larger()	/* change to a font 25% larger in the current style */
+void larger(void)	/* change to a font 25% larger in the current style */
 {
     flush_cont();
     fsize *= 1.25;
@@ -1691,8 +1687,7 @@ int xc, yc;	/* current move/cont "pen position" (pixels) */
 
 /* (Re)set the current point without drawing a line.  The arguments are in
    pixels. */
-void move(x, y)
-int x, y;
+void move(int x, int y)
 {
     flush_cont();
     (void)printf("%d %d m\n", x, y);
@@ -1719,8 +1714,7 @@ int x, y;
 
 static char contbuf[256], *contp = contbuf;
 
-void cont(x, y)
-int x, y;
+void cont(int x, int y)
 {
     char c;
     int dx, dy;
@@ -1749,7 +1743,7 @@ int x, y;
 #endif
 }
 
-void flush_cont()
+void flush_cont(void)
 {
 #if DEBUG
     printf("flush_cont()\n");
@@ -1762,23 +1756,12 @@ void flush_cont()
 #endif
 }
 
-char *prog_name(s)
-char *s;
+char *prog_name(char *s)
 {
     char *p = s + strlen(s);
 
-#ifdef MSDOS
-    while (p >= s && *p != '\\' && *p != ':') {
-	if (*p == '.')
-	    *p = '\0';		/* strip off extension */
-	if ('A' <= *p && *p <= 'Z')
-	    *p += 'a' - 'A';	/* convert to lower case */
-	p--;
-    }
-#else
     while (p >= s && *p != '/')
 	p--;
-#endif
     return (p+1);
 }
 
@@ -1836,7 +1819,7 @@ static char *help_strings[] = {
  NULL
 };
 
-void help()
+void help(void)
 {
     int i;
 
@@ -1940,7 +1923,7 @@ static char *dprolog[] = {
 NULL
 };
 
-void sendprolog()
+void sendprolog(void)
 {
     char buf[100], *prolog;
     int i;

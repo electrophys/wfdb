@@ -56,9 +56,6 @@ sortann will exhaust available memory, however.
 */
 
 #include <stdio.h>
-#ifndef __STDC__
-extern void exit();
-#endif
 
 #include <wfdb/wfdb.h>
 #include <wfdb/ecgcodes.h>
@@ -71,19 +68,22 @@ struct annlistentry {
 
 int in_order = 1;
 
-main(argc, argv)	
-int argc;
-char *argv[];
+char *prog_name(char *s);
+int insert_ann(WFDB_Annotation *pa);
+void cleanup(void);
+void copybytes(char *dest, char *src, int n);
+void help(void);
+
+int main(int argc, char *argv[])
 {
     static WFDB_Anninfo ai[2];
     static WFDB_Annotation annot;
     static struct annlistentry *ap;
-    char *record = NULL, *prog_name();
+    char *record = NULL;
     WFDB_Time from = 0L, to = 0L;
     long nann = 0L;
-    int i, insert_ann();
+    int i;
     double sps, spm, tps;
-    void cleanup(), help();
 
     pname = prog_name(argv[0]);
 
@@ -246,12 +246,10 @@ char *argv[];
 }
 
 static struct annlistentry *lastp = &annlist;
-int insert_ann(pa)
-WFDB_Annotation *pa;
+int insert_ann(WFDB_Annotation *pa)
 {
     char *p;
     static struct annlistentry *ap, *newp = NULL;
-    void copybytes();
 
     if (pa->aux) p = (char *)malloc(*(pa->aux)+2);
     newp = (struct annlistentry *)malloc(sizeof(struct annlistentry));
@@ -315,7 +313,7 @@ WFDB_Annotation *pa;
     return (1);	/* success */
 }
 
-void cleanup()	/* free the memory used for the annotation list */
+void cleanup(void)	/* free the memory used for the annotation list */
 {
     while (lastp != NULL && lastp != &annlist) {
 	if ((lastp->annotation).aux) free((lastp->annotation).aux);
@@ -324,31 +322,18 @@ void cleanup()	/* free the memory used for the annotation list */
 }
 
 /* This function emulates memcpy (which is not universally available). */
-void copybytes(dest, src, n)
-char *dest, *src;
-int n;
+void copybytes(char *dest, char *src, int n)
 {
     while (n-- > 0)
 	*dest++ = *src++;
 }
 
-char *prog_name(s)
-char *s;
+char *prog_name(char *s)
 {
     char *p = s + strlen(s);
 
-#ifdef MSDOS
-    while (p >= s && *p != '\\' && *p != ':') {
-	if (*p == '.')
-	    *p = '\0';		/* strip off extension */
-	if ('A' <= *p && *p <= 'Z')
-	    *p += 'a' - 'A';	/* convert to lower case */
-	p--;
-    }
-#else
     while (p >= s && *p != '/')
 	p--;
-#endif
     return (p+1);
 }
 
@@ -364,7 +349,7 @@ static char *help_strings[] = {
 NULL
 };
 
-void help()
+void help(void)
 {
     int i;
 

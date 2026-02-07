@@ -38,15 +38,14 @@ int **vin;	/* pointers to input vectors */
 int *vout;	/* pointer to output vector */
 WFDB_Time nsamp; /* number of samples to be processed */
 
-char *prog_name();
-void help(), init(), memerr();
+char *prog_name(char *s);
+void help(void);
+void init(int argc, char *argv[]);
+void memerr(void);
 
-main(argc, argv)
-int argc;
-char *argv[];
+int main(int argc, char *argv[])
 {
     int f, i = 0, j, s;
-    void init();
 
     init(argc, argv);	/* read and interpret command line */
     while ((nsamp == -1L || nsamp-- > 0L) && getvec(vin[i]) >= 0) {
@@ -72,12 +71,10 @@ char *argv[];
     exit(0);	/*NOTREACHED*/
 }
 
-void init(argc, argv)
-int argc;
-char *argv[];
+void init(int argc, char *argv[])
 {
     char *irec = "16", *orec = "16", *p;
-    double *tc = NULL, atof();
+    double *tc = NULL;
     int i, n = 128, s;
     WFDB_Time from = 0L, shift = 0L, to = 0L;
     static int gvmode = 0;
@@ -257,29 +254,18 @@ char *argv[];
     }
 }
 
-void memerr()
+void memerr(void)
 {
     (void)fprintf(stderr, "%s: insufficient memory\n", pname);
     exit(2);
 }
 
-char *prog_name(s)
-char *s;
+char *prog_name(char *s)
 {
     char *p = s + strlen(s);
 
-#ifdef MSDOS
-    while (p >= s && *p != '\\' && *p != ':') {
-	if (*p == '.')
-	    *p = '\0';		/* strip off extension */
-	if ('A' <= *p && *p <= 'Z')
-	    *p += 'a' - 'A';	/* convert to lower case */
-	p--;
-    }
-#else
     while (p >= s && *p != '/')
 	p--;
-#endif
     return (p+1);
 }
 
@@ -306,7 +292,7 @@ static char *help_strings[] = {
 NULL
 };
 
-void help()
+void help(void)
 {
     int i;
 

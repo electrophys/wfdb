@@ -49,6 +49,12 @@ _______________________________________________________________________________
 #define SAMPLES     8
 
 char *pname;
+char *prog_name(char *s);
+void help(void);
+int ampcmp(const void *v1, const void *v2);
+int getptp(WFDB_Time t);
+int getrms(WFDB_Time t);
+void printamp(WFDB_Time t);
 int namp;
 int nsig;
 int pflag;		/* if non-zero, print physical units */
@@ -63,12 +69,10 @@ WFDB_Frequency sfreq;
 WFDB_Siginfo *si;
 WFDB_Time from = 0L, to = 0L, t;
 
-main(int argc, char **argv)
+int main(int argc, char **argv)
 {
-    char *p, *record = NULL, *prog_name(char *s);
-    int gvmode = 0, i, j, jlow, jhigh, nmax = NMAX,
-	ampcmp(), getptp(WFDB_Time t), getrms(WFDB_Time t);
-    void help(void), printamp(WFDB_Time t);
+    char *p, *record = NULL;
+    int gvmode = 0, i, j, jlow, jhigh, nmax = NMAX;
 
     /* Interpret command-line arguments. */
     pname = prog_name(argv[0]);
@@ -376,8 +380,9 @@ void printamp(WFDB_Time t)
     (void)printf("\n");
 }
 
-int ampcmp(double *p1, double *p2)
+int ampcmp(const void *v1, const void *v2)
 {
+    const double *p1 = v1, *p2 = v2;
     if (*p1 > *p2) return (1);
     else if (*p1 == *p2) return (0);
     else return (-1);
@@ -387,18 +392,8 @@ char *prog_name(char *s)
 {
     char *p = s + strlen(s);
 
-#ifdef MSDOS
-    while (p >= s && *p != '\\' && *p != ':') {
-	if (*p == '.')
-	    *p = '\0';		/* strip off extension */
-	if ('A' <= *p && *p <= 'Z')
-	    *p += 'a' - 'A';	/* convert to lower case */
-	p--;
-    }
-#else
     while (p >= s && *p != '/')
 	p--;
-#endif
     return (p+1);
 }
 

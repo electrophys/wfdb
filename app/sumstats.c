@@ -78,15 +78,16 @@ static char s7d[] = "(Ischemic ST detection, signal 0)\n";
 static char s7e[] = "(Ischemic ST detection, signal 1)\n";
 static char s8[] = "(Measurement errors)\n";
 
-main(argc, argv)
-int argc;
-char *argv[];
+char *prog_name(char *s);
+int unpack(int type, char *s);
+void pstat(char *s, double a, double b);
+void rstat(char *s, double a, double b);
+
+int main(int argc, char *argv[])
 {
     static char s[256];
-    char *prog_name();
     int type;
     FILE *ifile;
-    void pstat(), rstat();
 
     pname = prog_name(argv[0]);
     if (argc < 2) {
@@ -311,9 +312,7 @@ char *argv[];
 }
 
 /* `unpack' interprets a line from the input file. */
-unpack(type, s)
-int type;
-char *s;
+int unpack(int type, char *s)
 {
     static char rec[10], mb[8], mn[8], ms[8], mv[8], mf[8], mds[8], mdp[8];
     static char qse[8], qpp[8], vse[8], vpp[8], sse[8], spp[8], srre[8];
@@ -525,39 +524,24 @@ char *s;
 }
 
 /* `pstat' prints a/b in percentage units, or a hyphen if a/b is undefined. */
-void pstat(s, a, b)
-char *s;
-double a, b;
+void pstat(char *s, double a, double b)
 {
     if (b <= 0.) (void)printf("      -");
     else (void)printf(s, 100.*a/b);
 }
 
 /* `rstat' prints a/b in percentage units, or a hyphen if a/b is undefined. */
-void rstat(s, a, b)
-char *s;
-double a, b;
+void rstat(char *s, double a, double b)
 {
     if (b <= 0.) (void)printf("   -");
     else (void)printf(s, 100.*a/b);
 }
 
-char *prog_name(s)
-char *s;
+char *prog_name(char *s)
 {
     char *p = s + strlen(s);
 
-#ifdef MSDOS
-    while (p >= s && *p != '\\' && *p != ':') {
-	if (*p == '.')
-	    *p = '\0';		/* strip off extension */
-	if ('A' <= *p && *p <= 'Z')
-	    *p += 'a' - 'A';	/* convert to lower case */
-	p--;
-    }
-#else
     while (p >= s && *p != '/')
 	p--;
-#endif
     return (p+1);
 }

@@ -129,7 +129,7 @@ int out32(long);
 char *prog_name(char *);
 void help(void);
 
-main(int argc, char **argv)
+int main(int argc, char **argv)
 {
     char buf[80], *nrec = NULL, *ofname, *record = NULL, tfname[10];
     double sps;

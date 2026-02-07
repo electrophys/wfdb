@@ -2,7 +2,7 @@
 #include <wfdb/wfdb.h>
 #include <wfdb/ecgcodes.h>
 
-main()
+int main(void)
 {
     int i;
 

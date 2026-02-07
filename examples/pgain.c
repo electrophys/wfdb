@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <wfdb/wfdb.h>
 
-main()
+int main(void)
 {
     int i, nsig;
     WFDB_Siginfo *siarray;

@@ -60,24 +60,21 @@ the previous value with the previous value).
 #define beat(A)	(beatab[(A)&(ABL-1)])	/* time of beat A */
 #define RGAIN	100.0
 
-char *irec, *orec, *pname, *prog_name();
+char *irec, *orec, *pname;
+char *prog_name(char *s);
+void cleanup(void);
+void help(void);
 double ofreq = 2.;
 
-main(argc,argv)    /* form tachometer signal from annotator file */
-int argc;
-char *argv[];
+int main(int argc, char *argv[])
 {
     double sps, decf, dx, k=1., left, rdmax=40., right, rrcnt, rrate=80., x;
     int i, Oflag = 0, vflag = 0, Vflag = 0;
     WFDB_Time beatab[ABL], lastn, maxbt, minbt, n, start = 0L, end = 0L;
     long max, min;
-#ifndef atol
-    long atol();
-#endif
     WFDB_Anninfo ai;
     WFDB_Annotation annot;
     WFDB_Siginfo si;
-    void cleanup(), help();
 
     pname = prog_name(argv[0]);
 
@@ -335,7 +332,7 @@ char *argv[];
     exit(0);	/*NOTREACHED*/
 }
 
-void cleanup()
+void cleanup(void)
 {
     if (orec) {
 	(void)setsampfreq(ofreq);
@@ -344,23 +341,12 @@ void cleanup()
     wfdbquit();
 }
 
-char *prog_name(s)
-char *s;
+char *prog_name(char *s)
 {
     char *p = s + strlen(s);
 
-#ifdef MSDOS
-    while (p >= s && *p != '\\' && *p != ':') {
-	if (*p == '.')
-	    *p = '\0';		/* strip off extension */
-	if ('A' <= *p && *p <= 'Z')
-	    *p += 'a' - 'A';	/* convert to lower case */
-	p--;
-    }
-#else
     while (p >= s && *p != '/')
 	p--;
-#endif
     return (p+1);
 }
 
@@ -388,7 +374,7 @@ static char *help_strings[] = {
 NULL
 };
 
-void help()
+void help(void)
 {
     int i;
 

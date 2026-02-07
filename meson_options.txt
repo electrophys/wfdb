@@ -1,0 +1,6 @@
+option('netfiles', type: 'feature', value: 'auto',
+       description: 'HTTP/FTP support via libcurl')
+option('flac', type: 'feature', value: 'auto',
+       description: 'FLAC signal compression')
+option('dbdir', type: 'string', value: '',
+       description: 'Database directory (default: datadir/wfdb)')

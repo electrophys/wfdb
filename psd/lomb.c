@@ -40,19 +40,9 @@ frequency with total power equal to the variance);  thanks to Joe Mietus.
 */
 
 #include <stdio.h>
-#include <math.h>
-#ifdef __STDC__
 #include <stdlib.h>
-#else
-extern void exit();
-#endif
-
-#ifndef BSD
-# include <string.h>
-#else           /* for Berkeley UNIX only */
-# include <strings.h>
-# define strchr index
-#endif
+#include <string.h>
+#include <math.h>
 
 static long lmaxarg1, lmaxarg2;
 #define LMAX(a,b) (lmaxarg1 = (a),lmaxarg2 = (b), (lmaxarg1 > lmaxarg2 ? \
@@ -67,17 +57,27 @@ static float sqrarg;
 #define SQR(a) ((sqrarg = (a)) == 0.0 ? 0.0 : sqrarg*sqrarg)
 #define SWAP(a,b) tempr=(a);(a)=(b);(b)=tempr
 
+/* Function prototypes. */
+void fasper(float x[], float y[], unsigned long n, float ofac, float hifac,
+	    float wk1[], float wk2[], unsigned long nwk,
+	    unsigned long *nout, unsigned long *jmax, float *prob);
+void spread(float y, float yy[], unsigned long n, float x, int m);
+void avevar(float data[], unsigned long n, float *ave, float *var);
+void realft(float data[], unsigned long n, int isign);
+void four1(float data[], unsigned long nn, int isign);
+void error(char *s);
+void help(void);
+void zeromean(unsigned long n);
+unsigned long input(void);
+char *prog_name(char *s);
+
 char *pname;
 float pwr;
 
-void fasper(x, y, n, ofac, hifac, wk1, wk2, nwk, nout, jmax, prob)
-float x[], y[];
-unsigned long n;
-float ofac, hifac, wk1[], wk2[];
-unsigned long nwk, *nout, *jmax;
-float *prob;
+void fasper(float x[], float y[], unsigned long n, float ofac, float hifac,
+	    float wk1[], float wk2[], unsigned long nwk,
+	    unsigned long *nout, unsigned long *jmax, float *prob)
 {
-    void avevar(), realft(), spread(), error();
     unsigned long j, k, ndim, nfreq, nfreqt;
     float ave, ck, ckk, cterm, cwt, den, df, effm, expy, fac, fndim, hc2wt,
           hs2wt, hypo, pmax, sterm, swt, var, xdif, xmax, xmin;
@@ -131,16 +131,11 @@ float *prob;
     if (*prob > 0.01) *prob = 1.0 - pow(1.0 - expy, effm);
 }
 
-void spread(y, yy, n, x, m)
-float y, yy[];
-unsigned long n;
-float x;
-int m;
+void spread(float y, float yy[], unsigned long n, float x, int m)
 {
     int ihi, ilo, ix, j, nden;
     static int nfac[11] = { 0, 1, 1, 2, 6, 24, 120, 720, 5040, 40320, 362880 };
     float fac;
-    void error();
 
     if (m > 10)
 	error("factorial table too small");
@@ -160,10 +155,7 @@ int m;
     }
 }
 
-void avevar(data, n, ave, var)
-float data[];
-unsigned long n;
-float *ave, *var;
+void avevar(float data[], unsigned long n, float *ave, float *var)
 {
     unsigned long j;
     float s, ep;
@@ -180,12 +172,8 @@ float *ave, *var;
     pwr = *var;
 }
 
-void realft(data, n, isign)
-float data[];
-unsigned long n;
-int isign;
+void realft(float data[], unsigned long n, int isign)
 {
-    void four1();
     unsigned long i, i1, i2, i3, i4, np3;
     float c1 = 0.5, c2, h1r, h1i, h2r, h2i;
     double wr, wi, wpr, wpi, wtemp, theta;
@@ -227,10 +215,7 @@ int isign;
     }
 }
 
-void four1(data,nn,isign)
-float data[];
-unsigned long nn;
-int isign;
+void four1(float data[], unsigned long nn, int isign)
 {
     unsigned long n, mmax, m, j, istep, i;
     double wtemp, wr, wpr, wpi, wi, theta;
@@ -283,15 +268,11 @@ long nmax = 512L;	/* Initial buffer size (must be a power of 2).
 			   necessary by repeated doubling, depending on
 			   the length of the input series. */
 
-main(argc, argv)
-int argc;
-char *argv[];
+int main(int argc, char *argv[])
 {
-    char *prog_name();
     float prob;
     int aflag = 1, i, sflag = 0, zflag = 0;
-    unsigned long n, nout, jmax, maxout, input();
-    void help(), zeromean();
+    unsigned long n, nout, jmax, maxout;
 
     pname = prog_name(argv[0]);
     for (i = 1; i < argc; i++) {
@@ -385,28 +366,16 @@ char *argv[];
     exit(0);
 }
 
-char *prog_name(s)
-char *s;
+char *prog_name(char *s)
 {
     char *p = s + strlen(s);
 
-#ifdef MSDOS
-    while (p >= s && *p != '\\' && *p != ':') {
-	if (*p == '.')
-	    *p = '\0';		/* strip off extension */
-	if ('A' <= *p && *p <= 'Z')
-	    *p += 'a' - 'A';	/* convert to lower case */
-	p--;
-    }
-#else
     while (p >= s && *p != '/')
 	p--;
-#endif
     return (p+1);
 }
 
-void error(s)
-char *s;
+void error(char *s)
 {
     fprintf(stderr, "%s: %s\n", pname, s);
     exit(1);
@@ -431,7 +400,7 @@ static char *help_strings[] = {
 NULL
 };
 
-void help()
+void help(void)
 {
     int i;
 
@@ -447,7 +416,7 @@ void help()
    the available memory (assuming that a long int is large enough to address
    any memory location). */
 
-unsigned long input()
+unsigned long input(void)
 {
     unsigned long npts = 0L;
 
@@ -511,8 +480,7 @@ unsigned long input()
 /* This function calculates the mean of all sample values and subtracts it
    from each sample value, so that the mean of the adjusted samples is zero. */
 
-void zeromean(n)
-unsigned long n;
+void zeromean(unsigned long n)
 {
     unsigned long i;
     double ysum = 0.0;

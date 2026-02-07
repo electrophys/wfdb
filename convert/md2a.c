@@ -35,11 +35,7 @@ program `ad2m.c' can perform the reverse conversion, however.
 */
 
 #include <stdio.h>
-#ifndef __STDC__
-#ifndef MSDOS
-extern void exit();
-#endif
-#endif
+#include <stdlib.h>
 
 #include <wfdb/wfdb.h>
 
@@ -48,14 +44,14 @@ extern void exit();
 
 char *pname;
 
-main(argc, argv)
-int argc;
-char *argv[];
+char *prog_name(char *s);
+void help(void);
+
+int main(int argc, char *argv[])
 {
-    char *nrec = NULL, *ofname, *record = NULL, *prog_name();
+    char *nrec = NULL, *ofname, *record = NULL;
     int i, nsig, x[WFDB_MAXSIG];
     static WFDB_Siginfo s[WFDB_MAXSIG];
-    void help();
 
     pname = prog_name(argv[0]);
     for (i = 1; i < argc; i++) {
@@ -142,23 +138,12 @@ char *argv[];
     exit(0);	/*NOTREACHED*/
 }
 
-char *prog_name(s)
-char *s;
+char *prog_name(char *s)
 {
     char *p = s + strlen(s);
 
-#ifdef MSDOS
-    while (p >= s && *p != '\\' && *p != ':') {
-	if (*p == '.')
-	    *p = '\0';		/* strip off extension */
-	if ('A' <= *p && *p <= 'Z')
-	    *p += 'a' - 'A';	/* convert to lower case */
-	p--;
-    }
-#else
     while (p >= s && *p != '/')
 	p--;
-#endif
     return (p+1);
 }
 
@@ -172,7 +157,7 @@ static char *help_strings[] = {
     NULL
 };
 
-void help()
+void help(void)
 {
     int i;
 

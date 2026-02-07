@@ -29,14 +29,13 @@ _______________________________________________________________________________
 
 static int nskews, *skew;
 
-main(argc, argv)
-int argc;
-char *argv[];
+void skewedit(char *record, FILE *hfile);
+
+int main(int argc, char *argv[])
 {
     char buf[256], *hfname, *p;
     FILE *hfile;
     int i;
-    void skewedit();
 
     if (argc < 3) {
 	fprintf(stderr, "usage: %s record skew0 [skew1 ... skewN]\n", argv[0]);
@@ -106,9 +105,7 @@ char *argv[];
     exit(0);
 }
 
-void skewedit(record, hfile)
-char *record;
-FILE *hfile;
+void skewedit(char *record, FILE *hfile)
 {
     char buf[256], tmpfname[20], hfname[20], *p;
     int i = 0;

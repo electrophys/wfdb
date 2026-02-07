@@ -52,16 +52,9 @@ This program converts four types of AHA format annotation files to MIT format:
 */
 
 #include <stdio.h>
-#ifdef __STDC__
+#include <stdlib.h>
+#include <string.h>
 #define RB	"rb"
-#else
-#ifdef MSDOS
-#define RB	"rb"
-#else
-#define RB	"r"
-extern void exit();
-#endif
-#endif
 
 #include <wfdb/wfdb.h>
 #define isqrs
@@ -73,17 +66,18 @@ extern void exit();
 
 char *pname;
 
-main(argc, argv)
-int argc;
-char *argv[];
+char *prog_name(char *s);
+int getcann(WFDB_Annotation *ap);
+void help(void);
+
+int main(int argc, char *argv[])
 {
-    char *ifname = NULL, *oann = "atr", *p, *record = NULL, *prog_name();
-    int i, type = -1, getcann();
+    char *ifname = NULL, *oann = "atr", *p, *record = NULL;
+    int i, type = -1;
     long offset = 0L;
     unsigned int nann = 2;
     WFDB_Anninfo afarray[2];
     static WFDB_Annotation annot;
-    void help();
 
     /* Read and interpret command-line arguments. */
     pname = prog_name(argv[0]);
@@ -246,8 +240,7 @@ char *argv[];
     exit(0);	/*NOTREACHED*/
 }
 
-int getcann(ap)
-WFDB_Annotation *ap;
+int getcann(WFDB_Annotation *ap)
 {
     char buf[6];
     long h, m, l;
@@ -288,23 +281,12 @@ WFDB_Annotation *ap;
     return (0);
 }
 
-char *prog_name(s)
-char *s;
+char *prog_name(char *s)
 {
     char *p = s + strlen(s);
 
-#ifdef MSDOS
-    while (p >= s && *p != '\\' && *p != ':') {
-	if (*p == '.')
-	    *p = '\0';		/* strip off extension */
-	if ('A' <= *p && *p <= 'Z')
-	    *p += 'a' - 'A';	/* convert to lower case */
-	p--;
-    }
-#else
     while (p >= s && *p != '/')
 	p--;
-#endif
     return (p+1);
 }
 
@@ -329,7 +311,7 @@ static char *help_strings[] = {
   NULL
 };
 
-void help()
+void help(void)
 {
     int i;
 

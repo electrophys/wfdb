@@ -31,10 +31,11 @@ _______________________________________________________________________________
 /* The following definition yields dither with a triangular PDF in (-1,1). */
 #define DITHER	        (((double)rand() + (double)rand())/RAND_MAX - 1.0)
 
-char *pname, *prog_name();
+char *pname;
+char *prog_name(char *s);
 char *script = NULL;
-double gcd();
-void help();
+double gcd(double x, double y);
+void help(void);
 
 static char *script_fgets(char *buffer, size_t length, FILE *f)
 {
@@ -50,9 +51,7 @@ static char *script_fgets(char *buffer, size_t length, FILE *f)
     return (buffer);
 }
 
-main(argc, argv)
-int argc;
-char *argv[];
+int main(int argc, char *argv[])
 {
     char btstring[30], **description, **filename, *irec = NULL, *orec = NULL,
 	*nrec = NULL, *startp = "0:0", **units;
@@ -337,11 +336,7 @@ char *argv[];
 	static int formats[WFDB_NFMTS] = WFDB_FMT_LIST;	/* see <wfdb/wfdb.h> */
 	int format;
 	FILE *ttyin;
-#ifndef MSDOS
 	ttyin = fopen(script ? script : "/dev/tty", "r");
-#else
-	ttyin = fopen(script ? script : "CON", "rt");
-#endif
 	if (ttyin == NULL) ttyin = stdin;
 	if (nrec == NULL) {
 	    do {
@@ -1147,8 +1142,7 @@ char *argv[];
    Euclid's algorithm, modified so that an exact answer is not required if the
    (possibly non-integral) arguments do not have a common divisor that can be
    represented exactly. */
-double gcd(x, y)
-double x, y;
+double gcd(double x, double y)
 {
     double tol;
 
@@ -1162,23 +1156,12 @@ double x, y;
     }
 }
 
-char *prog_name(s)
-char *s;
+char *prog_name(char *s)
 {
     char *p = s + strlen(s);
 
-#ifdef MSDOS
-    while (p >= s && *p != '\\' && *p != ':') {
-	if (*p == '.')
-	    *p = '\0';		/* strip off extension */
-	if ('A' <= *p && *p <= 'Z')
-	    *p += 'a' - 'A';	/* convert to lower case */
-	p--;
-    }
-#else
     while (p >= s && *p != '/')
 	p--;
-#endif
     return (p+1);
 }
 
@@ -1211,7 +1194,7 @@ static char *help_strings[] = {
 NULL
 };
 
-void help()
+void help(void)
 {
     int i;
 

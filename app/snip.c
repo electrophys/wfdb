@@ -32,20 +32,20 @@ int fmt = 0;	/* use specified output format if fmt > 0 */
 int mflag = 0;	/* try to preserve segments if non-zero */
 int sflag = 0;	/* suppress copying info if non-zero */
 
-main(argc, argv)
-int argc;
-char *argv[];
+char *prog_name(char *s);
+void copy_ann(char *nrec, char *irec, WFDB_Time from, WFDB_Time to,
+	      char **annotators, int nann);
+void copy_sig(char *nrec, char *irec, WFDB_Time from, WFDB_Time to,
+	      int mflag);
+void copy_info(char *irec, char *startp);
+void help(void);
+
+int main(int argc, char *argv[])
 {
     char *nrec = NULL, *irec = NULL, *startp = NULL, *endp = NULL;
-    char **annotators, *length = NULL, *prog_name();
+    char **annotators, *length = NULL;
     int i, nann = 0, nsig = 0;
     WFDB_Time from = 0L, to = 0L, endt = 0L;
-    void copy_ann(char *nrec, char *irec, WFDB_Time from, WFDB_Time to,
-		  char **annotators, int nann);
-    void copy_sig(char *nrec, char *irec, WFDB_Time from, WFDB_Time to,
-		  int mflag);
-    void copy_info(char *irec, char *startp);
-    void help();
 
     pname = prog_name(argv[0]);
 
@@ -462,23 +462,12 @@ void copy_info(char *irec, char *startp)
 }
 
 
-char *prog_name(s)
-char *s;
+char *prog_name(char *s)
 {
     char *p = s + strlen(s);
 
-#ifdef MSDOS
-    while (p >= s && *p != '\\' && *p != ':') {
-	if (*p == '.')
-	    *p = '\0';		/* strip off extension */
-	if ('A' <= *p && *p <= 'Z')
-	    *p += 'a' - 'A';	/* convert to lower case */
-	p--;
-    }
-#else
     while (p >= s && *p != '/')
 	p--;
-#endif
     return (p+1);
 }
 
@@ -501,7 +490,7 @@ static char *help_strings[] = {
 NULL
 };
 
-void help()
+void help(void)
 {
     int i;
 

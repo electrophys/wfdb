@@ -25,10 +25,6 @@ _______________________________________________________________________________
 */
 
 #include <stdio.h>
-#ifndef __STDC__
-extern void exit();
-#endif
-
 #include <wfdb/wfdb.h>
 
 /* Expand command substitutions in VAR; needed if libcurl is included
@@ -44,8 +40,10 @@ static void expand_var(const char *var)
 }
 
 char *pname;
+char *prog_name(char *s);
+void help(void);
 
-main(int argc, char **argv)
+int main(int argc, char **argv)
 {
     char *filename, *prog_name(char *s);
     int i;
@@ -74,18 +72,8 @@ char *prog_name(char *s)
 {
     char *p = s + strlen(s);
 
-#ifdef MSDOS
-    while (p >= s && *p != '\\' && *p != ':') {
-	if (*p == '.')
-	    *p = '\0';		/* strip off extension */
-	if ('A' <= *p && *p <= 'Z')
-	    *p += 'a' - 'A';	/* convert to lower case */
-	p--;
-    }
-#else
     while (p >= s && *p != '/')
 	p--;
-#endif
     return (p+1);
 }
 

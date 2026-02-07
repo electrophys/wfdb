@@ -1,11 +1,10 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <wfdb/wfdb.h>
 
-main(argc, argv)
-int argc;
-char *argv[];
+int main(int argc, char *argv[])
 {
-    double *c, one = 1.0, vv, atof();
+    double *c, one = 1.0, vv;
     int i, j, nc = argc - 4, nsig;
     WFDB_Time nsamp, t, t0, t1;
     static WFDB_Sample *v;

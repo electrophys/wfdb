@@ -73,13 +73,16 @@ low and extreme high heart rates inclusive.
 #define iexcl(A) (ix[(A)&(TBMAX-1)])	/* exclude interval A if non-zero */
 #define tbeat(A) (tb[(A)&(TBMAX-1)])	/* time of beat following interval A */
 
-char *irec, *aname, *ofname, *pname, *prog_name();
+char *irec, *aname, *ofname, *pname;
+char *prog_name(char *s);
 int hrhist[HRMAX+1], ix[TBMAX], tot, wexcl;
-void cleanup(), help();
+void cleanup(void);
+void help(void);
 WFDB_Anninfo ai;
-WFDB_Time tb[TBMAX], getbeat();
+WFDB_Time tb[TBMAX];
+WFDB_Time getbeat(void);
 
-main(int argc, char **argv)
+int main(int argc, char **argv)
 {
     double dt, left, right, rr, rrcnt, rrmin, rrmax, sps, t;
     int i, hr;
@@ -188,7 +191,7 @@ main(int argc, char **argv)
     }
 }
 
-WFDB_Time getbeat()
+WFDB_Time getbeat(void)
 {
     int stat;
     WFDB_Annotation annot;
@@ -200,7 +203,7 @@ WFDB_Time getbeat()
     return (annot.time);
 }
 
-void cleanup()
+void cleanup(void)
 {
     char hrbuf[100];
     double mean, sampdev, ssum, sum, target;
@@ -270,23 +273,12 @@ void cleanup()
     exit(0);
 }
 
-char *prog_name(s)
-char *s;
+char *prog_name(char *s)
 {
     char *p = s + strlen(s);
 
-#ifdef MSDOS
-    while (p >= s && *p != '\\' && *p != ':') {
-	if (*p == '.')
-	    *p = '\0';		/* strip off extension */
-	if ('A' <= *p && *p <= 'Z')
-	    *p += 'a' - 'A';	/* convert to lower case */
-	p--;
-    }
-#else
     while (p >= s && *p != '/')
 	p--;
-#endif
     return (p+1);
 }
 
@@ -298,7 +290,7 @@ static char *help_strings[] = {
 NULL
 };
 
-void help()
+void help(void)
 {
     int i;
 

@@ -2,9 +2,7 @@
 #include <wfdb/wfdb.h>
 #include <wfdb/ecgmap.h>
 
-main(argc, argv)
-int argc;
-char *argv[];
+int main(int argc, char *argv[])
 {
     int btype, i, j, nbeats = 0, nsig, hwindow, window;
     WFDB_Time stoptime = 0;

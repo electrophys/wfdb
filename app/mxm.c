@@ -40,6 +40,8 @@ Thanks to Denny Dow for pointing out the problem!
 */
 
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <limits.h>
 #include <math.h>	/* for declaration of sqrt() */
 #include <wfdb/wfdb.h>
@@ -59,11 +61,16 @@ WFDB_Time T, Tnext = -1L;	/* times of the current & next reference
 				   annotations */
 WFDB_Time t;			/* time of the current test annotation */
 
-main(argc, argv)
-int argc;
-char *argv[];
+void getref(void);
+void gettest(void);
+void init(int argc, char *argv[]);
+void pair(double ref, double test);
+void print_results(int fflag);
+char *prog_name(char *s);
+void help(void);
+
+int main(int argc, char *argv[])
 {
-    void getref(), gettest(), init(), pair(), print_results();
 
     /* Read and interpret command-line arguments. */
     init(argc, argv);
@@ -124,7 +131,7 @@ char *argv[];
 
 long nrmeas = 0L;
 
-void getref()	/* get next reference MEASURE annotation with subtyp = mtype */
+void getref(void)	/* get next reference MEASURE annotation with subtyp = mtype */
 {
     static WFDB_Annotation annot;
 
@@ -145,7 +152,7 @@ void getref()	/* get next reference MEASURE annotation with subtyp = mtype */
 
 long ntmeas = 0L;
 
-void gettest()	/* get next test MEASURE annotation with subtyp = mtype */
+void gettest(void)	/* get next test MEASURE annotation with subtyp = mtype */
 {
     static WFDB_Annotation annot;
 
@@ -166,8 +173,7 @@ void gettest()	/* get next test MEASURE annotation with subtyp = mtype */
 
 double errsum = 0.0, refsum = 0.0;
 
-void pair(ref, test)	/* count a measurement pair */
-double ref, test;		/* reference and test measurements */
+void pair(double ref, double test)
 {
 
     refsum += ref;
@@ -181,13 +187,9 @@ int uflag;			/* if non-zero, don't normalize */
 WFDB_Anninfo an[2];
 
 /* Read and interpret command-line arguments. */
-void init(argc, argv)
-int argc;
-char *argv[];
+void init(int argc, char *argv[])
 {
     int i;
-    char *prog_name();
-    void help();
 
     pname = prog_name(argv[0]);
     for (i = 1; i < argc; i++) {
@@ -317,8 +319,7 @@ char *argv[];
     if (annopen(record, an, 2) < 0) exit(2);
 }
 
-void print_results(fflag)
-int fflag;
+void print_results(int fflag)
 {
     if (nrmeas == 0L && ntmeas == 0L) {
 	(void)fprintf(stderr,
@@ -421,7 +422,7 @@ static char *help_strings[] = {
  NULL
 };
 
-void help()
+void help(void)
 {
     int i;
 
@@ -430,22 +431,11 @@ void help()
 	(void)fprintf(stderr, "%s\n", help_strings[i]);
 }
 
-char *prog_name(s)
-char *s;
+char *prog_name(char *s)
 {
     char *p = s + strlen(s);
 
-#ifdef MSDOS
-    while (p >= s && *p != '\\' && *p != ':') {
-	if (*p == '.')
-	    *p = '\0';		/* strip off extension */
-	if ('A' <= *p && *p <= 'Z')
-	    *p += 'a' - 'A';	/* convert to lower case */
-	p--;
-    }
-#else
     while (p >= s && *p != '/')
 	p--;
-#endif
     return (p+1);
 }

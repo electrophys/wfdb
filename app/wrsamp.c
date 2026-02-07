@@ -186,28 +186,22 @@ Tokenarray *parseline(char *line, Parsemode *pmode)
     return (ta);
 }
 
-main(argc, argv)
-int argc;
-char *argv[];
+char *prog_name(char *s);
+void help(void);
+
+int main(int argc, char *argv[])
 {
     char **ap, *cp, **desc, *gain = "", *ifname = "(stdin)",
 	*line = NULL, ofname[40], *p, *record = NULL, rsep = '\n',
-	*scale = "", sflag = 0, trim = 0, Xflag = 0, **units, *prog_name();
+	*scale = "", sflag = 0, trim = 0, Xflag = 0, **units;
     static char btime[25], **dstrings, **ustrings;
     double freq = WFDB_DEFFREQ, *scalef, v;
-#ifndef atof
-    double atof();
-#endif
     int c, cf = 0, dflag = 0, format = 16, *fv = NULL, i, j, mf, zflag = 0;
     FILE *ifile = stdin;
     long t = 0L, t0 = 0L, t1 = 0L;
-#ifndef atol
-    long atol();
-#endif
     Tokenarray *ta;
     WFDB_Sample *vout;
     WFDB_Siginfo *si;
-    void help();
 
     pname = prog_name(argv[0]);
 
@@ -580,23 +574,12 @@ char *argv[];
     exit(0);
 }
 
-char *prog_name(s)
-char *s;
+char *prog_name(char *s)
 {
     char *p = s + strlen(s);
 
-#ifdef MSDOS
-    while (p >= s && *p != '\\' && *p != ':') {
-	if (*p == '.')
-	    *p = '\0';		/* strip off extension */
-	if ('A' <= *p && *p <= 'Z')
-	    *p += 'a' - 'A';	/* convert to lower case */
-	p--;
-    }
-#else
     while (p >= s && *p != '/')
 	p--;
-#endif
     return (p+1);
 }
 
@@ -642,7 +625,7 @@ static char *help_strings[] = {
 NULL
 };
 
-void help()
+void help(void)
 {
     int i;
 

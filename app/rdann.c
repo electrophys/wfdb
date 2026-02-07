@@ -33,9 +33,6 @@ modification as well!
 #include <strings.h>
 #define strchr index
 #endif
-#ifndef __STDC__
-extern void exit();
-#endif
 
 #include <wfdb/wfdb.h>
 #define map1
@@ -47,23 +44,22 @@ extern void exit();
 
 char *pname;
 
-main(argc, argv)	
-int argc;
-char *argv[];
+char *prog_name(char *s);
+void help(void);
+
+int main(int argc, char *argv[])
 {
-    char *record = NULL, *prog_name();
+    char *record = NULL;
     signed char cflag = 0, chanmatch, nflag = 0, nummatch, sflag = 0, submatch;
     double sps, tps, tpm, tph, n;
     int sprec, mprec, hprec;
     int eflag = 0, i, j, vflag = 0, xflag = 0;
-    long afrom = 0L, anum = 0L, ato = 0L, bfrom = 0L, bnum = 0L, bto = 0L,
-	atol();
+    long afrom = 0L, anum = 0L, ato = 0L, bfrom = 0L, bnum = 0L, bto = 0L;
     WFDB_Time from = 0L, to = 0L;
     static char flag[ACMAX+1];
     static WFDB_Anninfo ai;
     WFDB_Annotation annot;
     WFDB_Time sample_num;
-    void help();
 
     pname = prog_name(argv[0]);
 
@@ -326,23 +322,12 @@ char *argv[];
     exit(0);	/*NOTREACHED*/
 }
 
-char *prog_name(s)
-char *s;
+char *prog_name(char *s)
 {
     char *p = s + strlen(s);
 
-#ifdef MSDOS
-    while (p >= s && *p != '\\' && *p != ':') {
-	if (*p == '.')
-	    *p = '\0';		/* strip off extension */
-	if ('A' <= *p && *p <= 'Z')
-	    *p += 'a' - 'A';	/* convert to lower case */
-	p--;
-    }
-#else
     while (p >= s && *p != '/')
 	p--;
-#endif
     return (p+1);
 }
 
@@ -363,7 +348,7 @@ static char *help_strings[] = {
 NULL
 };
 
-void help()
+void help(void)
 {
     int i;
 

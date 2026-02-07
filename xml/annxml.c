@@ -26,6 +26,8 @@ _______________________________________________________________________________
 
 
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <wfdb/wfdb.h>
 #include <wfdb/ecgcodes.h>
 
@@ -74,10 +76,11 @@ WFDB_Frequency sfreq;
 void process_start(char *tstring);
 void process_anntab(void);
 void process_annotation(void);
+char *prog_name(char *s);
 
-main(int argc, char **argv)
+int main(int argc, char **argv)
 {
-  char *annotator, *ofname, *p, *pname, *record, *prog_name();
+  char *annotator, *ofname, *p, *pname, *record;
     WFDB_Anninfo ai;
 
     pname = prog_name(argv[0]);
@@ -192,8 +195,7 @@ void process_annotation()
   anncount[annot.anntyp]++;
 }
 
-char *prog_name(s)
-char *s;
+char *prog_name(char *s)
 {
     char *p = s + strlen(s);
 

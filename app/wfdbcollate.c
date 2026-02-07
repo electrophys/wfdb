@@ -84,26 +84,24 @@ library.  */
 #define DEFSEGLEN	"10:0"	/* segments are 10 minutes long by default */
 #define MINSEGLEN	"15"	/* segments must be at least 15 seconds long */
 
-char *pname, *prog_name();
+char *pname;
+char *prog_name(char *s);
 WFDB_Anninfo ai;
 WFDB_Annotation annot;
 WFDB_Sample *v;
 WFDB_Siginfo *si;
 
-int collate();
-void help(), splitrecord();
+int collate(int argc, char *argv[]);
+void help(void);
+void splitrecord(int argc, char *argv[]);
 
-main(argc, argv)
-int argc;
-char *argv[];
+int main(int argc, char *argv[])
 {
     collate(argc, argv);
     exit(0);
 }
 
-void splitrecord(argc, argv)
-int argc;
-char *argv[];
+void splitrecord(int argc, char *argv[])
 {
     int framelen, i, segnumber = 0, nsig;
     static char *irecname, *orecname, segname[15], sigfname[19];
@@ -249,9 +247,7 @@ char *argv[];
     exit(0);
 }
 
-int collate(argc, argv)
-int argc;
-char *argv[];
+int collate(int argc, char *argv[])
 {
     char **irecname, *orecname = NULL, ofname[20];
     int first, last, i, nsegments = 0, nsig, segment;
@@ -368,27 +364,16 @@ char *argv[];
     return (0);
 }
 
-char *prog_name(s)
-char *s;
+char *prog_name(char *s)
 {
     char *p = s + strlen(s);
 
-#ifdef MSDOS
-    while (p >= s && *p != '\\' && *p != ':') {
-	if (*p == '.')
-	    *p = '\0';		/* strip off extension */
-	if ('A' <= *p && *p <= 'Z')
-	    *p += 'a' - 'A';	/* convert to lower case */
-	p--;
-    }
-#else
     while (p >= s && *p != '/')
 	p--;
-#endif
     return (p+1);
 }
 
-void help()
+void help(void)
 {
     fprintf(stderr,
 	    "usage: %s -i IREC [ IREC ... ] -o OREC [ -a ANNOTATOR ]\n",

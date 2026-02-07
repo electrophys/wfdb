@@ -37,9 +37,7 @@ an archived version (available on PhysioNet).
 
 char buf[256];
 
-void getans(p, n)
-char *p;
-int n;
+void getans(char *p, int n)
 {
     int l;
 
@@ -55,9 +53,9 @@ int n;
 char *dbname[NDBMAX], *dbfname[NDBMAX], *dbdesc[NDBMAX], *dblname;
 int ndb;
 
-int getdblists()
+int getdblists(void)
 {
-    char *p, *sep = "\t\n\r", *getenv();
+    char *p, *sep = "\t\n\r";
     FILE *dblfile;
 
     if ((dblname = getenv("DBLIST")) == NULL)
@@ -108,7 +106,7 @@ char *month_name[12] = {
     "January", "February", "March", "April", "May", "June",
     "July", "August", "September", "October", "November", "December" };
 
-main()
+int main(void)
 {
     FILE *dbf, *rfile = NULL, *sfile = NULL;
     int dbi = -1, i, nhr = 1;
@@ -125,15 +123,9 @@ main()
 		epicmpstfile2[40] = "stm.out", plotstmfile[40] = "stm.ps";
     static char *rname = "atr";
 
-#ifdef __STDC__
-    time_t t, time();
+    time_t t;
 
     t = time((time_t *)NULL);    /* get current time from system clock */
-#else
-    long t, time();
-
-    t = time((long *)NULL);
-#endif
     now = localtime(&t);
 
     (void)fprintf(stderr, "\t\t_________________________________________\n");

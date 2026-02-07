@@ -29,43 +29,11 @@ _______________________________________________________________________________
 #define wfdb_WFDB_H
 
 /* WFDB library version. */
-#define WFDB_MAJOR   WFDBMAJOR
-#define WFDB_MINOR   WFDBMINOR
-#define WFDB_RELEASE WFDBRELEASE
-#define WFDB_NETFILES 1	/* if 1, library includes code for HTTP, FTP clients */
-#define WFDB_NETFILES_LIBCURL 1
-
-/* Determine what type of compiler is being used. */
-#ifdef __STDC__		/* true for ANSI C compilers only */
-#define wfdb_PROTO	/* function prototypes will be needed */
-#undef _WINDOWS		/* we don't want MS-Windows API in this case */
-#endif
-
-#ifdef __cplusplus	/* true for some C++ compilers */
-#define wfdb_CPP
-#define wfdb_PROTO
-#endif
-
-#ifdef c_plusplus	/* true for some other C++ compilers */
-#define wfdb_CPP
-#define wfdb_PROTO
-#endif
-
-#ifdef _WIN32		/* true when compiling for 32-bit MS Windows */
-#ifndef _WINDOWS
-#define _WINDOWS
-#endif
-#endif
-
-#ifdef _WINDOWS		/* true when compiling for MS Windows */
-#define wfdb_PROTO
-#endif
-
-#ifndef wfdb_PROTO	/* should be true for K&R C compilers only */
-#define wfdb_KRC
-#define signed
-#undef WFDB_LARGETIME
-#endif
+#define WFDB_MAJOR   @WFDBMAJOR@
+#define WFDB_MINOR   @WFDBMINOR@
+#define WFDB_RELEASE @WFDBRELEASE@
+#define WFDB_NETFILES @WFDB_NETFILES@	/* if 1, library includes code for HTTP, FTP clients */
+#define WFDB_NETFILES_LIBCURL @WFDB_NETFILES_LIBCURL@
 
 /* Simple data types */
 typedef int	     WFDB_Sample;   /* units are adus */
@@ -95,49 +63,16 @@ typedef unsigned int WFDB_Annotator;/* annotator number */
 #define WFDB_SIGNAL_MAX             UINT_MAX
 #define WFDB_ANNOTATOR_MAX          UINT_MAX
 
-/* The 'WFDB_Time' type is traditionally defined as a long integer.
-   However, if the preprocessor symbol WFDB_LARGETIME is defined prior
-   to including this file, it is defined as a 'long long' instead. */
-#ifndef WFDB_LARGETIME
-typedef long 	     WFDB_Time;	    /* units are sample intervals */
-# define WFDB_TIME_MIN              LONG_MIN
-# define WFDB_TIME_MAX              LONG_MAX
-# define WFDB_TIME_PRINTF_MODIFIER  "l"
-# define WFDB_TIME_SCANF_MODIFIER   "l"
+/* WFDB_Time is unconditionally 64-bit. */
+typedef long long    WFDB_Time;	    /* units are sample intervals */
+#define WFDB_TIME_MIN             LLONG_MIN
+#define WFDB_TIME_MAX             LLONG_MAX
+#ifdef _WIN32
+# define WFDB_TIME_PRINTF_MODIFIER "I64"
+# define WFDB_TIME_SCANF_MODIFIER  "I64"
 #else
-# if defined(_MSC_VER) && _MSC_VER < 1400
-typedef __int64      WFDB_Time;
-#  define WFDB_TIME_MIN             _I64_MIN
-#  define WFDB_TIME_MAX             _I64_MAX
-# else
-typedef long long    WFDB_Time;
-#  define WFDB_TIME_MIN             LLONG_MIN
-#  define WFDB_TIME_MAX             LLONG_MAX
-# endif
-# ifdef _WIN32
-#  define WFDB_TIME_PRINTF_MODIFIER "I64"
-#  define WFDB_TIME_SCANF_MODIFIER  "I64"
-# else
-#  define WFDB_TIME_PRINTF_MODIFIER "ll"
-#  define WFDB_TIME_SCANF_MODIFIER  "ll"
-# endif
-
-/* A number of WFDB library functions use WFDB_Time as either a
-   parameter or return value, so the library includes two versions of
-   each of these functions.  The following preprocessor definitions
-   ensure that 'isigsettime' refers to the correct version. */
-# define isigsettime  wfdb_isigsettime_LL
-# define isgsettime   wfdb_isgsettime_LL
-# define tnextvec     wfdb_tnextvec_LL
-# define iannsettime  wfdb_iannsettime_LL
-# define timstr       wfdb_timstr_LL
-# define mstimstr     wfdb_mstimstr_LL
-# define strtim       wfdb_strtim_LL
-# define sample       wfdb_sample_LL
-# define getann       wfdb_getann_LL
-# define ungetann     wfdb_ungetann_LL
-# define putann       wfdb_putann_LL
-# define getseginfo   wfdb_getseginfo_LL
+# define WFDB_TIME_PRINTF_MODIFIER "ll"
+# define WFDB_TIME_SCANF_MODIFIER  "ll"
 #endif
 
 /* The following macros can be used to construct format strings for
@@ -358,248 +293,133 @@ typedef struct WFDB_seginfo WFDB_Seginfo;
         }                                                               \
     } while (0)
 
-/* Function types */
-#ifndef _WINDLL	/* for everything *except* MS Windows applications */
-typedef char *FSTRING;
-typedef const char *FCONSTSTRING;
-typedef WFDB_Date FDATE;
-typedef double FDOUBLE;
-typedef WFDB_Frequency FFREQUENCY;
-typedef int FINT;
-typedef long FLONGINT;
-typedef WFDB_Sample FSAMPLE;
-typedef WFDB_Time FSITIME;
-typedef void FVOID;
-#else		
-#ifndef _WIN32	/* for 16-bit MS Windows applications using the WFDB DLL */
-  /* typedefs don't work properly with _far or _pascal -- must use #defines */
-#define FSTRING char _far * _pascal
-#define FCONSTSTRING const char _far * _pascal
-#define FDATE WFDB_Date _far _pascal
-#define FDOUBLE double _far _pascal
-#define FFREQUENCY WFDB_Frequency _far _pascal
-#define FINT int _far _pascal
-#define FLONGINT long _far _pascal
-#define FSAMPLE WFDB_Sample _far _pascal
-#define FSITIME WFDB_Time _far _pascal
-#define FVOID void _far _pascal
-#else		/* for 32-bit MS Windows applications using the WFDB DLL */
-#ifndef CALLBACK
-#define CALLBACK __stdcall	/* from windef.h */
-#endif
-#define FSTRING __declspec (dllexport) char * CALLBACK
-#define FCONSTSTRING __declspec (dllexport) const char * CALLBACK
-#define FDATE __declspec (dllexport) WFDB_Date CALLBACK
-#define FDOUBLE __declspec (dllexport) double CALLBACK
-#define FFREQUENCY __declspec (dllexport) WFDB_Frequency CALLBACK
-#define FINT __declspec (dllexport) int CALLBACK
-#define FLONGINT __declspec (dllexport) long CALLBACK
-#define FSAMPLE __declspec (dllexport) WFDB_Sample CALLBACK
-#define FSITIME __declspec (dllexport) WFDB_Time CALLBACK
-#define FVOID __declspec (dllexport) void CALLBACK
-#endif
-#endif
-
 /* Specify C linkage for C++ compilers. */
-#ifdef wfdb_CPP
+#ifdef __cplusplus
 extern "C" {
 #endif
 
-/* Define function prototypes for ANSI C compilers and C++ compilers */
-#ifdef wfdb_PROTO
-extern FINT annopen(char *record, const WFDB_Anninfo *aiarray,
+/* Function prototypes */
+extern int annopen(char *record, const WFDB_Anninfo *aiarray,
 		    unsigned int nann);
-extern FINT isigopen(char *record, WFDB_Siginfo *siarray, int nsig);
-extern FINT osigopen(char *record, WFDB_Siginfo *siarray,
+extern int isigopen(char *record, WFDB_Siginfo *siarray, int nsig);
+extern int osigopen(char *record, WFDB_Siginfo *siarray,
 		     unsigned int nsig);
-extern FINT osigfopen(const WFDB_Siginfo *siarray, unsigned int nsig);
-extern FINT wfdbinit(char *record,
+extern int osigfopen(const WFDB_Siginfo *siarray, unsigned int nsig);
+extern int wfdbinit(char *record,
 		     const WFDB_Anninfo *aiarray, unsigned int nann,
 		     WFDB_Siginfo *siarray, unsigned int nsig);
-extern FINT findsig(const char *signame);
-extern FINT getspf(void);
-extern FVOID setgvmode(int mode);
-extern FINT getgvmode(void);
-extern FINT setifreq(WFDB_Frequency freq);
-extern FFREQUENCY getifreq(void);
-extern FINT getvec(WFDB_Sample *vector);
-extern FINT getframe(WFDB_Sample *vector);
-extern FINT putvec(const WFDB_Sample *vector);
-extern FINT getann(WFDB_Annotator a, WFDB_Annotation *annot);
-extern FINT ungetann(WFDB_Annotator a, const WFDB_Annotation *annot);
-extern FINT putann(WFDB_Annotator a, const WFDB_Annotation *annot);
-extern FINT isigsettime(WFDB_Time t);
-extern FINT isgsettime(WFDB_Group g, WFDB_Time t);
-extern FSITIME tnextvec(WFDB_Signal s, WFDB_Time t);
-extern FINT iannsettime(WFDB_Time t);
-extern FSTRING ecgstr(int annotation_code);
-extern FINT strecg(const char *annotation_mnemonic_string);
-extern FINT setecgstr(int annotation_code,
+extern int findsig(const char *signame);
+extern int getspf(void);
+extern void setgvmode(int mode);
+extern int getgvmode(void);
+extern int setifreq(WFDB_Frequency freq);
+extern WFDB_Frequency getifreq(void);
+extern int getvec(WFDB_Sample *vector);
+extern int getframe(WFDB_Sample *vector);
+extern int putvec(const WFDB_Sample *vector);
+extern int getann(WFDB_Annotator a, WFDB_Annotation *annot);
+extern int ungetann(WFDB_Annotator a, const WFDB_Annotation *annot);
+extern int putann(WFDB_Annotator a, const WFDB_Annotation *annot);
+extern int isigsettime(WFDB_Time t);
+extern int isgsettime(WFDB_Group g, WFDB_Time t);
+extern WFDB_Time tnextvec(WFDB_Signal s, WFDB_Time t);
+extern int iannsettime(WFDB_Time t);
+extern char *ecgstr(int annotation_code);
+extern int strecg(const char *annotation_mnemonic_string);
+extern int setecgstr(int annotation_code,
 		      const char *annotation_mnemonic_string);
-extern FSTRING annstr(int annotation_code);
-extern FINT strann(const char *annotation_mnemonic_string);
-extern FINT setannstr(int annotation_code,
+extern char *annstr(int annotation_code);
+extern int strann(const char *annotation_mnemonic_string);
+extern int setannstr(int annotation_code,
 		      const char *annotation_mnemonic_string);
-extern FSTRING anndesc(int annotation_code);
-extern FINT setanndesc(int annotation_code,
+extern char *anndesc(int annotation_code);
+extern int setanndesc(int annotation_code,
 		       const char *annotation_description);
-extern FVOID setafreq(WFDB_Frequency f);
-extern FFREQUENCY getafreq(void);
-extern FVOID setiafreq(WFDB_Annotator a, WFDB_Frequency f);
-extern FFREQUENCY getiafreq(WFDB_Annotator a);
-extern FFREQUENCY getiaorigfreq(WFDB_Annotator a);
-extern FVOID iannclose(WFDB_Annotator a);
-extern FVOID oannclose(WFDB_Annotator a);
-extern FINT wfdb_isann(int code);
-extern FINT wfdb_isqrs(int code);
-extern FINT wfdb_setisqrs(int code, int newval);
-extern FINT wfdb_map1(int code);
-extern FINT wfdb_setmap1(int code, int newval);
-extern FINT wfdb_map2(int code);
-extern FINT wfdb_setmap2(int code, int newval);
-extern FINT wfdb_ammap(int code);
-extern FINT wfdb_mamap(int code, int subtype);
-extern FINT wfdb_annpos(int code);
-extern FINT wfdb_setannpos(int code, int newval);
-extern FSTRING timstr(WFDB_Time t);
-extern FSTRING mstimstr(WFDB_Time t);
-extern FSITIME strtim(const char *time_string);
-extern FSTRING datstr(WFDB_Date d);
-extern FDATE strdat(const char *date_string);
-extern FINT adumuv(WFDB_Signal s, WFDB_Sample a);
-extern FSAMPLE muvadu(WFDB_Signal s, int microvolts);
-extern FDOUBLE aduphys(WFDB_Signal s, WFDB_Sample a);
-extern FSAMPLE physadu(WFDB_Signal s, double v);
-extern FSAMPLE sample(WFDB_Signal s, WFDB_Time t);
-extern FINT sample_valid(void);
-extern FINT calopen(const char *calibration_filename);
-extern FINT getcal(const char *description, const char *units,
+extern void setafreq(WFDB_Frequency f);
+extern WFDB_Frequency getafreq(void);
+extern void setiafreq(WFDB_Annotator a, WFDB_Frequency f);
+extern WFDB_Frequency getiafreq(WFDB_Annotator a);
+extern WFDB_Frequency getiaorigfreq(WFDB_Annotator a);
+extern void iannclose(WFDB_Annotator a);
+extern void oannclose(WFDB_Annotator a);
+extern int wfdb_isann(int code);
+extern int wfdb_isqrs(int code);
+extern int wfdb_setisqrs(int code, int newval);
+extern int wfdb_map1(int code);
+extern int wfdb_setmap1(int code, int newval);
+extern int wfdb_map2(int code);
+extern int wfdb_setmap2(int code, int newval);
+extern int wfdb_ammap(int code);
+extern int wfdb_mamap(int code, int subtype);
+extern int wfdb_annpos(int code);
+extern int wfdb_setannpos(int code, int newval);
+extern char *timstr(WFDB_Time t);
+extern char *mstimstr(WFDB_Time t);
+extern WFDB_Time strtim(const char *time_string);
+extern char *datstr(WFDB_Date d);
+extern WFDB_Date strdat(const char *date_string);
+extern int adumuv(WFDB_Signal s, WFDB_Sample a);
+extern WFDB_Sample muvadu(WFDB_Signal s, int microvolts);
+extern double aduphys(WFDB_Signal s, WFDB_Sample a);
+extern WFDB_Sample physadu(WFDB_Signal s, double v);
+extern WFDB_Sample sample(WFDB_Signal s, WFDB_Time t);
+extern int sample_valid(void);
+extern int calopen(const char *calibration_filename);
+extern int getcal(const char *description, const char *units,
 		   WFDB_Calinfo *cal);
-extern FINT putcal(const WFDB_Calinfo *cal);
-extern FINT newcal(const char *calibration_filename);
-extern FVOID flushcal(void);
-extern FSTRING getinfo(char *record);
-extern FINT putinfo(const char *info);
-extern FINT setinfo(char *record);
-extern FVOID wfdb_freeinfo(void);
-extern FINT newheader(char *record);
-extern FINT setheader(char *record, const WFDB_Siginfo *siarray,
+extern int putcal(const WFDB_Calinfo *cal);
+extern int newcal(const char *calibration_filename);
+extern void flushcal(void);
+extern char *getinfo(char *record);
+extern int putinfo(const char *info);
+extern int setinfo(char *record);
+extern void wfdb_freeinfo(void);
+extern int newheader(char *record);
+extern int setheader(char *record, const WFDB_Siginfo *siarray,
 		      unsigned int nsig);
-extern FINT setmsheader(char *record, char **segnames, unsigned int nsegments);
-extern FINT getseginfo(WFDB_Seginfo **segments);
-extern FINT wfdbgetskew(WFDB_Signal s);
-extern FVOID wfdbsetiskew(WFDB_Signal s, int skew);
-extern FVOID wfdbsetskew(WFDB_Signal s, int skew);
-extern FLONGINT wfdbgetstart(WFDB_Signal s);
-extern FVOID wfdbsetstart(WFDB_Signal s, long bytes);
-extern FINT wfdbputprolog(const char *prolog, long bytes, WFDB_Signal s);
-extern FVOID wfdbquit(void);
-extern FFREQUENCY sampfreq(char *record);
-extern FINT setsampfreq(WFDB_Frequency sampling_frequency);
-extern FFREQUENCY getcfreq(void);
-extern FVOID setcfreq(WFDB_Frequency counter_frequency);
-extern FDOUBLE getbasecount(void);
-extern FVOID setbasecount(double count);
-extern FINT setbasetime(char *time_string);
-extern FVOID wfdbquiet(void);
-extern FVOID wfdbverbose(void);
-extern FSTRING wfdberror(void);
-extern FVOID setwfdb(const char *database_path_string);
-extern FSTRING getwfdb(void);
-extern FVOID resetwfdb(void);
-extern FINT setibsize(int input_buffer_size);
-extern FINT setobsize(int output_buffer_size);
-extern FSTRING wfdbfile(const char *file_type, char *record);
-extern FVOID wfdbflush(void);
-extern FVOID wfdbmemerr(int exit_on_error);
+extern int setmsheader(char *record, char **segnames, unsigned int nsegments);
+extern int getseginfo(WFDB_Seginfo **segments);
+extern int wfdbgetskew(WFDB_Signal s);
+extern void wfdbsetiskew(WFDB_Signal s, int skew);
+extern void wfdbsetskew(WFDB_Signal s, int skew);
+extern long wfdbgetstart(WFDB_Signal s);
+extern void wfdbsetstart(WFDB_Signal s, long bytes);
+extern int wfdbputprolog(const char *prolog, long bytes, WFDB_Signal s);
+extern void wfdbquit(void);
+extern WFDB_Frequency sampfreq(char *record);
+extern int setsampfreq(WFDB_Frequency sampling_frequency);
+extern WFDB_Frequency getcfreq(void);
+extern void setcfreq(WFDB_Frequency counter_frequency);
+extern double getbasecount(void);
+extern void setbasecount(double count);
+extern int setbasetime(char *time_string);
+extern void wfdbquiet(void);
+extern void wfdbverbose(void);
+extern char *wfdberror(void);
+extern void setwfdb(const char *database_path_string);
+extern char *getwfdb(void);
+extern void resetwfdb(void);
+extern int setibsize(int input_buffer_size);
+extern int setobsize(int output_buffer_size);
+extern char *wfdbfile(const char *file_type, char *record);
+extern void wfdbflush(void);
+extern void wfdbmemerr(int exit_on_error);
 #if __GNUC__ >= 3
 __attribute__((__format__(__printf__, 1, 2)))
 #endif
-extern FVOID wfdb_error(const char *format_string, ...);
-extern FINT wfdb_me_fatal(void);
-extern FCONSTSTRING wfdbversion(void);
-extern FCONSTSTRING wfdbldflags(void);
-extern FCONSTSTRING wfdbcflags(void);
-extern FCONSTSTRING wfdbdefwfdb(void);
-extern FCONSTSTRING wfdbdefwfdbcal(void);
-#endif
+extern void wfdb_error(const char *format_string, ...);
+extern int wfdb_me_fatal(void);
+extern const char *wfdbversion(void);
+extern const char *wfdbldflags(void);
+extern const char *wfdbcflags(void);
+extern const char *wfdbdefwfdb(void);
+extern const char *wfdbdefwfdbcal(void);
 
-#ifdef wfdb_CPP
+#ifdef __cplusplus
 }
 #endif
 
-#ifdef wfdb_KRC	/* declare only function return types for K&R C compilers */
-extern FINT annopen(), isigopen(), osigopen(), wfdbinit(), findsig(), getspf(),
-    setifreq(), getvec(), getframe(), getgvmode(), putvec(), getann(),
-    ungetann(), putann(), isigsettime(), isgsettime(), iannsettime(), strecg(),
-    setecgstr(), strann(), setannstr(), setanndesc(), wfdb_isann(),
-    wfdb_isqrs(), wfdb_setisqrs(), wfdb_map1(), wfdb_setmap1(), wfdb_map2(),
-    wfdb_setmap2(), wfdb_ammap(), wfdb_mamap(), wfdb_annpos(), wfdb_setannpos(),
-    adumuv(), newheader(), setheader(), setmsheader(), getseginfo(),
-    wfdbputprolog(), setsampfreq(), setbasetime(), putinfo(), setinfo(),
-    setibsize(), setobsize(), calopen(), getcal(), putcal(), newcal(),
-    wfdbgetskew(), sample_valid(), wfdb_me_fatal();
-extern FLONGINT wfdbgetstart();
-extern FSAMPLE muvadu(), physadu(), sample();
-extern FSTRING ecgstr(), annstr(), anndesc(), timstr(), mstimstr(),
-    datstr(), getwfdb(), getinfo(), wfdberror(), wfdbfile();
-extern FSITIME strtim(), tnextvec();
-extern FDATE strdat();
-extern FVOID setafreq(), setgvmode(), wfdb_freeinfo(), wfdbquit(), wfdbquiet(),
-    wfdbverbose(), setdb(), wfdbflush(), setcfreq(), setbasecount(), flushcal(),
-    wfdbsetiskew(), wfdbsetskew(), wfdbsetstart(), wfdbmemerr(), wfdb_error(),
-    setiafreq();
-extern FFREQUENCY getafreq(), getifreq(), sampfreq(), getcfreq(), getiafreq(),
-    getiaorigfreq();
-extern FDOUBLE aduphys(), getbasecount();
-#endif
-
-/* Remove local preprocessor definitions. */
-#ifdef wfdb_PROTO
-#undef wfdb_PROTO
-#endif
-
-#ifdef wfdb_CPP
-#undef wfdb_CPP
-#endif
-
-#ifdef wfdb_KRC
-#undef wfdb_KRC
-#undef signed
-#endif
-
-/* Include some useful function declarations.  This section includes standard
-   header files if available and provides alternative declarations for those
-   platforms that need them.
-
-  The ANSI/ISO C standard requires conforming compilers to predefine __STDC__.
-  Non-conforming compilers for MS-Windows may or may not predefine _WINDOWS;
-  if you use such a compiler, you may need to define _WINDOWS manually. */
-#if defined(__STDC__) || defined(_WINDOWS)
-# include <stdlib.h>
-#else
-extern char *getenv();
-extern void exit();
-typedef long time_t;
-# ifdef HAVE_MALLOC_H
-# include <malloc.h>
-# else
-extern char *malloc(), *calloc(), *realloc();
-# endif
-# ifdef ISPRINTF
-extern int sprintf();
-# else
-#  ifndef MSDOS
-extern char *sprintf();
-#  endif
-# endif
-#endif
-
-#ifndef BSD
-# include <string.h>
-#else		/* for Berkeley UNIX only */
-# include <strings.h>
-# define strchr index
-#endif
+#include <stdlib.h>
+#include <string.h>
 
 #endif

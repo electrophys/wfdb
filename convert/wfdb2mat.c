@@ -73,6 +73,8 @@ wfdb2mat.
 */
 
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <limits.h>
 #include <wfdb/wfdb.h>
 
@@ -85,11 +87,12 @@ wfdb2mat.
 
 char *pname;
 
-main(argc, argv)
-int argc;
-char *argv[];
+char *prog_name(char *s);
+void help(void);
+
+int main(int argc, char *argv[])
 {
-    char *matname, *orec, *p, *q, *record = NULL, *search = NULL, *prog_name();
+    char *matname, *orec, *p, *q, *record = NULL, *search = NULL;
 
     /* The entire file is composed of:
        - 128 byte descriptive text
@@ -124,7 +127,6 @@ char *argv[];
     WFDB_Sample *vi, *vo;
     WFDB_Siginfo *si, *so;
     WFDB_Time from = 0L, maxl = 0L, t, to = 0L, lower, upper;
-    void help();
 
     pname = prog_name(argv[0]);
     for (i = 1 ; i < argc; i++) {
@@ -525,23 +527,12 @@ char *argv[];
     exit(0);	/*NOTREACHED*/
 }
 
-char *prog_name(s)
-char *s;
+char *prog_name(char *s)
 {
     char *p = s + strlen(s);
 
-#ifdef MSDOS
-    while (p >= s && *p != '\\' && *p != ':') {
-	if (*p == '.')
-	    *p = '\0';		/* strip off extension */
-	if ('A' <= *p && *p <= 'Z')
-	    *p += 'a' - 'A';	/* convert to lower case */
-	p--;
-    }
-#else
     while (p >= s && *p != '/')
 	p--;
-#endif
     return (p+1);
 }
 
@@ -560,7 +551,7 @@ static char *help_strings[] = {
 NULL
 };
 
-void help()
+void help(void)
 {
     int i;
 

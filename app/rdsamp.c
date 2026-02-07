@@ -45,11 +45,13 @@ _______________________________________________________________________________
 
 char *pname;
 
-main(argc, argv)
-int argc;
-char *argv[];
+char *prog_name(char *s);
+char *escapify(char *s);
+void help(void);
+
+int main(int argc, char *argv[])
 {
-    char *record = NULL, *search = NULL, *escapify(), *prog_name();
+    char *record = NULL, *search = NULL;
     char *invalid, *snfmt, *tfmt, *tnfmt, *tufmt, *vfmt, speriod[16],
 	tustr[21];
     int cflag = 0, highres = 0, i, isiglist, nsig, nosig = 0, pflag = 0, s,
@@ -58,7 +60,6 @@ char *argv[];
     WFDB_Sample *v;
     WFDB_Siginfo *si;
     WFDB_Time from = 0L, maxl = 0L, to = 0L;
-    void help();
 
     pname = prog_name(argv[0]);
     for (i = 1 ; i < argc; i++) {
@@ -463,34 +464,23 @@ char *escapify(char *s)
 	    c++;
 	p++;
     }
-    if (c > 0 && (p = r = calloc(p-s+c, sizeof(char))) != NULL) {
+    if (c > 0 && (p = r = calloc(p-s+c+1, sizeof(char))) != NULL) {
 	while (*q) {
 	    if (*q == '\'' || *q == '\\')
-		*q++ = '\\';
-	    *p++ = *q;
+		*p++ = '\\';
+	    *p++ = *q++;
 	}
 	q = r;
     }
     return (q);
 }
 
-char *prog_name(s)
-char *s;
+char *prog_name(char *s)
 {
     char *p = s + strlen(s);
 
-#ifdef MSDOS
-    while (p >= s && *p != '\\' && *p != ':') {
-	if (*p == '.')
-	    *p = '\0';		/* strip off extension */
-	if ('A' <= *p && *p <= 'Z')
-	    *p += 'a' - 'A';	/* convert to lower case */
-	p--;
-    }
-#else
     while (p >= s && *p != '/')
 	p--;
-#endif
     return (p+1);
 }
 
@@ -521,7 +511,7 @@ static char *help_strings[] = {
 NULL
 };
 
-void help()
+void help(void)
 {
     int i;
 

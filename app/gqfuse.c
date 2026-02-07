@@ -65,7 +65,7 @@ int icomp(const void *a, const void *b)
     return 0;
 }
 
-main(int argc, char **argv)
+int main(int argc, char **argv)
 {
     char *oaname = "gqf";
     double HR;
@@ -252,18 +252,8 @@ char *prog_name(char *s)
 {
     char *p = s + strlen(s);
 
-#ifdef MSDOS
-    while (p >= s && *p != '\\' && *p != ':') {
-	if (*p == '.')
-	    *p = '\0';		/* strip off extension */
-	if ('A' <= *p && *p <= 'Z')
-	    *p += 'a' - 'A';	/* convert to lower case */
-	p--;
-    }
-#else
     while (p >= s && *p != '/')
 	p--;
-#endif
     return (p+1);
 }
 
@@ -281,7 +271,7 @@ static char *help_strings[] = {
 NULL
 };
 
-void help()
+void help(void)
 {
     int i;
 

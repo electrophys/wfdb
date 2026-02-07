@@ -118,7 +118,7 @@ long *qfv, *smv;		/* filter buffers allocated by gqrs_init() */
 #define q(T) (qfv[(T)&(BUFLN-1)])
 #define s(T) (smv[(T)&(BUFLN-1)])
 
-main(int argc, char **argv)
+int main(int argc, char **argv)
 {
     char *p;
     int gvmode = 0, i, isiglist = 0, j, nisig;
@@ -327,7 +327,7 @@ WFDB_Sample sm(WFDB_Time t)
     return (s(t));
 }
 
-void qf()	/* evaluate the QRS detector filter for the next sample */
+void qf(void)	/* evaluate the QRS detector filter for the next sample */
 {
     long dv, dv1, dv2, v0;
 
@@ -675,18 +675,8 @@ char *prog_name(char *s)
 {
     char *p = s + strlen(s);
 
-#ifdef MSDOS
-    while (p >= s && *p != '\\' && *p != ':') {
-	if (*p == '.')
-	    *p = '\0';		/* strip off extension */
-	if ('A' <= *p && *p <= 'Z')
-	    *p += 'a' - 'A';	/* convert to lower case */
-	p--;
-    }
-#else
     while (p >= s && *p != '/')
 	p--;
-#endif
     return (p+1);
 }
 
@@ -711,7 +701,7 @@ static char *help_strings[] = {
 NULL
 };
 
-void help()
+void help(void)
 {
     int i;
 
@@ -741,7 +731,7 @@ void *gcalloc(size_t nmemb, size_t size)
     return (gclist[gcn++] = p);
 }
 
-void gfreeall()			/* free memory allocated using gcalloc() */
+void gfreeall(void)		/* free memory allocated using gcalloc() */
 {
    while (gcn-- > 0)
 	if (gclist[gcn]) free(gclist[gcn]);

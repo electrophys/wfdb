@@ -25,26 +25,22 @@ _______________________________________________________________________________
 */
 
 #include <stdio.h>
-#ifndef __STDC__
-extern void exit();
-#endif
-
 #include <wfdb/wfdb.h>
 #include <wfdb/ecgcodes.h>
 
 char *pname;
 
-main(argc, argv)	
-int argc;
-char *argv[];
+char *prog_name(char *s);
+void help(void);
+
+int main(int argc, char *argv[])
 {
     static WFDB_Anninfo ai;
     WFDB_Annotation annot;
     static char line[400];
-    char annstr[10], *p, *record = NULL, *prog_name();
+    char annstr[10], *p, *record = NULL;
     int i, sub, ch, nm;
     WFDB_Time tm;
-    void help();
 
     pname = prog_name(argv[0]);
 
@@ -144,27 +140,16 @@ char *argv[];
     exit(0);	/*NOTREACHED*/
 }
 
-char *prog_name(s)
-char *s;
+char *prog_name(char *s)
 {
     char *p = s + strlen(s);
 
-#ifdef MSDOS
-    while (p >= s && *p != '\\' && *p != ':') {
-	if (*p == '.')
-	    *p = '\0';		/* strip off extension */
-	if ('A' <= *p && *p <= 'Z')
-	    *p += 'a' - 'A';	/* convert to lower case */
-	p--;
-    }
-#else
     while (p >= s && *p != '/')
 	p--;
-#endif
     return (p+1);
 }
 
-void help()
+void help(void)
 {
     (void)fprintf(stderr, "usage: %s -r RECORD -a ANNOTATOR <TEXT-FILE\n",
 		  pname);

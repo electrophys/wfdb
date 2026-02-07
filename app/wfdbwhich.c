@@ -25,17 +25,13 @@ _______________________________________________________________________________
 */
 
 #include <stdio.h>
-#ifndef __STDC__
-extern void exit();
-#endif
-
 #include <wfdb/wfdb.h>
 
-main(argc, argv)
-int argc;
-char *argv[];
+char *prog_name(char *s);
+
+int main(int argc, char *argv[])
 {
-    char *filename, *pname, *prog_name();
+    char *filename, *pname;
     int status = 0;
 
     pname = prog_name(argv[0]);
@@ -86,22 +82,11 @@ char *argv[];
     /*NOTREACHED*/
 }
 
-char *prog_name(s)
-char *s;
+char *prog_name(char *s)
 {
     char *p = s + strlen(s);
 
-#ifdef MSDOS
-    while (p >= s && *p != '\\' && *p != ':') {
-	if (*p == '.')
-	    *p = '\0';		/* strip off extension */
-	if ('A' <= *p && *p <= 'Z')
-	    *p += 'a' - 'A';	/* convert to lower case */
-	p--;
-    }
-#else
     while (p >= s && *p != '/')
 	p--;
-#endif
     return (p+1);
 }

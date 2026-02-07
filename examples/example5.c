@@ -1,9 +1,7 @@
 #include <stdio.h>
 #include <wfdb/wfdb.h>
 
-main(argc, argv)
-int argc;
-char *argv[];
+int main(int argc, char *argv[])
 {
     WFDB_Siginfo *s;
     int i, nsig;

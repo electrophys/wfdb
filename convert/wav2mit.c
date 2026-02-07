@@ -83,7 +83,7 @@ long in32(void);
 char *prog_name(char *);
 void help(void);
 
-main(int argc, char **argv)
+int main(int argc, char **argv)
 {
     char buf[80], *ifname, *record = NULL;
     double sps, wgain;

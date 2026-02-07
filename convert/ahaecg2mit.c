@@ -54,7 +54,7 @@ int readtxtdata(void)
     return (2);		/* samples and annotation */
 }
 	
-main(int argc, char **argv)
+int main(int argc, char **argv)
 {
     char *p, *record;
     int i, sflag = 0;

@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <wfdb/wfdb.h>
 
-main()
+int main(void)
 {
     WFDB_Anninfo a;
     WFDB_Annotation annot;

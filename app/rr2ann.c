@@ -37,9 +37,6 @@ frequency if the default (WFDB_DEFFREQ) is incorrect.
 */
 
 #include <stdio.h>
-#ifndef __STDC__
-extern void exit();
-#endif
 
 #define MAXLINELEN 1024		/* longer input lines will be silently split */
 
@@ -48,19 +45,18 @@ extern void exit();
 
 char *pname;
 
-main(argc, argv)	
-int argc;
-char *argv[];
+char *prog_name(char *s);
+void help(void);
+
+int main(int argc, char *argv[])
 {
     static WFDB_Anninfo ai;
     static WFDB_Annotation annot;
     WFDB_Frequency sps = 0.0;
     double rr, t = 0.0, xfactor = 1.0;
     static char line[MAXLINELEN];
-    char annstr[10], *p, *record = NULL, *prog_name();
+    char annstr[10], *p, *record = NULL;
     int i, Tflag = 0, wflag = 0;
-    void help();
-    extern double atof();
 
     pname = prog_name(argv[0]);
 
@@ -173,23 +169,12 @@ char *argv[];
     exit(0);
 }
 
-char *prog_name(s)
-char *s;
+char *prog_name(char *s)
 {
     char *p = s + strlen(s);
 
-#ifdef MSDOS
-    while (p >= s && *p != '\\' && *p != ':') {
-	if (*p == '.')
-	    *p = '\0';		/* strip off extension */
-	if ('A' <= *p && *p <= 'Z')
-	    *p += 'a' - 'A';	/* convert to lower case */
-	p--;
-    }
-#else
     while (p >= s && *p != '/')
 	p--;
-#endif
     return (p+1);
 }
 
@@ -216,7 +201,7 @@ static char *help_strings[] = {
 NULL
 };
 
-void help()
+void help(void)
 {
     int i;
 

@@ -48,6 +48,19 @@ understanding of algorithm errors.
 
 #define abs(A)	((A) >= 0 ? (A) : -(A))
 
+char *prog_name(char *s);
+void help(void);
+void getref(void);
+void gettest(void);
+int rpann(WFDB_Time t);
+int tpann(WFDB_Time t);
+void pair(int ref, int test);
+int amap(int a);
+void pstat(char *s, char *f, long a, long b);
+void sstat(char *s, char *f, long a, long b);
+void init(int argc, char *argv[]);
+void print_results(int fflag);
+void genxcmp(void);
 char *pname;		/* name by which this program was invoked */
 int A, Aprime;		/* types of the current & next reference annotations */
 int a, aprime;		/* types of the current & next test annotations */
@@ -64,11 +77,8 @@ WFDB_Time huge_time = WFDB_TIME_MAX; /* largest possible time */
 WFDB_Time T, Tprime;	/* times of the current & next reference annotations */
 WFDB_Time t, tprime;	/* times of the current & next test annotations */
 
-main(argc, argv)
-int argc;
-char *argv[];
+int main(int argc, char *argv[])
 {
-    void genxcmp(), getref(), gettest(), init(), pair(), print_results();
 
     /* Read and interpret command-line arguments. */
     init(argc, argv);
@@ -237,7 +247,7 @@ WFDB_Time pvfonref = -1L;	/* start of previous reference VF */
 WFDB_Time pvfoffref = -1L;	/* end of previous reference VF */
 WFDB_Annotation ref_annot;
 
-void getref()	/* get next reference beat annotation */
+void getref(void)	/* get next reference beat annotation */
 {
     static WFDB_Time TT;    /* time of previous reference beat annotation */
     static WFDB_Annotation annot;
@@ -340,7 +350,7 @@ WFDB_Time pvfontest = -1L;	/* start of previous test VF */
 WFDB_Time pvfofftest = -1L;	/* end of previous test VF */
 WFDB_Annotation test_annot;
 
-void gettest()	/* get next test annotation */
+void gettest(void)	/* get next test annotation */
 {
     static WFDB_Time tt;	/* time of previous test beat annotation */
     static WFDB_Annotation annot;
@@ -424,8 +434,7 @@ void gettest()	/* get next test annotation */
    beat labels, since they depend on getref() and gettest() to locate the two
    most recent VF and shutdown periods and have no information about earlier
    or later VF or shutdown periods. */
-int rpann(t)
-WFDB_Time t;
+int rpann(WFDB_Time t)
 {
     if ((vfonref!=-1L && vfonref<=t && (t<=vfoffref || vfoffref==-1L)) ||
 	(pvfonref!=-1L && pvfonref<=t && t<=pvfoffref))
@@ -441,8 +450,7 @@ WFDB_Time t;
 			   O pseudo-beat labels */
 }
 
-int tpann(t)
-WFDB_Time t;
+int tpann(WFDB_Time t)
 {
     /* no special treatment for reference beat labels during test-marked VF */
     if ((sdontest!=-1L && sdontest<=t && (t<=sdofftest || sdofftest==-1L)) ||
@@ -468,8 +476,7 @@ int verbose = 0;	/* if non-zero, describe all mismatches */
 long nrre = 0;		/* number of RR errors tallied in ssrre */
 double ssrre = 0.;	/* sum of squares of RR errors */
 
-void pair(ref, test)	/* count a beat label pair */
-int ref, test;			/* reference and test annotation types */
+void pair(int ref, int test)	/* count a beat label pair */
 {
     switch (ref) {
 	case 'N': switch (test) {
@@ -571,8 +578,7 @@ int ref, test;			/* reference and test annotation types */
     }
 }
 
-int amap(a)		/* map MIT annotation code into AAMI test label */
-int a;
+int amap(int a)		/* map MIT annotation code into AAMI test label */
 {
     switch (a) {
 	case NORMAL:
@@ -615,9 +621,7 @@ FILE *ofile, *sfile;	/* files for beat-by-beat and shutdown reports */
 /* `pstat' prints a statistic described by s, defined as the quotient of a and
    b expressed in percentage units.  Undefined values are indicated by `-'. */
 
-void pstat(s, f, a, b)
-char *s, *f;
-long a, b;
+void pstat(char *s, char *f, long a, long b)
 {
     if (fflag == 1 || fflag == 3 || fflag == 4 || fflag == 6) {
 	(void)fprintf(ofile, "%s: ", s);
@@ -634,9 +638,7 @@ long a, b;
 
 /* `sstat' prints a statistic as for `pstat', but the output goes to sfile. */
 
-void sstat(s, f, a, b)
-char *s, *f;
-long a, b;
+void sstat(char *s, char *f, long a, long b)
 {
     if (fflag == 1 || fflag == 3 || fflag == 4 || fflag == 6) {
 	(void)fprintf(sfile, "%s: ", s);
@@ -654,13 +656,9 @@ long a, b;
 char *ofname = "-", *sfname;	/* filenames for reports */
 
 /* Read and interpret command-line arguments. */
-void init(argc, argv)
-int argc;
-char *argv[];
+void init(int argc, char *argv[])
 {
     int i;
-    char *prog_name();
-    void help();
 
     pname = prog_name(argv[0]);
     for (i = 1; i < argc; i++) {
@@ -851,8 +849,7 @@ char *argv[];
     if (annopen(record, an, 2 + oflag) < 0) exit(2);
 }
 
-void print_results(fflag)
-int fflag;
+void print_results(int fflag)
 {
     long QTP, QFN, QFP, STP, SFN, SFP, VTP, VFN, VTN, VFP;
 
@@ -1111,7 +1108,7 @@ static char *help_strings[] = {
  NULL
 };
 
-void help()
+void help(void)
 {
     int i;
 
@@ -1120,30 +1117,19 @@ void help()
 	(void)fprintf(stderr, "%s\n", help_strings[i]);
 }
 
-char *prog_name(s)
-char *s;
+char *prog_name(char *s)
 {
     char *p = s + strlen(s);
 
-#ifdef MSDOS
-    while (p >= s && *p != '\\' && *p != ':') {
-	if (*p == '.')
-	    *p = '\0';		/* strip off extension */
-	if ('A' <= *p && *p <= 'Z')
-	    *p += 'a' - 'A';	/* convert to lower case */
-	p--;
-    }
-#else
     while (p >= s && *p != '/')
 	p--;
-#endif
     return (p+1);
 }
 
 /* Function `genxcmp' is used only when generating an expanded output
    annotation file. */
 
-void genxcmp()
+void genxcmp(void)
 {
     int alen;
     static char mstring[550], *p, nullaux[1];

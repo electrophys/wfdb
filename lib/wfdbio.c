@@ -140,23 +140,9 @@ otherwise emulate.  The implementations of wfdb_fclose and wfdb_fopen are
 below;  they include a small amount of code compiled only if WFDB_NETFILES
 is non-zero.  All of these functions are new in version 10.0.1.)
 
-Finally, this file includes several miscellaneous functions needed only in
-certain environments:
- strtok		(parses strings into tokens, for old C libraries that need it)
- LibMain        (initializes 16-bit MS-Windows DLL version of this library)
- WEP		(cleans up on exit from 16-bit MS-Windows DLL)
- wgetenv	(replacement for getenv, for use with MS-Windows 16-bit DLLs)
- DllMain	(initialize/cleanup 32-bit MS-Windows DLL)
-
-Functions in signal.c and calib.c use the C library function strtok() to parse
-lines into tokens;  this function (and its associated header file <string.h>)
-may not be available in certain older C libraries (e.g., UNIX version 7 and BSD
-4.2).  This file includes a portable implementation of strtok(), which can be
-obtained if necessary by defining the symbol NOSTRTOK when compiling this
-module.
 */
 
-#include "wfdblib.h"
+#include "wfdb_context.h"
 #include <time.h>
 
 /* WFDB library functions */
@@ -171,81 +157,81 @@ If WFDB or DEFWFDB is of the form '@FILE', getwfdb reads the WFDB path from the
 specified (local) FILE (using wfdb_getiwfdb); such files may be nested up to
 10 levels. */
 
-static char *wfdbpath = NULL, *wfdbpath_init = NULL;
-
 static const char *wfdb_getiwfdb(char **p);
 
 /* resetwfdb is called by wfdbquit, and can be called within an application,
 to restore the WFDB path to the value that was returned by the first call
 to getwfdb (or NULL if getwfdb was not called). */
 
-FVOID resetwfdb(void)
+void resetwfdb(void)
 {
-    SSTRCPY(wfdbpath, wfdbpath_init);
+    WFDB_Context *ctx = wfdb_get_default_context();
+    SSTRCPY(ctx->wfdbpath, ctx->wfdbpath_init);
 }
 
-FSTRING getwfdb(void)
+char *getwfdb(void)
 {
-    if (wfdbpath == NULL) {
+    WFDB_Context *ctx = wfdb_get_default_context();
+    if (ctx->wfdbpath == NULL) {
 	const char *p = getenv("WFDB");
 
 	if (p == NULL) p = DEFWFDB;
-	SSTRCPY(wfdbpath, p);
-	p = wfdb_getiwfdb(&wfdbpath);
-	SSTRCPY(wfdbpath_init, wfdbpath);
+	SSTRCPY(ctx->wfdbpath, p);
+	p = wfdb_getiwfdb(&ctx->wfdbpath);
+	SSTRCPY(ctx->wfdbpath_init, ctx->wfdbpath);
 	wfdb_parse_path(p);
     }
-    return (wfdbpath);
+    return (ctx->wfdbpath);
 }
 
 /* setwfdb can be called within an application to change the WFDB path. */
 
-FVOID setwfdb(const char *p)
+void setwfdb(const char *p)
 {
+    WFDB_Context *ctx = wfdb_get_default_context();
     void wfdb_export_config(void);
 
     if (p == NULL && (p = getenv("WFDB")) == NULL) p = DEFWFDB;
-    SSTRCPY(wfdbpath, p);
+    SSTRCPY(ctx->wfdbpath, p);
     wfdb_export_config();
 
-    SSTRCPY(wfdbpath, p);
-    p = wfdb_getiwfdb(&wfdbpath);
+    SSTRCPY(ctx->wfdbpath, p);
+    p = wfdb_getiwfdb(&ctx->wfdbpath);
     wfdb_parse_path(p);
 }
 
 /* wfdbquiet can be used to suppress error messages from the WFDB library. */
 
-static int error_print = 1;
-
-FVOID wfdbquiet(void)
+void wfdbquiet(void)
 {
-    error_print = 0;
+    WFDB_Context *ctx = wfdb_get_default_context();
+    ctx->error_print = 0;
 }
 
 /* wfdbverbose enables error messages from the WFDB library. */
 
-FVOID wfdbverbose(void)
+void wfdbverbose(void)
 {
-    error_print = 1;
+    WFDB_Context *ctx = wfdb_get_default_context();
+    ctx->error_print = 1;
 }
-
-static char *wfdb_filename;
 
 /* wfdbfile returns the pathname or URL of a WFDB file. */
 
-FSTRING wfdbfile(const char *s, char *record)
+char *wfdbfile(const char *s, char *record)
 {
+    WFDB_Context *ctx = wfdb_get_default_context();
     WFDB_FILE *ifile;
 
     if (s == NULL && record == NULL)
-	return (wfdb_filename);
+	return (ctx->wfdb_filename);
 
     /* Remove trailing .hea, if any, from record name. */
     wfdb_striphea(record);
 
     if ((ifile = wfdb_open(s, record, WFDB_READ))) {
 	(void)wfdb_fclose(ifile);
-	return (wfdb_filename);
+	return (ctx->wfdb_filename);
     }
     else return (NULL);
 }
@@ -254,11 +240,10 @@ FSTRING wfdbfile(const char *s, char *record)
 out of memory).  Call wfdbmemerr(0) in order to have these errors returned
 to the caller;  by default, such errors cause the running process to exit. */
 
-static int wfdb_mem_behavior = 1;
-
-FVOID wfdbmemerr(int behavior)
+void wfdbmemerr(int behavior)
 {
-    wfdb_mem_behavior = behavior;
+    WFDB_Context *ctx = wfdb_get_default_context();
+    ctx->wfdb_mem_behavior = behavior;
 }
 
 /* Functions that expose configuration constants used by the WFDB Toolkit for
@@ -276,36 +261,37 @@ FVOID wfdbmemerr(int behavior)
 #define CFLAGS  "CFLAGS not defined"
 #endif
 
-FCONSTSTRING wfdbversion(void)
+const char *wfdbversion(void)
 {
    return VERSION;
 }
 
-FCONSTSTRING wfdbldflags(void)
+const char *wfdbldflags(void)
 {
    return LDFLAGS;
 }
 
-FCONSTSTRING wfdbcflags(void)
+const char *wfdbcflags(void)
 {
    return CFLAGS;
 }
 
-FCONSTSTRING wfdbdefwfdb(void)
+const char *wfdbdefwfdb(void)
 {
    return DEFWFDB;
 }
 
-FCONSTSTRING wfdbdefwfdbcal(void)
+const char *wfdbdefwfdbcal(void)
 {
    return DEFWFDBCAL;
 }
 
 /* Private functions (for the use of other WFDB library functions only). */
 
-FINT wfdb_me_fatal()	/* used by the MEMERR macro defined in wfdblib.h */
+int wfdb_me_fatal()	/* used by the MEMERR macro defined in wfdblib.h */
 {
-    return (wfdb_mem_behavior);
+    WFDB_Context *ctx = wfdb_get_default_context();
+    return (ctx->wfdb_mem_behavior);
 }
 
 /* The next four functions read and write integers in PDP-11 format, which is
@@ -385,18 +371,12 @@ size_t wfdb_getline(char **buffer, size_t *buffer_size, WFDB_FILE *fp)
     return (i);
 }
 
-struct wfdb_path_component {
-    char *prefix;
-    struct wfdb_path_component *next, *prev;
-    int type;		/* WFDB_LOCAL or WFDB_NET */
-};
-static struct wfdb_path_component *wfdb_path_list;
-
 /* wfdb_free_path_list clears out the path list, freeing all memory allocated
    to it. */
 void wfdb_free_path_list(void)
 {
-   struct wfdb_path_component *c0 = NULL, *c1 = wfdb_path_list;
+    WFDB_Context *ctx = wfdb_get_default_context();
+    struct wfdb_path_component *c0 = NULL, *c1 = ctx->wfdb_path_list;
 
     while (c1) {
 	c0 = c1->next;
@@ -404,7 +384,7 @@ void wfdb_free_path_list(void)
 	SFREE(c1);
 	c1 = c0;
     }
-    wfdb_path_list = NULL;
+    ctx->wfdb_path_list = NULL;
 }
 
 /* Operating system and compiler dependent code
@@ -454,52 +434,23 @@ Differences among these platforms:
    variable argument lists are included below in three different versions (with
    additional minor variations noted below).
 
-OS- and compiler-dependent definitions:
-
-   For MS-DOS/MS-Windows compilers.  Note that not all such compilers
-   predefine the symbol MSDOS;  for those that do not, MSDOS is usually defined
-   by a compiler command-line option in the "make" description file. */ 
-#ifdef MSDOS
-#define DSEP	'\\'
-#define PSEP	';'
+OS-dependent definitions: */
+#define DSEP	'/'
+#define PSEP	':'
 #define AB	"ab"
 #define RB	"rb"
 #define WB	"wb"
-#else
-
-/* For other ANSI C compilers.  Such compilers must predefine __STDC__ in order
-   to conform to the ANSI specification. */
-#ifdef __STDC__
-#ifdef MAC	/* Macintosh only.  Be sure to define MAC in 'wfdblib.h'. */
-#define DSEP	':'
-#define PSEP	';'
-#else		/* Other ANSI C compilers (UNIX and variants). */
-#define DSEP	'/'
-#define PSEP	':'
-#endif
-#define AB	"ab"
-#define RB	"rb"
-#define WB	"wb"
-
-/* For all other C compilers, including traditional UNIX C compilers. */
-# else
-#define DSEP	'/'
-#define PSEP	':'
-#define AB	"a"
-#define RB	"r"
-#define WB	"w"
-#endif
-#endif
 
 /* wfdb_parse_path constructs a linked list of path components by splitting
 its string input (usually the value of WFDB). */
 
 int wfdb_parse_path(const char *p)
 {
+    WFDB_Context *ctx = wfdb_get_default_context();
     const char *q;
     int current_type, slashes, found_end;
-    struct wfdb_path_component *c0 = NULL, *c1 = wfdb_path_list;
-    static first_call = 1;
+    struct wfdb_path_component *c0 = NULL, *c1 = ctx->wfdb_path_list;
+    static int first_call = 1;
 
     /* First, free the existing wfdb_path_list, if any. */
     wfdb_free_path_list();
@@ -559,7 +510,7 @@ int wfdb_parse_path(const char *p)
 	c1->type = current_type;
 	c1->prev = c0;
 	if (c0) c0->next = c1;
-	else wfdb_path_list = c1;
+	else ctx->wfdb_path_list = c1;
 	c0 = c1;
 	if (*q) q++;
     }
@@ -617,7 +568,6 @@ static const char *wfdb_getiwfdb(char **p)
 #ifndef HAS_PUTENV
 #define wfdb_export_config()
 #else
-static char *p_wfdb, *p_wfdbcal, *p_wfdbannsort, *p_wfdbgvmode;
 
 /* wfdb_free_config frees all memory allocated by wfdb_export_config.
    This function must be invoked before exiting to avoid a memory leak.
@@ -626,25 +576,27 @@ static char *p_wfdb, *p_wfdbcal, *p_wfdbannsort, *p_wfdbgvmode;
    semantics for putenv.  */
 void wfdb_free_config(void)
 {
+    WFDB_Context *ctx = wfdb_get_default_context();
     static char n_wfdb[] = "WFDB=";
     static char n_wfdbcal[] = "WFDBCAL=";
     static char n_wfdbannsort[] = "WFDBANNSORT=";
     static char n_wfdbgvmode[] = "WFDBGVMODE=";
-    if (p_wfdb) putenv(n_wfdb);
-    if (p_wfdbcal) putenv(n_wfdbcal);
-    if (p_wfdbannsort) putenv(n_wfdbannsort);
-    if (p_wfdbgvmode) putenv(n_wfdbgvmode);
-    SFREE(p_wfdb);
-    SFREE(p_wfdbcal);
-    SFREE(p_wfdbannsort);
-    SFREE(p_wfdbgvmode);
-    SFREE(wfdbpath);
-    SFREE(wfdbpath_init);
-    SFREE(wfdb_filename);
+    if (ctx->p_wfdb) putenv(n_wfdb);
+    if (ctx->p_wfdbcal) putenv(n_wfdbcal);
+    if (ctx->p_wfdbannsort) putenv(n_wfdbannsort);
+    if (ctx->p_wfdbgvmode) putenv(n_wfdbgvmode);
+    SFREE(ctx->p_wfdb);
+    SFREE(ctx->p_wfdbcal);
+    SFREE(ctx->p_wfdbannsort);
+    SFREE(ctx->p_wfdbgvmode);
+    SFREE(ctx->wfdbpath);
+    SFREE(ctx->wfdbpath_init);
+    SFREE(ctx->wfdb_filename);
 }
 
 void wfdb_export_config(void)
 {
+    WFDB_Context *ctx = wfdb_get_default_context();
     static int first_call = 1;
     char *envstr = NULL;
 
@@ -653,32 +605,32 @@ void wfdb_export_config(void)
 	atexit(wfdb_free_config);
 	first_call = 0;
     }
-    SALLOC(envstr, 1, strlen(wfdbpath)+6);
+    SALLOC(envstr, 1, strlen(ctx->wfdbpath)+6);
     if (envstr) {
-	sprintf(envstr, "WFDB=%s", wfdbpath);
+	sprintf(envstr, "WFDB=%s", ctx->wfdbpath);
 	putenv(envstr);
-	SFREE(p_wfdb);
-	p_wfdb = envstr;
+	SFREE(ctx->p_wfdb);
+	ctx->p_wfdb = envstr;
     }
     if (getenv("WFDBCAL") == NULL) {
-	SALLOC(p_wfdbcal, 1, strlen(DEFWFDBCAL)+9);
-	if (p_wfdbcal) {
-	    sprintf(p_wfdbcal, "WFDBCAL=%s", DEFWFDBCAL);
-	    putenv(p_wfdbcal);
+	SALLOC(ctx->p_wfdbcal, 1, strlen(DEFWFDBCAL)+9);
+	if (ctx->p_wfdbcal) {
+	    sprintf(ctx->p_wfdbcal, "WFDBCAL=%s", DEFWFDBCAL);
+	    putenv(ctx->p_wfdbcal);
 	}
     }
     if (getenv("WFDBANNSORT") == NULL) {
-	SALLOC(p_wfdbannsort, 1, 14);
-	if (p_wfdbannsort) {
-	    sprintf(p_wfdbannsort, "WFDBANNSORT=%d", DEFWFDBANNSORT == 0 ? 0 : 1);
-	    putenv(p_wfdbannsort);
+	SALLOC(ctx->p_wfdbannsort, 1, 14);
+	if (ctx->p_wfdbannsort) {
+	    sprintf(ctx->p_wfdbannsort, "WFDBANNSORT=%d", DEFWFDBANNSORT == 0 ? 0 : 1);
+	    putenv(ctx->p_wfdbannsort);
 	}
     }
     if (getenv("WFDBGVMODE") == NULL) {
-	SALLOC(p_wfdbgvmode, 1, 13);
-	if (p_wfdbgvmode) {
-	    sprintf(p_wfdbgvmode, "WFDBGVMODE=%d", DEFWFDBGVMODE == 0 ? 0 : 1);
-	    putenv(p_wfdbgvmode);
+	SALLOC(ctx->p_wfdbgvmode, 1, 13);
+	if (ctx->p_wfdbgvmode) {
+	    sprintf(ctx->p_wfdbgvmode, "WFDBGVMODE=%d", DEFWFDBGVMODE == 0 ? 0 : 1);
+	    putenv(ctx->p_wfdbgvmode);
 	}
     }
 }
@@ -706,6 +658,7 @@ the WFDB path.
 
 void wfdb_addtopath(const char *s)
 {
+    WFDB_Context *ctx = wfdb_get_default_context();
     const char *p;
     int i, len;
     struct wfdb_path_component *c0, *c1;
@@ -729,8 +682,8 @@ void wfdb_addtopath(const char *s)
 
     /* If p > s, then p points to the first character following the path
        component of s. Search the current WFDB path for this path component. */
-    if (wfdbpath == NULL) (void)getwfdb();
-    for (c0 = c1 = wfdb_path_list, i = p-s; c1; c1 = c1->next) {
+    if (ctx->wfdbpath == NULL) (void)getwfdb();
+    for (c0 = c1 = ctx->wfdb_path_list, i = p-s; c1; c1 = c1->next) {
 	if (strncmp(c1->prefix, s, i) == 0) {
 	    if (c0 == c1 || (c1->prev == c0 && strcmp(c0->prefix, ".") == 0))
 		return; /* no changes needed, quit */
@@ -755,8 +708,8 @@ void wfdb_addtopath(const char *s)
 	    (c1->next)->prev = c1;
 	c0->next = c1;
     }	
-    else { /* no initial ".";  insert the node at the head of the path */ 
-	wfdb_path_list = c1;
+    else { /* no initial ".";  insert the node at the head of the path */
+	ctx->wfdb_path_list = c1;
 	c1->prev = NULL;
 	c1->next = c0;
 	c0->prev = c1;
@@ -810,11 +763,7 @@ int wfdb_vasprintf(char **buffer, const char *format, va_list arguments)
 	}
 
 	VA_COPY(arguments2, arguments);
-#ifdef _WINDOWS
-	length = _vsnprintf(*buffer, bufsize, format, arguments2);
-#else
 	length = vsnprintf(*buffer, bufsize, format, arguments2);
-#endif
 	VA_END2(arguments2);
 
 	/* some pre-standard versions of 'vsnprintf' return -1 if the
@@ -864,41 +813,40 @@ windowing environments, for example, where using the standard error output may
 be inappropriate).
 */
 
-static int error_flag;
-static char *error_message;
-
 #ifndef WFDB_BUILD_DATE
 #define WFDB_BUILD_DATE __DATE__
 #endif
 
-FSTRING wfdberror(void)
+char *wfdberror(void)
 {
-    if (!error_flag)
-	wfdb_asprintf(&error_message,
+    WFDB_Context *ctx = wfdb_get_default_context();
+    if (!ctx->error_flag)
+	wfdb_asprintf(&ctx->error_message,
 		      "WFDB library version %d.%d.%d (%s).\n",
 		      WFDB_MAJOR, WFDB_MINOR, WFDB_RELEASE, WFDB_BUILD_DATE);
-    if (error_message)
-	return (error_message);
+    if (ctx->error_message)
+	return (ctx->error_message);
     else
 	return ("WFDB: cannot allocate memory for error message");
 }
 
-FVOID wfdb_error(const char *format, ...)
+void wfdb_error(const char *format, ...)
 {
+    WFDB_Context *ctx = wfdb_get_default_context();
     va_list arguments;
 
-    error_flag = 1;
+    ctx->error_flag = 1;
     va_start(arguments, format);
-    wfdb_vasprintf(&error_message, format, arguments);
+    wfdb_vasprintf(&ctx->error_message, format, arguments);
     va_end(arguments);
 
 #if 1				/* standard variant: use stderr output */
-    if (error_print) {
+    if (ctx->error_print) {
 	(void)fprintf(stderr, "%s", wfdberror());
 	(void)fflush(stderr);
     }
 #else				/* MS Windows variant: use message box */
-    if (error_print)
+    if (ctx->error_print)
 	MessageBox(GetFocus(), wfdberror(), "WFDB Library Error",
 		   MB_ICONASTERISK | MB_OK);
 #endif
@@ -936,17 +884,9 @@ int wfdb_fprintf(WFDB_FILE *wp, const char *format, ...)
 #define spr1(S, RECORD, TYPE)   ((*TYPE == '\0') ? \
 				 wfdb_asprintf(S, "%s", RECORD) : \
 				 wfdb_asprintf(S, "%s.%s", RECORD, TYPE))
-#ifdef FIXISOCD
-# define spr2(S, RECORD, TYPE)  ((*TYPE == '\0') ? \
-				 wfdb_asprintf(S, "%s;1", RECORD) : \
-				 wfdb_asprintf(S, "%s.%.3s;1",RECORD,TYPE))
-#else
-# define spr2(S, RECORD, TYPE)  ((*TYPE == '\0') ? \
+#define spr2(S, RECORD, TYPE)  ((*TYPE == '\0') ? \
 				 wfdb_asprintf(S, "%s.", RECORD) : \
 				 wfdb_asprintf(S, "%s.%.3s", RECORD, TYPE))
-#endif
-
-static char irec[WFDB_MAXRNL+1]; /* current record name, set by wfdb_setirec */
 
 /* wfdb_open is used by other WFDB library functions to open a database file
 for reading or writing.  wfdb_open accepts two string arguments and an integer
@@ -993,19 +933,13 @@ string.  If the type string (after swapping, if necessary) is empty, spr1 uses
 the record name as the literal file name, and spr2 uses the record name with an
 appended "." as the file name.
 
-In environments in which ISO 9660 version numbers are visible in CD-ROM file
-names, define the symbol FIXISOCD.  This causes spr2 to append the
-characters ";1" (the version number for an ordinary file) to the file names
-it generates.  This feature is needed in order to read post-1992 CD-ROMs
-with pre-5.0 versions of the Macintosh "ISO 9660 File Access" software,
-with some versions of HP-UX, and possibly in other environments as well.
-
 Pre-10.0.1 versions of this library that were compiled for environments other
 than MS-DOS used file names in the format TYPE.RECORD.  This file name format
 is no longer supported. */
 
 WFDB_FILE *wfdb_open(const char *s, const char *record, int mode)
 {
+    WFDB_Context *ctx = wfdb_get_default_context();
     char *wfdb, *p, *q, *r, *buf = NULL;
     int rlen;
     struct wfdb_path_component *c0;
@@ -1066,36 +1000,36 @@ WFDB_FILE *wfdb_open(const char *s, const char *record, int mode)
        An output file can be opened in another directory if the path to
        that directory is the first part of 'record'. */
     if (mode == WFDB_WRITE) {
-	spr1(&wfdb_filename, r, s);
+	spr1(&ctx->wfdb_filename, r, s);
 	SFREE(r);
-	return (wfdb_fopen(wfdb_filename, WB));
+	return (wfdb_fopen(ctx->wfdb_filename, WB));
     }
     else if (mode == WFDB_APPEND) {
-	spr1(&wfdb_filename, r, s);
+	spr1(&ctx->wfdb_filename, r, s);
 	SFREE(r);
-	return (wfdb_fopen(wfdb_filename, AB));
+	return (wfdb_fopen(ctx->wfdb_filename, AB));
     }
 
     /* Parse the WFDB path if not done previously. */
-    if (wfdb_path_list == NULL) (void)getwfdb();
+    if (ctx->wfdb_path_list == NULL) (void)getwfdb();
 
     /* If the filename begins with 'http://' or 'https://', it's a URL.  In
        this case, don't search the WFDB path, but add its parent directory
        to the path if the file can be read. */
     if (strncmp(r, "http://", 7) == 0 || strncmp(r, "https://", 8) == 0) {
-	spr1(&wfdb_filename, r, s);
-	if ((ifile = wfdb_fopen(wfdb_filename, RB)) != NULL) {
+	spr1(&ctx->wfdb_filename, r, s);
+	if ((ifile = wfdb_fopen(ctx->wfdb_filename, RB)) != NULL) {
 	    /* Found it! Add its path info to the WFDB path. */
-	    wfdb_addtopath(wfdb_filename);
+	    wfdb_addtopath(ctx->wfdb_filename);
 	    SFREE(r);
 	    return (ifile);
 	}
     }
 
-    for (c0 = wfdb_path_list; c0; c0 = c0->next) {
+    for (c0 = ctx->wfdb_path_list; c0; c0 = c0->next) {
 	char *long_filename = NULL;
 
-	ireclen = strlen(irec);
+	ireclen = strlen(ctx->irec);
 	bufsize = 64;
 	SALLOC(buf, 1, bufsize);
 	len = 0;
@@ -1113,7 +1047,7 @@ WFDB_FILE *wfdb_open(const char *s, const char *record, int mode)
 		wfdb++;
 		if (*wfdb == 'r') {
 		    /* '%r' -> record name */
-		    (void)strcpy(buf + len, irec);
+		    (void)strcpy(buf + len, ctx->irec);
 		    len += ireclen;
 		    wfdb++;
 		}
@@ -1122,7 +1056,7 @@ WFDB_FILE *wfdb_open(const char *s, const char *record, int mode)
 		    int n = *wfdb - '0';
 
 		    if (ireclen < n) n = ireclen;
-		    (void)strncpy(buf + len, irec, n);
+		    (void)strncpy(buf + len, ctx->irec, n);
 		    len += n;
 		    buf[len] = '\0';
 		    wfdb += 2;
@@ -1149,11 +1083,7 @@ WFDB_FILE *wfdb_open(const char *s, const char *record, int mode)
 	    if (c0->type == WFDB_NET) {
 		if (buf[len-1] != '/') buf[len++] = '/';
 	    }
-#ifndef MSDOS
 	    else if (buf[len-1] != DSEP)
-#else
-	    else if (buf[len-1] != DSEP && buf[len-1] != ':')
-#endif
 		buf[len++] = DSEP;
 	}
 	buf[len] = 0;
@@ -1161,21 +1091,21 @@ WFDB_FILE *wfdb_open(const char *s, const char *record, int mode)
 	if (!buf)
 	    continue;
 
-	spr1(&wfdb_filename, buf, s);
-	if ((ifile = wfdb_fopen(wfdb_filename, RB)) != NULL) {
+	spr1(&ctx->wfdb_filename, buf, s);
+	if ((ifile = wfdb_fopen(ctx->wfdb_filename, RB)) != NULL) {
 	    /* Found it! Add its path info to the WFDB path. */
-	    wfdb_addtopath(wfdb_filename);
+	    wfdb_addtopath(ctx->wfdb_filename);
 	    SFREE(buf);
 	    SFREE(r);
 	    return (ifile);
 	}
 	/* Not found -- try again, using an alternate form of the name,
 	   provided that that form is distinct. */
-	SSTRCPY(long_filename, wfdb_filename);
-	spr2(&wfdb_filename, buf, s);
-	if (strcmp(wfdb_filename, long_filename) && 
-	    (ifile = wfdb_fopen(wfdb_filename, RB)) != NULL) {
-	    wfdb_addtopath(wfdb_filename);
+	SSTRCPY(long_filename, ctx->wfdb_filename);
+	spr2(&ctx->wfdb_filename, buf, s);
+	if (strcmp(ctx->wfdb_filename, long_filename) &&
+	    (ifile = wfdb_fopen(ctx->wfdb_filename, RB)) != NULL) {
+	    wfdb_addtopath(ctx->wfdb_filename);
 	    SFREE(long_filename);
 	    SFREE(buf);
 	    SFREE(r);
@@ -1199,9 +1129,6 @@ int wfdb_checkname(const char *p, const char *s)
     do {
 	if (('0' <= *p && *p <= '9') || *p == '_' || *p == '~' || *p== '-' ||
 	    *p == DSEP ||
-#ifdef MSDOS
-	    *p == ':' || *p == '/' ||
-#endif
 	    ('a' <= *p && *p <= 'z') || ('A' <= *p && *p <= 'Z'))
 	    p++;
 	else {
@@ -1220,26 +1147,25 @@ recursively to open a segment within a multi-segment record) and by annopen
 
 void wfdb_setirec(const char *p)
 {
+    WFDB_Context *ctx = wfdb_get_default_context();
     const char *r;
     int len;
 
     for (r = p; *r; r++)
 	if (*r == DSEP) p = r+1;	/* strip off any path information */
-#ifdef MSDOS
-	else if (*r == ':') p = r+1;
-#endif
     len = strlen(p);
     if (len > WFDB_MAXRNL)
 	len = WFDB_MAXRNL;
     if (strcmp(p, "-")) {       /* don't record '-' (stdin) as record name */
-	strncpy(irec, p, len);
-	irec[len] = '\0';
+	strncpy(ctx->irec, p, len);
+	ctx->irec[len] = '\0';
     }
 }
 
 char *wfdb_getirec(void)
 {
-    return (*irec ? irec: NULL);
+    WFDB_Context *ctx = wfdb_get_default_context();
+    return (*ctx->irec ? ctx->irec: NULL);
 }
 
 /* Remove trailing '.hea' from a record name, if present. */
@@ -1452,11 +1378,9 @@ static void wfdb_wwwquit(void)
 {
     int i;
     if (www_done_init) {
-#ifndef _WINDOWS
 	curl_easy_cleanup(curl_ua);
 	curl_ua = NULL;
 	curl_global_cleanup();
-#endif
 	www_done_init = FALSE;
 	for (i = 0; passwords && passwords[i]; i++)
 	    SFREE(passwords[i]);
@@ -2228,100 +2152,3 @@ WFDB_FILE *wfdb_fopen(char *fname, const char *mode)
     SFREE(wp);
     return (NULL);
 }
-
-/* Miscellaneous OS-specific functions. */
-
-#ifdef NOSTRTOK
-char *strtok(char *p, char *sep)
-{
-    char *psep;
-    static char *s;
-
-    if (p) s = p;
-    if (!s || !(*s) || !sep || !(*sep)) return ((char *)NULL);
-    for (psep = sep; *psep; psep++)
-	if (*s == *psep) {
-	    if (!(*(++s))) return ((char *)NULL);
-	    psep = sep;
-	}
-    p = s;
-    while (*s)
-	for (psep = sep; *psep; psep++)
-	    if (*s == *psep) {
-		*s++ == '\0';
-		return (p);
-	    }
-    return (p);
-}
-#endif
-
-#ifdef _WINDLL
-#ifndef _WIN32
-/* Functions named LibMain and WEP are required in all 16-bit MS Windows
-dynamic link libraries. The private library function wgetenv is a replacement
-for the standard C getenv function, useful since the DOS environment is not
-available to Windows DLLs except by use of the Windows GetDOSEnvironment
-function.
-*/
-
-FINT LibMain(HINSTANCE hinst, WORD wDataSeg, WORD cbHeapSize,
-	               LPSTR lpszCmdLine)
-{
-    if (cbHeapSize != 0)	/* if DLL data segment is moveable */
-	UnlockData(0);
-    return (1);
-}
-
-FINT WEP(int nParameter)
-{
-    if (nParameter == WEP_SYSTEM_EXIT || WEP_FREE_DLL)
-	wfdbquit();	/* Always close WFDB files before shutdown or
-			   when the last WFDB application exits. */
-    return (1);
-}
-
-
-/* This is a quick-and-dirty reimplementation of getenv for the Windows 16-bit
-   DLL environment.  It searches the MSDOS environment for a line beginning
-   with the specified variable name, followed by '='.  This function can be
-   fooled by pathologic variable names (e.g., with embedded '=' characters),
-   but should be adequate for typical use. */
-
-char FAR *wgetenv(char far *var)
-{
-    char FAR *ep = GetDOSEnvironment();
-    int l = _fstrlen(var);
-    
-    if (var == (char FAR *)NULL || *var = '\0') return ((char FAR *)NULL);
-    while (*ep) {
-	if (_fstrncmp(ep, var, l) == 0 && *(ep+l) == '=')
-	    /* Got it!  Skip '=', return a pointer to the value string. */
-	    return (ep+l+1);
-	/* Go on to the next environment string. */
-	ep += _fstrlen(ep) + 1;
-    }
-
-    /* If here, the specified variable was not found in the environment. */
-    return ((char FAR *)NULL);
-}
-
-#else	/* 32-bit MS Windows DLLs require DllMain instead of LibMain and WEP */
-
-int WINAPI DllMain(HINSTANCE hInstance, DWORD fdwReason, PVOID pvReserved)
-{
-    switch (fdwReason) {
-	/* nothing to do when process (or thread) begins */
-      case DLL_PROCESS_ATTACH:
-      case DLL_THREAD_ATTACH:
-      case DLL_THREAD_DETACH:
-	break;
-	/* when process terminates, always close WFDB files before shutdown or
-	   when the last WFDB application exits */
-      case DLL_PROCESS_DETACH:
-	wfdbquit();
-	break;
-    }
-    return (TRUE);
-}
-#endif
-#endif

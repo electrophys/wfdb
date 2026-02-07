@@ -28,12 +28,14 @@ _______________________________________________________________________________
 
 char *pname;
 
-main(int argc, char **argv)
+char *prog_name(char *s);
+void help(void);
+
+int main(int argc, char **argv)
 {
-    char *p, *record = NULL, *prog_name();
+    char *p, *record = NULL;
     int i, isiglist = 0, j, nsig, nosig = 0;
     WFDB_Siginfo *si;
-    void help();
 
     pname = prog_name(argv[0]);
 
@@ -98,23 +100,12 @@ main(int argc, char **argv)
     exit(0);
 }
 
-char *prog_name(s)
-char *s;
+char *prog_name(char *s)
 {
     char *p = s + strlen(s);
 
-#ifdef MSDOS
-    while (p >= s && *p != '\\' && *p != ':') {
-	if (*p == '.')
-	    *p = '\0';		/* strip off extension */
-	if ('A' <= *p && *p <= 'Z')
-	    *p += 'a' - 'A';	/* convert to lower case */
-	p--;
-    }
-#else
     while (p >= s && *p != '/')
 	p--;
-#endif
     return (p+1);
 }
 
@@ -127,7 +118,7 @@ static char *help_strings[] = {
 NULL
 };
 
-void help()
+void help(void)
 {
     int i;
 

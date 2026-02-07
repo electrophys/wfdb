@@ -25,16 +25,19 @@ _______________________________________________________________________________
 */
 
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <wfdb/wfdb.h>
 
 char *pname;
 
-main(argc, argv)
-int argc;
-char **argv;
+double gcd(double x, double y);
+void help(void);
+
+int main(int argc, char *argv[])
 {
     char buf[81], record[WFDB_MAXRNL+1], **vi, **vin;
-    double *sigpmax, *sigpmin, *sampfreq, spr, sps, gcd();
+    double *sigpmax, *sigpmin, *sampfreq, spr, sps;
     FILE *ifile = NULL;
     int big_endian = 0, fpb, h, i, j, k, l, nsig, nosig = 0, *siglist = NULL,
 	*spb, tspb = 0, ispf = 0, tspf = 0, vflag = 0,
@@ -42,7 +45,6 @@ char **argv;
     long adcrange, *sigdmax, *sigdmin;
     WFDB_Sample *vo, *vout;
     WFDB_Siginfo *si, *so;
-    void help();
 
     pname = argv[0];
     record[0] = '\0';
@@ -433,8 +435,7 @@ char **argv;
    Euclid's algorithm, modified so that an exact answer is not required if the
    (possibly non-integral) arguments do not have a common divisor that can be
    represented exactly. */
-double gcd(x, y)
-double x, y;
+double gcd(double x, double y)
 {
     double tol;
 
@@ -464,7 +465,7 @@ static char *help_strings[] = {
 NULL
 };
 
-void help()
+void help(void)
 {
     int i;
 

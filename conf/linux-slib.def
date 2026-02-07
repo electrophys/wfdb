@@ -69,7 +69,7 @@ CC = gcc
 # while compiling the WFDB Software Package.  CCDEFS should always include
 # VDEFS (the version definitions).  Under Linux, add -fno-stack-protector
 # when compiling the original (SWIG-based) WFDB Toolkit for Matlab.
-CCDEFS = $(VDEFS) -DWFDB_LARGETIME
+CCDEFS = $(VDEFS)
 
 # MFLAGS is the set of architecture-dependent (-m*) compiler options, which
 # is usually empty.  See the gcc manual for information about gcc's -m options.
