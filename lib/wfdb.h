@@ -63,6 +63,7 @@ typedef unsigned int WFDB_Annotator;/* annotator number */
 
 /* WFDB_Time is unconditionally 64-bit. */
 typedef long long    WFDB_Time;	    /* units are sample intervals */
+_Static_assert(sizeof(WFDB_Time) >= 8, "WFDB_Time must be at least 64 bits");
 #define WFDB_TIME_MIN             LLONG_MIN
 #define WFDB_TIME_MAX             LLONG_MAX
 #ifdef _WIN32

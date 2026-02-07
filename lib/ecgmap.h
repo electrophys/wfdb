@@ -96,7 +96,7 @@ static char wfdb_mp2[] = {
 #ifndef ammap
 #define ammap(A)   (('D' < (wfdb_mt = (A)) && wfdb_mt <= ']') ? \
 		    wfdb_ammp[wfdb_mt-'E'] : NOTQRS)
-static char wfdb_ammp[] = {
+static const char wfdb_ammp[] = {
 	VESC,	FUSION,	NOTQRS,	NOTQRS,	NOTQRS,		/* 'E' - 'I' */
 	NOTQRS,	NOTQRS,	NOTQRS,	NOTQRS,	NORMAL,		/* 'J' - 'N' */
 	NOTE,	PACE,	UNKNOWN,RONT,	NOTQRS,		/* 'O' - 'S' */
@@ -110,7 +110,7 @@ static char wfdb_ammp[] = {
 #define mamap(A,S) (isann(A) ? \
 		    (((wfdb_mt = wfdb_mamp[wfdb_mt]) == 'U' && (S) != -1) ? \
 		     'O': wfdb_mt) : 'O')
-static char wfdb_mamp[] = {
+static const char wfdb_mamp[] = {
 	'O',	'N',	'N',	'N',	'N',		/* 0 - 4 */
 	'V',	'F',	'N',	'N',	'N',		/* 5 - 9 */
 	'E',	'N',	'P',	'Q',	'U',		/* 10 - 14 */

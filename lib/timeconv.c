@@ -52,8 +52,6 @@ These functions were previously part of signal.c.
 
 #include <time.h>
 
-#define strtotime strtoll
-
 WFDB_Frequency sampfreq_ctx(WFDB_Context *ctx, char *record)
 {
     int n;
@@ -109,10 +107,10 @@ int setbasetime_ctx(WFDB_Context *ctx, char *string)
 
 	t = time((time_t *)NULL);    /* get current time from system clock */
 	now = localtime(&t);
-	(void)sprintf(date_string, "%02d/%02d/%d",
+	(void)snprintf(date_string, sizeof(date_string), "%02d/%02d/%d",
 		now->tm_mday, now->tm_mon+1, now->tm_year+1900);
 	bdate = strdat(date_string);
-	(void)sprintf(time_string, "%d:%d:%d",
+	(void)snprintf(time_string, sizeof(time_string), "%d:%d:%d",
 		now->tm_hour, now->tm_min, now->tm_sec);
 	btime = fstrtim(time_string, 1000.0);
 	return (0);
@@ -188,10 +186,10 @@ char *fmstimstr(WFDB_Time t, WFDB_Frequency f)
 	minutes = t % 60;
 	hours = t / 60;
 	if (hours > 0)
-	    (void)sprintf(time_string, "%2d:%02d:%02d.%03d",
+	    (void)snprintf(time_string, sizeof(time_string), "%2d:%02d:%02d.%03d",
 			  hours, minutes, seconds, msec);
 	else
-	    (void)sprintf(time_string, "   %2d:%02d.%03d",
+	    (void)snprintf(time_string, sizeof(time_string), "   %2d:%02d.%03d",
 			  minutes, seconds, msec);
     }
     else {			/* time of day */
@@ -214,10 +212,10 @@ char *fmstimstr(WFDB_Time t, WFDB_Frequency f)
 	    else if (days == 0)
 		date_string[0] = '\0';
 	    else
-		(void)sprintf(date_string, " %ld", days);
+		(void)snprintf(date_string, sizeof(date_string), " %ld", days);
 	    pdays = days;
 	}
-	(void)sprintf(time_string, "[%02d:%02d:%02d.%03d%s]",
+	(void)snprintf(time_string, sizeof(time_string), "[%02d:%02d:%02d.%03d%s]",
 		      hours, minutes, seconds, msec, date_string);
     }
     return (time_string);
@@ -294,15 +292,15 @@ WFDB_Time fstrtim(const char *string, WFDB_Frequency f)
     switch (*string) {
       case 'c': return (cfreq > 0. ?
 			(WFDB_Time)((strtod(string+1, NULL)-bcount)*f/cfreq) :
-			strtotime(string+1, NULL, 10));
+			strtoll(string+1, NULL, 10));
       case 'e':	return ((in_msrec ? msnsamples : nsamples) *
 		        (((gvmode&WFDB_HIGHRES) == WFDB_HIGHRES) ? spfmax: 1));
-      case 'f': return (WFDB_Time)(strtotime(string+1, NULL, 10)*f/ffreq);
+      case 'f': return (WFDB_Time)(strtoll(string+1, NULL, 10)*f/ffreq);
       case 'i':	return (WFDB_Time)(istime *
 			(ifreq > 0.0 ? (ifreq/sfreq) : 1.0) *
 			(((gvmode&WFDB_HIGHRES) == WFDB_HIGHRES) ? ispfmax: 1));
       case 'o':	return (ostime);
-      case 's':	return (strtotime(string+1, NULL, 10));
+      case 's':	return (strtoll(string+1, NULL, 10));
       case '[':	  /* time of day, possibly with date or days since start */
 	if ((q = strchr(++string, ']')) == NULL)
 	    return ((WFDB_Time)0);	/* '[...': malformed time string */
@@ -318,9 +316,9 @@ WFDB_Time fstrtim(const char *string, WFDB_Frequency f)
 	return (-t);
       default:
 	x = strtod(string, NULL);
-	if ((p = strchr(string, ':')) == NULL) return ((long)(x*f + 0.5));
+	if ((p = strchr(string, ':')) == NULL) return ((WFDB_Time)(x*f + 0.5));
 	y = strtod(++p, NULL);
-	if ((p = strchr(p, ':')) == NULL) return ((long)((60.*x + y)*f + 0.5));
+	if ((p = strchr(p, ':')) == NULL) return ((WFDB_Time)((60.*x + y)*f + 0.5));
 	z = strtod(++p, NULL);
 	return ((WFDB_Time)((3600.*x + 60.*y + z)*f + 0.5));
     }
@@ -367,7 +365,7 @@ char *datstr_ctx(WFDB_Context *ctx, WFDB_Date date)
     y = jy - 4715;
     if (m > 2) y--;
     if (y <= 0) y--;
-    (void)sprintf(date_string, " %02d/%02d/%d", d, m, y);
+    (void)snprintf(date_string, sizeof(date_string), " %02d/%02d/%d", d, m, y);
     pdays = -1;
     return (date_string);
 }

@@ -142,6 +142,7 @@ is non-zero.  All of these functions are new in version 10.0.1.)
 */
 
 #include "wfdb_context.h"
+#include <stdarg.h>
 #include <time.h>
 
 /* WFDB library functions */
@@ -314,7 +315,7 @@ const char *wfdbdefwfdbcal(void)
 
 /* Private functions (for the use of other WFDB library functions only). */
 
-int wfdb_me_fatal()	/* used by the MEMERR macro defined in wfdblib.h */
+int wfdb_me_fatal(void)	/* used by the MEMERR macro defined in wfdblib.h */
 {
     WFDB_Context *ctx = wfdb_get_default_context();
     return (ctx->wfdb_mem_behavior);
@@ -675,8 +676,6 @@ void wfdb_addtopath(const char *s)
     }
     return;
 }
-
-#include <stdarg.h>
 
 /* wfdb_vasprintf formats a string in the same manner as vsprintf, and
 allocates a new buffer that is sufficiently large to hold the result.
@@ -1211,7 +1210,7 @@ If there are multiple items in the list, they must be separated by
 end-of-line or tab characters. */
 static void www_parse_passwords(WFDB_Context *ctx, const char *str)
 {
-    static char sep[] = "\t\n\r";
+    static const char sep[] = "\t\n\r";
     char *xstr = NULL, *p, *q, *saveptr;
     int n;
 
@@ -1397,8 +1396,8 @@ static void curl_chunk_delete(struct chunk *c)
 static size_t curl_chunk_header_write(void *ptr, size_t size, size_t nmemb,
 				      void *stream)
 {
-    char *s = (char *) ptr;
-    struct chunk *c = (struct chunk *) stream;
+    char *s = ptr;
+    struct chunk *c = stream;
 
     if (0 == strncasecmp(s, "Content-Range:", 14)) {
 	s += 14;
@@ -1419,8 +1418,7 @@ static size_t curl_chunk_write(void *ptr, size_t size, size_t nmemb,
 			       void *stream)
 {
     size_t count=0;
-    char *p;
-    struct chunk *c = (struct chunk *) stream;
+    struct chunk *c = stream;
 
     while (nmemb > 0) {
 	while ((c->size + size) > c->buffer_size) {
@@ -1431,8 +1429,7 @@ static size_t curl_chunk_write(void *ptr, size_t size, size_t nmemb,
 	    memcpy(c->data + c->size, ptr, size);
 	c->size += size;
 	count += size;
-	p = (char *)ptr + size;	/* avoid arithmetic on void pointer */
-	ptr = (void *)p;
+	ptr = (char *)ptr + size;
 	nmemb--;
     }
     return (count);
@@ -1446,7 +1443,7 @@ static CHUNK *www_get_url_range_chunk(WFDB_Context *ctx, const char *url,
     const char *url2 = NULL;
 
     if (url && *url) {
-	sprintf(range_req_str, "%ld-%ld", startb, startb+len-1);
+	snprintf(range_req_str, sizeof(range_req_str), "%ld-%ld", startb, startb+len-1);
 	chunk = chunk_new(len);
 	if (!chunk)
 	    return (NULL);

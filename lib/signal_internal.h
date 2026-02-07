@@ -17,6 +17,8 @@
 #include "wfdb_context.h"
 #include <limits.h>
 
+_Static_assert(CHAR_BIT == 8, "WFDB format I/O requires 8-bit bytes");
+
 /* Mark internal symbols as hidden to prevent collisions with
    identically-named symbols in application code */
 #if defined(__GNUC__) && __GNUC__ >= 4

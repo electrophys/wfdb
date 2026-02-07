@@ -164,7 +164,7 @@ int edfparse(WFDB_FILE *ifile)
     sfreq = ffreq * spfmax;
     if (getafreq() == 0.0) setafreq(sfreq);
     gvmode |= WFDB_HIGHRES;
-    sprintf(buf, "%02d:%02d:%02d %02d/%02d/%04d",
+    snprintf(buf, sizeof(buf), "%02d:%02d:%02d %02d/%02d/%04d",
 	    hour, minute, second, day, month, year);
     setbasetime(buf);
 
@@ -184,7 +184,7 @@ int readheader(const char *record)
     WFDB_Signal s;
     WFDB_Time ns;
     unsigned int i, nsig;
-    static char sep[] = " \t\n\r";
+    static const char sep[] = " \t\n\r";
 
     /* If another input header file was opened, close it. */
     if (hheader) {
@@ -597,7 +597,7 @@ int readheader(const char *record)
 	if (p = strtok((char *)NULL, "\n\r"))
 	    (void)strncpy(hs->info.desc, p, WFDB_MAXDSL);
 	else
-	    (void)sprintf(hs->info.desc,
+	    (void)snprintf(hs->info.desc, WFDB_MAXDSL+1,
 			  "record %s, signal %d", record, s);
     }
     setgvmode(gvmode);		/* Reset sfreq if appropriate. */

@@ -220,7 +220,7 @@ int allocogroup(unsigned int n)
 int isfmt(int f)
 {
     int i;
-    static int fmt_list[WFDB_NFMTS] = WFDB_FMT_LIST;
+    static const int fmt_list[WFDB_NFMTS] = WFDB_FMT_LIST;
 
     for (i = 0; i < WFDB_NFMTS; i++)
 	if (f == fmt_list[i]) return (1);
@@ -1851,9 +1851,9 @@ void wfdb_sigclose(void)
     WFDB_Context *ctx = wfdb_get_default_context();
     isigclose();
     osigclose();
-    btime = bdate = nsamples = msbtime = msbdate = msnsamples = (WFDB_Time)0;
-    sfreq = ifreq = ffreq = (WFDB_Frequency)0;
-    pdays = (WFDB_Date)-1;
+    btime = bdate = nsamples = msbtime = msbdate = msnsamples = 0;
+    sfreq = ifreq = ffreq = 0;
+    pdays = -1;
     segments = in_msrec = skewmax = 0;
     if (dsbuf) {
 	SFREE(dsbuf);

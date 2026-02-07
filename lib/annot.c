@@ -235,7 +235,7 @@ static int put_ann_table(WFDB_Annotator i)
     annot.subtyp = annot.chan = annot.num = 0;
     annot.aux = (unsigned char *)buf;
     if (ctx->oafreq != ctx->oad[i]->afreq && ctx->oafreq > 0.) {
-	(void)sprintf(buf+1, "## time resolution: %.12g", ctx->oafreq);
+	(void)snprintf(buf+1, sizeof(buf)-1, "## time resolution: %.12g", ctx->oafreq);
 	buf[0] = strlen(buf+1);
 	ctx->oad[i]->afreq = ctx->oafreq;
 	if (putann(i, &annot) < 0) return (-1);
@@ -244,7 +244,7 @@ static int put_ann_table(WFDB_Annotator i)
     for (a = 0; a <= ACMAX; a++)
 	if (ctx->modified[a]) {
 	    if (flag < 2) { /* mark the beginning of the table */
-		(void)sprintf(buf+1, "## annotation type definitions");
+		(void)snprintf(buf+1, sizeof(buf)-1, "## annotation type definitions");
 		buf[0] = strlen(buf+1);
 		if (putann(i, &annot) < 0) return (-1);
 	    }
@@ -260,7 +260,7 @@ static int put_ann_table(WFDB_Annotator i)
 	    flag = 2;
 	}
     if (flag == 2) {	/* if a table was written, mark its end */
-	(void)sprintf(buf+1, "## end of definitions");
+	(void)snprintf(buf+1, sizeof(buf)-1, "## end of definitions");
 	buf[0] = strlen(buf+1);
 	if (putann(i, &annot) < 0) return (-1);
     }
@@ -881,7 +881,7 @@ char *ecgstr_ctx(WFDB_Context *ctx, int code)
     if (0 <= code && code <= ACMAX)
 	return (cstring[code]);
     else {
-	(void)sprintf(ctx->ecgstr_buf, "[%d]", code);
+	(void)snprintf(ctx->ecgstr_buf, sizeof(ctx->ecgstr_buf), "[%d]", code);
 	return (ctx->ecgstr_buf);
     }
 }
@@ -938,7 +938,7 @@ char *annstr_ctx(WFDB_Context *ctx, int code)
     if (0 <= code && code <= ACMAX)
 	return (astring[code]);
     else {
-	(void)sprintf(ctx->annstr_buf, "[%d]", code);
+	(void)snprintf(ctx->annstr_buf, sizeof(ctx->annstr_buf), "[%d]", code);
 	return (ctx->annstr_buf);
     }
 }

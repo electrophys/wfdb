@@ -582,12 +582,12 @@ int flac_osinit(struct ogdata *og, const WFDB_Siginfo *si, unsigned ns)
        parameters for the FLAC compression algorithm. */
 
     if (p = getenv("WFDB_FLAC_COMPRESSION_LEVEL"))
-	FLAC__stream_encoder_set_compression_level(enc, atoi(p));
+	FLAC__stream_encoder_set_compression_level(enc, strtol(p, NULL, 10));
     else
 	FLAC__stream_encoder_set_compression_level(enc, 5);
 
     if (p = getenv("WFDB_FLAC_BLOCK_SIZE"))
-	FLAC__stream_encoder_set_blocksize(enc, atoi(p));
+	FLAC__stream_encoder_set_blocksize(enc, strtol(p, NULL, 10));
     if (p = getenv("WFDB_FLAC_STEREO")) {
 	if (p[0] == 'a' || p[0] == 'A') { /* auto */
 	    FLAC__stream_encoder_set_do_mid_side_stereo(enc, 1);
@@ -604,7 +604,7 @@ int flac_osinit(struct ogdata *og, const WFDB_Siginfo *si, unsigned ns)
     if (p = getenv("WFDB_FLAC_APODIZATION"))
 	FLAC__stream_encoder_set_apodization(enc, p);
     if (p = getenv("WFDB_FLAC_MAX_LPC_ORDER"))
-	FLAC__stream_encoder_set_max_lpc_order(enc, atoi(p));
+	FLAC__stream_encoder_set_max_lpc_order(enc, strtol(p, NULL, 10));
     if (p = getenv("WFDB_FLAC_QLP_COEFF_PRECISION")) {
 	if (p[0] == 'a' || p[0] == 'A') { /* auto */
 	    FLAC__stream_encoder_set_qlp_coeff_precision(enc, 0);
@@ -615,7 +615,7 @@ int flac_osinit(struct ogdata *og, const WFDB_Siginfo *si, unsigned ns)
 	    FLAC__stream_encoder_set_do_qlp_coeff_prec_search(enc, 1);
 	}
 	else {
-	    FLAC__stream_encoder_set_qlp_coeff_precision(enc, atoi(p));
+	    FLAC__stream_encoder_set_qlp_coeff_precision(enc, strtol(p, NULL, 10));
 	    FLAC__stream_encoder_set_do_qlp_coeff_prec_search(enc, 0);
 	}
     }
