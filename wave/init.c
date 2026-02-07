@@ -32,7 +32,7 @@ _______________________________________________________________________________
 static WFDB_Siginfo *df;
 static int maxnsig;
 
-void memerr()
+void memerr(void)
 {
 #ifdef NOTICE
     Xv_notice notice = xv_create((Frame)frame,
@@ -49,8 +49,7 @@ void memerr()
 #endif
 }
 
-void alloc_sigdata(ns)
-int ns;
+void alloc_sigdata(int ns)
 {
     int i;
 
@@ -101,8 +100,7 @@ int ns;
 }
 
 /* Open up a new ECG record. */
-int record_init(s)
-char *s;
+int record_init(char *s)
 {
     char ts[RNLMAX+30];
     int i, rebuild_list, tl;
@@ -243,7 +241,7 @@ char *s;
    calculated baselines (i.e., the baselines bear no fixed relationship to
    the sample values). */
 
-void set_baselines()
+void set_baselines(void)
 {
     int i;
 
@@ -267,10 +265,10 @@ void set_baselines()
    calibrate() scales the abscissa (time) for all signals based on the
    sampling frequency for signal 0. */
 
-void calibrate()
+void calibrate(void)
 {
     int i;
-    extern char *getenv();
+    /* getenv is declared in <stdlib.h> via wave.h */
     struct WFDB_calinfo ci;
 
     /* vscale is a multiplicative scale factor that converts sample values to

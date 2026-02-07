@@ -35,15 +35,13 @@ _______________________________________________________________________________
 #define HELPDIR		"/usr/local/help"
 #endif
 
-main(argc, argv)
-int argc;
-char *argv[];
+int main(int argc, char *argv[])
 {
-    char *wfdbp, *hp, *p, *start_string = NULL, *tp, *getenv();
+    char *wfdbp, *hp, *p, *start_string = NULL, *tp;
     int do_demo = 0, i, j, mode = 0;
     static char *helppath;
     static int wave_procno;
-    void set_frame_footer();
+    void set_frame_footer(void);
 
     /* Extract program name for use in error messages. */
     for (p = pname = argv[0]; *p; p++)

@@ -28,15 +28,15 @@ _______________________________________________________________________________
 #include "wave.h"
 #include "xvwave.h"
 
-static void show_signal_names(), show_signal_baselines();
+static void show_signal_names(void);
+static void show_signal_baselines(struct display_list *);
 
 /* Show_display_list() plots the display list pointed to by its argument. */
 
 static struct display_list *lp_current;
 static int highlighted = -1;
 
-int in_siglist(i)
-int i;
+int in_siglist(int i)
 {
     int nsl;
 
@@ -45,10 +45,7 @@ int i;
     return (0);
 }
 
-static void drawtrace(b, n, ybase, gc, mode)
-XPoint *b;
-int mode, n, ybase;
-GC gc;
+static void drawtrace(XPoint *b, int n, int ybase, GC gc, int mode)
 {
     int j, xn, xp;
     XPoint *p, *q;
@@ -77,10 +74,9 @@ GC gc;
     }
 }
 
-static void show_display_list(lp)
-struct display_list *lp;
+static void show_display_list(struct display_list *lp)
 {
-    int i, j, k, xn, xp, in_siglist();
+    int i, j, k, xn, xp;
     XPoint *p, *q;
 
     lp_current = lp;
@@ -111,11 +107,8 @@ struct display_list *lp;
     highlighted = -1;
 }
 
-void sig_highlight(i)
-int i;
+void sig_highlight(int i)
 {
-    extern void repaint();
-
     if (!lp_current) return;
     if (0 <= highlighted && highlighted < lp_current->nsig) {
 	if (sig_mode != 1) {
@@ -161,7 +154,7 @@ int i;
 /* Do_disp() executes a display request.  The display will show nsamp samples
 of nsig signals, starting at display_start_time. */
 
-void do_disp()
+void do_disp(void)
 {
     char *tp;
     int c, i, x0, x1, y0;
@@ -217,7 +210,7 @@ malloc) or by recycling a display list in the cache.  Since the screen duration
 abscissas when a new display list is obtained from the heap, and recalculates
 them only when nsamp has been changed. */
 
-static struct display_list *get_display_list()
+static struct display_list *get_display_list(void)
 {
     int i, maxx, x;
     static int max_nlists = MAX_DISPLAY_LISTS;
@@ -308,8 +301,7 @@ found in the cache, it can be returned immediately.  Otherwise, the function
 reads the requested segment and determines the pixel ordinates of the
 vertices of the polylines for each signal. */
 
-struct display_list *find_display_list(fdl_time)
-WFDB_Time fdl_time;
+struct display_list *find_display_list(WFDB_Time fdl_time)
 {
     int c, i, j, x, x0, y, ymax, ymin;
     struct display_list *lp;
@@ -450,7 +442,7 @@ WFDB_Time fdl_time;
 /* Clear_cache() marks all of the display lists in the cache as invalid.  This
    function should be executed whenever the gain (vscale) or record is changed,
    or whenever the canvas width has been increased. */
-void clear_cache()
+void clear_cache(void)
 {
     int i;
     struct display_list *lp;
@@ -472,7 +464,7 @@ void clear_cache()
     }
 }
 
-static void show_signal_names()
+static void show_signal_names(void)
 {
     int i, xoff, yoff;
 
@@ -502,8 +494,7 @@ static void show_signal_names()
     }
 }
 
-static void show_signal_baselines(lp)
-struct display_list *lp;
+static void show_signal_baselines(struct display_list *lp)
 {
     int i, l, xoff, yoff;
 
@@ -527,8 +518,7 @@ struct display_list *lp;
 
 /* Return window y-coordinate corresponding to the level of displayed trace
    i at abscissa x. */
-int sigy(i, x)
-int i, x;
+int sigy(int i, int x)
 {
     int ix, j = -1, xx, yy;
 

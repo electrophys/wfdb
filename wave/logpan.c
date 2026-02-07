@@ -66,8 +66,7 @@ struct log_entry {
    annotation exists, it moves the log marker (an index mark pseudo-annotation)
    to the specified time and selects the marker.
 */
-void set_marker(t)
-WFDB_Time t;
+void set_marker(WFDB_Time t)
 {
     static struct ap *log_marker;
 
@@ -94,8 +93,7 @@ WFDB_Time t;
    memory cannot be allocated, add_entry returns 0, and the log entry
    pointers are left unchanged. */
 
-int add_entry(recp, timep, textp)
-char *recp, *timep, *textp; /* record name, time specification, and text */
+int add_entry(char *recp, char *timep, char *textp)
 {
     struct log_entry *new_entry;
     char *p;
@@ -164,7 +162,7 @@ char *recp, *timep, *textp; /* record name, time specification, and text */
    current_entry pointer so that it points to the next entry in the linked
    list if there is one, or to the previous entry otherwise. */
 
-void delete_entry()
+void delete_entry(void)
 {
     struct log_entry *p;
 
@@ -189,10 +187,9 @@ void delete_entry()
    the linked list.  It returns 1 if completely successful, 0 if the file
    cannot be read or if not all properly formatted entries can be stored. */
 
-int read_log(logfname)
-char *logfname;
+int read_log(char *logfname)
 {
-    char buf[LLLMAX+1], *p, *recp = record, *timep, *textp = NULL, *strtok();
+    char buf[LLLMAX+1], *p, *recp = record, *timep, *textp = NULL;
     FILE *logfile;
     int ignore;
 
@@ -228,8 +225,7 @@ char *logfname;
 
 static int log_changes, save_log_backup;
 
-int write_log(logfname)
-char *logfname;
+int write_log(char *logfname)
 {
     int result;
     struct log_entry *p;
@@ -320,7 +316,7 @@ struct itimerval timer;
 
 Panel log_panel;
 
-void show_current_entry()
+void show_current_entry(void)
 {
     char *p;
     int record_changed = 0;
@@ -360,7 +356,7 @@ void show_current_entry()
     }
 }
 
-Notify_value show_next_entry()
+Notify_value show_next_entry(void)
 {
     char *p;
     WFDB_Time t0;
@@ -380,7 +376,7 @@ Notify_value show_next_entry()
     return (NOTIFY_DONE);
 }
 
-Notify_value show_prev_entry()
+Notify_value show_prev_entry(void)
 {
     char *p;
     WFDB_Time t0;
@@ -403,8 +399,7 @@ Notify_value show_prev_entry()
 int review_delay;
 int review_in_progress;
 
-void log_review(direction)
-int direction;
+void log_review(int direction)
 {
     review_in_progress = direction;
     timer.it_value.tv_sec = timer.it_interval.tv_sec = review_delay;
@@ -416,14 +411,14 @@ int direction;
 			       &timer, NULL);
 }	
 
-void pause_review()
+void pause_review(void)
 {
     review_in_progress = 0;
     notify_set_itimer_func(log_frame,NOTIFY_FUNC_NULL,ITIMER_REAL,NULL,NULL);
 }
 
 /* Handle enabling/disabling log navigation buttons for non-review modes. */
-void set_buttons()
+void set_buttons(void)
 {
     xv_set(pause_button, PANEL_INACTIVE, TRUE, 0);
     if (log_file_name) {
@@ -457,7 +452,7 @@ void set_buttons()
     }
 }
 
-void disable_buttons()
+void disable_buttons(void)
 {
     xv_set(load_button, PANEL_INACTIVE, TRUE, 0);
     xv_set(add_button, PANEL_INACTIVE, TRUE, 0);
@@ -474,9 +469,9 @@ void disable_buttons()
 }
 
 /* Edit the log file. */
-void edit_log_file()
+void edit_log_file(void)
 {
-    char *edit_command, *editor, *getenv();
+    char *edit_command, *editor;
     int clen, elen, result;
 
     if ((editor = getenv("EDITOR")) == NULL)
@@ -494,9 +489,7 @@ void edit_log_file()
 }
     
 /* Handle selections in the log window. */
-static void log_select(item, event)
-Panel_item item;
-Event *event;
+static void log_select(Panel_item item, Event *event)
 {
     int client_data = (int)xv_get(item, PANEL_CLIENT_DATA);
     char timestring[25];
@@ -641,16 +634,14 @@ Event *event;
     }
 }
 
-static void adjust_delay(item, value)
-Panel_item item;
-int value;
+static void adjust_delay(Panel_item item, int value)
 {
     review_delay = value;
     if (review_in_progress) log_review(review_in_progress);
 }
 
 /* Set up log window. */
-static void create_log_popup()
+static void create_log_popup(void)
 {
     int dx;
     Icon icon;
@@ -797,7 +788,7 @@ static void create_log_popup()
 int log_popup_active = -1;
 
 /* Make the log popup window appear. */
-void show_log()
+void show_log(void)
 {
     if (log_popup_active < 0) create_log_popup();
     wmgr_top(log_frame);
@@ -806,20 +797,20 @@ void show_log()
 }
 
 /* Update and close the log file. */
-void finish_log()
+void finish_log(void)
 {
     if (log_changes > 0) write_log(log_file_name);
 }
 
 /* Enter demonstration mode. */
-void start_demo()
+void start_demo(void)
 {
-    char *filename, *p, *title, *getenv();
+    char *filename, *p, *title;
     int c, r, x, y;
     Frame text_frame;
     Textsw textsw;
     Textsw_status status;
-    extern void mode_undo();
+    extern void mode_undo(void);
 
     if (filename = malloc(strlen(helpdir) + strlen("wave/demo.txt") + 2)) {
         if ((title = getenv("DEMOTITLE")) == NULL)

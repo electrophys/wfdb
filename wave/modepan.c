@@ -34,7 +34,7 @@ Frame mode_frame;
 Panel mode_panel;
 
 /* Undo any mode changes. */
-void mode_undo()
+void mode_undo(void)
 {
     xv_set(ts_item, PANEL_VALUE, tsa_index, NULL);
     xv_set(vs_item, PANEL_VALUE, vsa_index, NULL);
@@ -56,9 +56,7 @@ void mode_undo()
 }
 
 /* Redraw and take down the window. */
-static void redraw_proc(item, event)
-Panel_item item;
-Event *event;
+static void redraw_proc(Panel_item item, Event *event)
 {
     dismiss_mode();
     disp_proc(item, event);
@@ -75,9 +73,9 @@ char *vchoice[] = { "1 mm/mV", "2.5 mm/mV", "5 mm/mV", "10 mm/mV", "20 mm/mV",
    "40 mm/mV", "100 mm/mV" };
 
 /* Set up popup window for adjusting display modes. */
-void create_mode_popup()
+void create_mode_popup(void)
 {
-    extern void save_defaults();	/* in xvwave.c */
+    extern void save_defaults(void);	/* in xvwave.c */
     Icon icon;
 
     icon = xv_create(XV_NULL, ICON,
@@ -188,14 +186,14 @@ void create_mode_popup()
 }
 
 /* Make the display mode popup window appear. */
-void show_mode()
+void show_mode(void)
 {
     if (mode_popup_active < 0) create_mode_popup();
     xv_set(mode_frame, WIN_SHOW, TRUE, 0);
     mode_popup_active = 1;
 }
 
-void set_modes()
+void set_modes(void)
 {
     int i, otsai = tsa_index, ovsai = vsa_index;
     double osh = canvas_height_mv, osw = canvas_width_sec;
@@ -364,7 +362,7 @@ void set_modes()
 }
 
 /* Effect any mode changes that were selected and make the popup disappear. */
-void dismiss_mode()
+void dismiss_mode(void)
 {
     /* If the panel is currently visible, make it go away. */
     if (mode_popup_active > 0 &&
@@ -380,8 +378,7 @@ void dismiss_mode()
    is 0, and (2) absolute times (if available) are displayed without brackets
    if time_mode is non-zero. */
 
-WFDB_Time wstrtim(s)
-char *s;
+WFDB_Time wstrtim(char *s)
 {
     WFDB_Time t;
 
@@ -401,8 +398,7 @@ char *s;
     return (t);
 }
 
-char *wtimstr(t)
-WFDB_Time t;
+char *wtimstr(WFDB_Time t)
 {
     switch (time_mode) {
       case 0:
@@ -438,8 +434,7 @@ WFDB_Time t;
     }
 }
 
-char *wmstimstr(t)
-WFDB_Time t;
+char *wmstimstr(WFDB_Time t)
 {
     switch (time_mode) {
       case 0:

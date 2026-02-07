@@ -36,7 +36,7 @@ Panel_item s_anntyp_mask, s_subtyp_mask, s_num_mask, s_chan_mask, s_aux_mask;
 int search_popup_active = -1;
 
 /* Make the search template popup window disappear. */
-static void dismiss_search_template()
+static void dismiss_search_template(void)
 {
     if (search_popup_active > 0) {
 	xv_set(search_frame, WIN_MAP, FALSE, 0);
@@ -45,9 +45,7 @@ static void dismiss_search_template()
 }
 
 /* Update the search template following a selection in the popup window. */
-static void search_select(item, event)
-Panel_item item;
-Event *event;
+static void search_select(Panel_item item, Event *event)
 {
     int a;
     static char client_data, m[2], tmp_aux[257];
@@ -98,7 +96,7 @@ Event *event;
 
 static char *mstr[53];
 
-static void s_create_mstr_array()
+static void s_create_mstr_array(void)
 {
     char *dp, mbuf[5], *mp, *msp;
     int i;
@@ -129,7 +127,7 @@ static void s_create_mstr_array()
 }
 
 /* Set the annotation template window `Type' item. */
-static void match_selected_annotation()
+static void match_selected_annotation(void)
 {
     if (attached == NULL) return;
     xv_set(s_anntyp_item, PANEL_VALUE, attached->this.anntyp, NULL);
@@ -149,7 +147,7 @@ static void match_selected_annotation()
 }
 
 /* Set up popup window for defining the search template. */
-static void create_search_template_popup()
+static void create_search_template_popup(void)
 {
     Icon icon;
 
@@ -270,7 +268,7 @@ static void create_search_template_popup()
 }
 
 /* Make the search template popup window appear. */
-void show_search_template()
+void show_search_template(void)
 {
     if (search_popup_active < 0) create_search_template_popup();
     wmgr_top(search_frame);

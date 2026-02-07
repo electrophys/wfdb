@@ -33,24 +33,14 @@ files are named, or if the token `-' appears in the argument list.
 */
 
 #include <stdio.h>
-#if defined(__STDC__) || defined(_WINDOWS)
 #include <stdlib.h>
-#else
-extern void exit();
-#endif
-#ifndef BSD
-# include <string.h>
-#else		/* for Berkeley UNIX only */
-# include <strings.h>
-#endif
+#include <string.h>
 
 #define MAXLEVEL 100
 
-void soelim();
+void soelim(char *filename);
 
-main(argc, argv)
-int argc;
-char *argv[];
+int main(int argc, char *argv[])
 {
     int i;
 
@@ -62,8 +52,7 @@ char *argv[];
     exit(0);
 }
 
-void soelim(filename)
-char *filename;
+void soelim(char *filename)
 {	
     FILE *ifile;
     char buf[256], *p, *q;

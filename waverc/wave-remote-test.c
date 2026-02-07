@@ -27,20 +27,20 @@ _______________________________________________________________________________
 
 #include <stdio.h>
 #include <signal.h>
+#include <stdlib.h>
 #include <unistd.h>
 
 char fname[30];
 int i;
 
-void exitproc(s)
-int s;
+void exitproc(int s)
 {
     unlink(fname);
     printf("\nReceived signal %d -- exiting\n", s);
     exit(s);
 }
 
-void actionproc(s)
+void actionproc(int s)
 {
     char buf[80];
     FILE *ifile;
@@ -55,9 +55,7 @@ void actionproc(s)
     i = 0;
 }
     
-main(argc, argv)
-int argc;
-char **argv;
+int main(int argc, char **argv)
 {
     sprintf(fname, "/tmp/.wave.%d.%d", (int)getuid(), (int)getpid());
     fclose(fopen(fname, "w"));	/* create fname as an empty file */

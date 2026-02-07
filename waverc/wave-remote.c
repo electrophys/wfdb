@@ -77,18 +77,8 @@ implementation is adequate.
 #include <dirent.h>
 #include <unistd.h>
 
-#ifdef __STDC__
 #include <stdlib.h>
-#else
-extern void exit();
-#endif
-
-#ifndef BSD
-# include <string.h>
-#else           /* for Berkeley UNIX only */
-# include <strings.h>
-# define strchr index
-#endif
+#include <string.h>
 
 char *pname;
 
@@ -124,9 +114,7 @@ int find_wave_pid()
     return (imax);
 }
 
-main(argc, argv)
-int argc;
-char **argv;
+int main(int argc, char **argv)
 {
     char fname[30];
     FILE *ofile;

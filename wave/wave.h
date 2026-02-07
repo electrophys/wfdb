@@ -26,6 +26,8 @@ _______________________________________________________________________________
 */
 
 #include <stdio.h>	/* standard I/O library definitions */
+#include <stdlib.h>	/* for getenv, malloc, atoi, exit */
+#include <string.h>	/* for strcpy, strlen, strtok, etc. */
 #include <wfdb/wfdb.h>	/* WFDB library constants, typedefs, and prototypes */
 #include <wfdb/ecgcodes.h>	/* needed for definition of ACMAX */
 
@@ -268,13 +270,8 @@ struct ap {
 };
 COMMON struct ap *ap_start, *ap_end, *annp, *attached, *scope_annp;
 
-/* Function prototypes for ANSI C and C++ compilers.  If you attempt to compile
-   WAVE with a C++ compiler, you will need to change the function definitions
-   in the *.c sources to `new-style' definitions.  There are a few more
-   function prototypes in `xvwave.h', which include all those that use X or
-   XView objects in their argument lists. */
-#if defined(__STDC__) || defined(__cplusplus) || defined(c_plusplus)
-
+/* Function prototypes.  There are a few more in `xvwave.h', which include
+   all those that use X or XView objects in their argument lists. */
 extern int record_init(char *record_name);	/* in init.c */
 extern void set_baselines(void);		/* in init.c */
 extern void calibrate(void);			/* in init.c */
@@ -311,8 +308,8 @@ extern void box(int x, int y, int do_box);	/* in edit.c */
 extern void restore_cursor(void);		/* in edit.c */
 extern void restore_grid(void);			/* in grid.c */
 extern void show_grid(void);			/* in grid.c */
-extern void sig_highlight();			/* in signal.c */
-extern int in_siglist();			/* in signal.c */
+extern void sig_highlight(int i);		/* in signal.c */
+extern int in_siglist(int i);			/* in signal.c */
 extern void do_disp(void);			/* in signal.c */
 extern void clear_cache(void);			/* in signal.c */
 extern int sigy(int sig, int x);		/* in signal.c */
@@ -357,29 +354,3 @@ extern void unhide_grid(void);			/* in xvwave.c */
 extern void display_and_process_events(void);	/* in xvwave.c */
 extern void quit_proc(void);			/* in xvwave.c */
 extern void sync_other_wave_processes(void);	/* in xvwave.c */
-
-/* Function return types for K&R C compilers. */
-#else
-extern char *wmstimstr(), *wtimstr();
-extern int record_init(), annot_init(), post_changes(), initialize_graphics(),
-    sigy(), in_siglist();
-extern WFDB_Time next_match(), previous_match(), wstrtim();
-extern struct ap *get_ap(), *locate_annotation();
-extern void set_baselines(), calibrate(), set_record_item(), set_annot_item(),
-    set_start_time(), set_end_time(), set_find_item(), show_search_template(),
-    create_mode_popup(), show_mode(),
-    set_modes(), dismiss_mode(), help(), create_help_popup(), show_help(),
-    dismiss_help(), show_log(), dismiss_log(), start_demo(),
-    show_ann_template(), set_anntyp(), set_ann_aux(), set_ann_subtyp(),
-    set_ann_chan(), set_ann_aux(), bar(), box(),
-    restore_cursor(), restore_grid(), show_grid(), sig_highlight(), do_disp(),
-    clear_cache(), show_annotations(), clear_annotation_display(),
-    delete_annotation(), move_annotation(), insert_annotation(),
-    change_annotations(), check_post_update(), set_frame_title(),
-    analyze_proc(), reset_start(), reset_stop(), reset_maxsig(),
-    reset_siglist(), open_url(), do_command(), set_signal_choice(),
-    set_siglist_from_string(), add_signal_choice(), delete_signal_choice(),
-    print_proc(), save_scope_params(), show_scope_window(), strip_x_args(),
-    hide_grid(), unhide_grid(), display_and_process_events(), quit_proc(),
-    sync_other_wave_processes(), reset_ref(), recreate_level_popup();
-#endif

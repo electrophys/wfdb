@@ -32,7 +32,7 @@ static int grid_plotted;
 
 /* Call this function from the repaint procedure to restore the grid after
    the window has been cleared. */
-void restore_grid()
+void restore_grid(void)
 {
     grid_plotted = 0;
     show_grid();
@@ -41,7 +41,7 @@ void restore_grid()
 /* Show_grid() does what is necessary to display the grid in the requested
 style.  Note that the grid can be made to disappear and reappear by show_grid()
 without redrawing it, by manipulating the color map. */
-void show_grid()
+void show_grid(void)
 {
     int i, ii, x, xx, y, yy;
     double dx, dxfine, dy, dyfine, vm;

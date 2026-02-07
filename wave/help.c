@@ -83,9 +83,7 @@ int help_info_key;
 
 /*ARGSUSED*/
 static void
-invoke_more_help(client_window, sys_command)
-    Xv_Window	    client_window;
-    char	   *sys_command;
+invoke_more_help(Xv_Window client_window, char *sys_command)
 {
     char	   *display_env;
     pid_t	    pid;
@@ -122,9 +120,7 @@ invoke_more_help(client_window, sys_command)
 
 
 static void
-more_help_proc(item, event)
-    Panel_item item;
-    Event *event;
+more_help_proc(Panel_item item, Event *event)
 {
     char	   *sys_command;
 
@@ -135,10 +131,7 @@ more_help_proc(item, event)
 
 
 static void
-help_request_failed(window, data, str)
-    Xv_Window       window;
-    char           *data;	/* "file:key" */
-    char	   *str;	/* explanation of why help request failed */
+help_request_failed(Xv_Window window, char *data, char *str)
 {
     char            message[256];
     Xv_Window	    notice_window;
@@ -198,10 +191,8 @@ help_request_failed(window, data, str)
 }
 
 
-static          Notify_value
-help_frame_destroy_proc(client, status)
-    Notify_client   client;
-    Destroy_status  status;
+static Notify_value
+help_frame_destroy_proc(Notify_client client, Destroy_status status)
 {
     Help_info	   *help_info;
 
@@ -220,10 +211,8 @@ help_frame_destroy_proc(client, status)
 
 
 Xv_private void
-xv_help_save_image(pw, client_width, client_height, mouse_x, mouse_y)
-    Xv_Window       pw;
-    int             client_width, client_height;
-    int             mouse_x, mouse_y;	/* offset of mouse pointer in pixwin */
+xv_help_save_image(Xv_Window pw, int client_width, int client_height,
+		   int mouse_x, int mouse_y)
 {
     int		    dst_x, dst_y;
     int             src_x, src_y;
@@ -301,10 +290,8 @@ xv_help_save_image(pw, client_width, client_height, mouse_x, mouse_y)
 
 
 Xv_private int
-xv_help_render(client_window, client_data, client_event)
-    Xv_Window       client_window;
-    caddr_t         client_data;
-    Event          *client_event;
+xv_help_render(Xv_Window client_window, caddr_t client_data,
+	       Event *client_event)
 {
     char           *text;
     CHAR            client_name[80];
@@ -572,10 +559,7 @@ xv_help_render(client_window, client_data, client_event)
  * Public "show help" routine
  */
 Xv_public int
-xv_help_show(client_window, client_data, client_event)
-    Xv_Window       client_window;
-    char           *client_data;	/* "file:key" */
-    Event          *client_event;
+xv_help_show(Xv_Window client_window, char *client_data, Event *client_event)
 {
     int		    client_height;
     int             client_width;

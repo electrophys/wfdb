@@ -36,7 +36,7 @@ Panel_item anntyp_item, subtyp_item, num_item, chan_item, aux_item;
 int ann_popup_active = -1;
 
 /* Make the annotation template popup window disappear. */
-static void dismiss_ann_template()
+static void dismiss_ann_template(void)
 {
     if (ann_popup_active > 0) {
 	xv_set(ann_frame, WIN_MAP, FALSE, 0);
@@ -45,9 +45,7 @@ static void dismiss_ann_template()
 }
 
 /* Update the annotation template following a selection in the popup window. */
-static void ann_select(item, event)
-Panel_item item;
-Event *event;
+static void ann_select(Panel_item item, Event *event)
 {
     int a;
     static char client_data, m[2], tmp_aux[257];
@@ -68,7 +66,7 @@ Event *event;
 
 static char *mstr[54];
 
-static void create_mstr_array()
+static void create_mstr_array(void)
 {
     char *dp, mbuf[5], *mp, *msp;
     int i;
@@ -100,7 +98,7 @@ static void create_mstr_array()
 }
 
 /* Set up popup window for defining an annotation template. */
-static void create_ann_template_popup()
+static void create_ann_template_popup(void)
 {
     Icon icon;
 
@@ -186,7 +184,7 @@ static void create_ann_template_popup()
 }
 
 /* Make the annotation template popup window appear. */
-void show_ann_template()
+void show_ann_template(void)
 {
     if (ann_popup_active < 0) create_ann_template_popup();
     wmgr_top(ann_frame);
@@ -195,40 +193,35 @@ void show_ann_template()
 }
 
 /* Set the annotation template window `Type' item. */
-void set_anntyp(i)
-int i;
+void set_anntyp(int i)
 {
     if (ann_popup_active < 0) create_ann_template_popup();
     xv_set(anntyp_item, PANEL_VALUE, i, NULL);
 }
 
 /* Set the annotation template window `Aux' item. */
-void set_ann_aux(s)
-char *s;
+void set_ann_aux(char *s)
 {
     if (ann_popup_active >= 0)
 	xv_set(aux_item, PANEL_VALUE, s ? s+1 : "", NULL);
 }
 
 /* Set the annotation template window `Subtype' item. */
-void set_ann_subtyp(i)
-int i;
+void set_ann_subtyp(int i)
 {
     if (ann_popup_active >= 0)
 	xv_set(subtyp_item, PANEL_VALUE, i, NULL);
 }
 
 /* Set the annotation template window `Chan' item. */
-void set_ann_chan(i)
-int i;
+void set_ann_chan(int i)
 {
     if (ann_popup_active >= 0)
 	xv_set(chan_item, PANEL_VALUE, i, NULL);
 }
 
 /* Set the annotation template window `Num' item. */
-void set_ann_num(i)
-int i;
+void set_ann_num(int i)
 {
     if (ann_popup_active >= 0)
 	xv_set(num_item, PANEL_VALUE, i, NULL);

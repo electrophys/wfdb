@@ -34,7 +34,7 @@ _______________________________________________________________________________
 
 void set_frame_title();
 
-struct ap *get_ap()
+struct ap *get_ap(void)
 {
     struct ap *a;
 
@@ -65,7 +65,7 @@ time_t tupdate;		/* time of last update to annotation file */
    annp both point to the first (earliest) annotation, ap_end points to the
    last one, and attached and scope_annp are reset to NULL. */
 
-annot_init()
+int annot_init(void)
 {
     char *p;
     struct ap *a;
@@ -193,9 +193,7 @@ annot_init()
 /* next_match() returns the time of the next annotation (i.e., the one later
    than and closest to those currently displayed) that matches the template
    annotation.  The mask specifies which fields must match. */
-WFDB_Time next_match(template, mask)
-struct WFDB_ann *template;
-int mask;
+WFDB_Time next_match(struct WFDB_ann *template, int mask)
 {
     if (annotations && annp) {
 	/* annp might be NULL if the annotation list is empty, or if the
@@ -232,9 +230,7 @@ int mask;
 /* previous_match() returns the time of the previous annotation (i.e., the one
    earlier than and closest to those currently displayed) that matches the
    template annotation.  The mask specifies which fields must match. */
-WFDB_Time previous_match(template, mask)
-struct WFDB_ann *template;
-int mask;
+WFDB_Time previous_match(struct WFDB_ann *template, int mask)
 {
     if (annotations) {
 	/* annp might be NULL if the annotation list is empty, or if the
@@ -277,9 +273,7 @@ int mask;
 
 /* Show_annotations() displays annotations between times left and left+dt at
 appropriate x-locations in the ECG display area. */
-void show_annotations(left, dt)
-WFDB_Time left;
-int dt;
+void show_annotations(WFDB_Time left, int dt)
 {
     char buf[5], *p;
     int n, s, x, y, ytop, xs = -1, ys;
@@ -469,7 +463,7 @@ int dt;
     }
 }
 
-void clear_annotation_display()
+void clear_annotation_display(void)
 {
     if (ann_mode == 1 || (use_overlays && show_marker)) {
 	XFillRectangle(display, osb, clear_ann,
@@ -491,9 +485,7 @@ void clear_annotation_display()
    the one with the lowest `chan' field than is no less than s.)
  */
 
-struct ap *locate_annotation(t, s)
-WFDB_Time t;
-int s;
+struct ap *locate_annotation(WFDB_Time t, int s)
 {
     /* First, find out which of ap_start, annp, and ap_end is nearest t. */
     if (annp == NULL) {
@@ -531,7 +523,7 @@ int s;
 
 int changes;	/* number of edits since last save */
 
-void check_post_update()
+void check_post_update(void)
 {
     if (++changes >= 20 || time((time_t *)NULL) > tupdate+60)
 	(void)post_changes();
@@ -551,9 +543,7 @@ void check_post_update()
    If there is a marker (INDEX_MARK, BEGIN_ANALYSIS, or END_ANALYSIS) at t,
    this function deletes the marker without leaving a "phantom" annotation.
  */
-void delete_annotation(t, s)
-WFDB_Time t;
-int s;
+void delete_annotation(WFDB_Time t, int s)
 {
     if (locate_annotation(t, s)) {
 	if (annp->this.anntyp <= ACMAX) {	/* not a marker */
@@ -605,9 +595,7 @@ int s;
 /* This function moves the annotation pointed to by `a' to a new time `t'.
    Note that the links from `a' must be valid or NULL when this function is
    called. */
-void move_annotation(a, t)
-struct ap *a;
-WFDB_Time t;
+void move_annotation(struct ap *a, WFDB_Time t)
 {
     if (a->this.anntyp <= ACMAX && accept_edit == 0) {
 #ifdef NOTICE
@@ -644,8 +632,7 @@ WFDB_Time t;
 /* This function is used by insert_annotation (below) to insert the annotation
    pointed to by `a' into the annotation list before the annotation pointed to
    by `annp'. */
-static void do_insertion(a)
-struct ap *a;
+static void do_insertion(struct ap *a)
 {
     if (annp == NULL) {		/* append to end of annotation list */
 	a->next = NULL;
@@ -669,8 +656,7 @@ struct ap *a;
 /* This function inserts the annotation pointed to by `a' into the annotation
    list.  If there is already an annotation at time a->time, with the same
    `chan' field, it is overwritten by the inserted annotation. */
-void insert_annotation(a)
-struct ap *a;
+void insert_annotation(struct ap *a)
 {
     if (accept_edit == 0 && a->this.anntyp <= ACMAX) {
 #ifdef NOTICE
@@ -749,7 +735,7 @@ struct ap *a;
    annotations within the range are deleted.  Any markers within the range are
    unaffected.
  */
-void change_annotations()
+void change_annotations(void)
 {
     struct ap *a;
 
@@ -870,7 +856,7 @@ void change_annotations()
    any reason, it returns 0.
  */
 
-int post_changes()
+int post_changes(void)
 {
     int result;
     struct ap *a;
@@ -1022,7 +1008,7 @@ int post_changes()
 }
 
 /* Reset the base frame title. */
-void set_frame_title()
+void set_frame_title(void)
 {
     static char frame_title[7+RNLMAX+1+ANLMAX+2+DSLMAX+1];
          /* 7 for "Record ", RNLMAX for record name, 1 for " " or "(",
@@ -1045,7 +1031,7 @@ void set_frame_title()
 }
 
 /* Reset the base frame footer. */
-void set_frame_footer()
+void set_frame_footer(void)
 {
     /* Keep this in sync with grid choice menu in modepan.c! */
     static char *grid_desc[7] = { "",
@@ -1083,8 +1069,7 @@ void set_frame_footer()
 
     
 /* Return 1 if p[] would not be a legal annotator name, 0 otherwise. */
-int badname(p)
-char *p;
+int badname(char *p)
 {
     char *pb;
 
@@ -1102,9 +1087,9 @@ char *p;
     return (0);
 }
 
-int read_anntab()
+int read_anntab(void)
 {
-    char *atfname, buf[256], *p1, *p2, *s1, *s2, *getenv(), *strtok();
+    char *atfname, buf[256], *p1, *p2, *s1, *s2;
     int a;
     FILE *atfile;
 
@@ -1140,7 +1125,7 @@ int read_anntab()
 	return (-1);
 }
 
-int write_anntab()
+int write_anntab(void)
 {
     char *atfname;
     FILE *atfile;

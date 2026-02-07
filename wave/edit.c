@@ -41,16 +41,16 @@ int bar_on, bar_x, bar_y;
 int level_mode, level_popup_active = -1;
 int selected = -1;
 
-void reset_ref()
+void reset_ref(void)
 {
     (void)isigsettime(ref_mark_time);
     (void)getvec(vref);
 }
 
-void recreate_level_popup()
+void recreate_level_popup(void)
 {
     int stat = level_popup_active;
-    void show_level_popup();
+    void show_level_popup(int);
 
     if (stat >= 0 && xv_destroy_safe(level_frame) == XV_OK) {
 	level_popup_active = -1;
@@ -58,21 +58,18 @@ void recreate_level_popup()
     }
 }
 
-void set_level_mode(item, event)
-Panel_item item;
-Event *event;
+void set_level_mode(Panel_item item, Event *event)
 {
-    void show_level_popup();
+    void show_level_popup(int);
 
     level_mode = (int)xv_get(level_mode_item, PANEL_VALUE);
     show_level_popup(TRUE);
 }
 
-void show_level_popup(stat)
-int stat;
+void show_level_popup(int stat)
 {
     int i, invalid_data;
-    void create_level_popup();
+    void create_level_popup(void);
 
     switch (level_mode) {
       case 0:
@@ -142,7 +139,7 @@ int stat;
     level_popup_active = stat;
 }
 
-static void dismiss_level_popup()
+static void dismiss_level_popup(void)
 {
     if (level_popup_active > 0) {
 	xv_set(level_frame, WIN_MAP, FALSE, 0);
@@ -150,7 +147,7 @@ static void dismiss_level_popup()
     }
 }
 
-void create_level_popup()
+void create_level_popup(void)
 {
     int i;
     Icon icon;
@@ -224,8 +221,7 @@ void create_level_popup()
     level_popup_active = 0;
 }
 
-void bar(x, y, do_bar)
-int x, y, do_bar;
+void bar(int x, int y, int do_bar)
 {
     int  ya = y - mmy(8) - 1, yb = y + mmy(5) + 1;
     static int level_on;
@@ -267,8 +263,7 @@ int x, y, do_bar;
 
 int box_on, box_left, box_xc, box_yc, box_right, box_top, box_bottom;
 
-void box(x, y, do_box)
-int x, do_box;
+void box(int x, int y, int do_box)
 {
     static XPoint box[5];
 
@@ -290,7 +285,7 @@ int x, do_box;
 
 /* This function redraws the box and bars, if any, after the ECG window has
    been damaged.  Do not call it except from the repaint procedure. */
-void restore_cursor()
+void restore_cursor(void)
 {
     if (bar_on) {
 	bar_on = 0;
@@ -302,18 +297,16 @@ void restore_cursor()
     }
 }
 
-static int in_box(x, y)
-int x, y;
+static int in_box(int x, int y)
 {
     return (box_on && box_left <= x && x <= box_right &&
 	box_bottom <= y && y <= box_top);
 }
 
-static void attach_ann(a)
-struct ap *a;
+static void attach_ann(struct ap *a)
 {
     int y;
-    void set_frame_footer();
+    void set_frame_footer(void);
 
     attached = a;
     if (ann_mode == 1 && (unsigned)a->this.chan < nsig) {
@@ -336,9 +329,9 @@ struct ap *a;
     set_frame_footer();
 }
 
-static void detach_ann()
+static void detach_ann(void)
 {
-    void set_frame_footer();
+    void set_frame_footer(void);
 
     attached = NULL;
     box(0, 0, 0);
@@ -349,15 +342,14 @@ static void detach_ann()
 static struct WFDB_ann ann_stack[ANNTEMPSTACKSIZE];
 static int ann_stack_index;
 
-static int safestrcmp(a, b)
-char *a, *b;
+static int safestrcmp(char *a, char *b)
 {
     if (a == NULL) return (b != NULL);
     else if (b == NULL) return (-1);
     else return (strcmp(a, b));
 }
 
-static void save_ann_template()
+static void save_ann_template(void)
 {
     int i;
 
@@ -380,8 +372,7 @@ static void save_ann_template()
     ann_stack[ann_stack_index = 0] = ann_template;
 }
 
-static void set_ann_template(a)
-struct WFDB_ann *a;
+static void set_ann_template(struct WFDB_ann *a)
 {
     if (ann_template.anntyp != a->anntyp ||
 	ann_template.subtyp != a->subtyp ||
@@ -396,13 +387,13 @@ struct WFDB_ann *a;
     }
 }
 
-static void set_next_ann_template()
+static void set_next_ann_template(void)
 {
     if (ann_stack_index > 0)
 	set_ann_template(&ann_stack[--ann_stack_index]);
 }
 
-static void set_prev_ann_template()
+static void set_prev_ann_template(void)
 {
     if (ann_stack_index < ANNTEMPSTACKSIZE-1)
 	set_ann_template(&ann_stack[++ann_stack_index]);
@@ -410,8 +401,7 @@ static void set_prev_ann_template()
 
 /* Parse the aux string of a LINK annotation to obtain the URL of the external
    data, and open the URL in a browser window. */
-static void parse_and_open_url(s)
-char *s;	/* aux string -- first byte is count of bytes to follow */
+static void parse_and_open_url(char *s)
 {
     char *p1, *p2, *p3;
     int use_path = 1;
@@ -492,16 +482,13 @@ char *s;	/* aux string -- first byte is count of bytes to follow */
 }
 
 /* Handle events in the ECG display window. */
-void window_event_proc(window, event, arg)
-Xv_Window window;
-Event *event;
-Notify_arg arg;
+void window_event_proc(Xv_Window window, Event *event, Notify_arg arg)
 {
     int e, i, x, y;
     WFDB_Time t, tt;
     struct ap *a;
     static int left_down, middle_down, right_down, redrawing, dragged, warped;
-    void delete_annotation(), move_annotation();
+    void delete_annotation(WFDB_Time, int), move_annotation(struct ap *, WFDB_Time);
 
     e = (int)event_id(event);
     x = (int)event_x(event);

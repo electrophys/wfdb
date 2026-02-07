@@ -62,9 +62,7 @@ Frame print_setup_frame;
 char wfdbpath[512];	/* database path */
 char wfdbcal[128];	/* WFDB calibration file name */
 
-void wfdbp_proc(item, event)
-Panel_item item;
-Event *event;
+void wfdbp_proc(Panel_item item, Event *event)
 {
     char *p = (char *)xv_get(wfdbpath_item, PANEL_VALUE);
 
@@ -73,9 +71,7 @@ Event *event;
     setwfdb(wfdbpath);
 }
 
-void wfdbc_proc(item, event)
-Panel_item item;
-Event *event;
+void wfdbc_proc(Panel_item item, Event *event)
 {
     char *p = (char *)xv_get(wfdbcal_item, PANEL_VALUE);
 
@@ -86,11 +82,11 @@ Event *event;
     }
 }
 
-static void create_load_panel()
+static void create_load_panel(void)
 {
-    char *p, *getenv();
+    char *p;
     Icon icon;
-    void reinitialize();
+    void reinitialize(void);
 
     strncpy(wfdbpath, getwfdb(), sizeof(wfdbpath)-1);
     if (cfname != wfdbcal) {
@@ -146,21 +142,19 @@ static void create_load_panel()
     window_fit(load_frame);
 }
 
-void show_load()
+void show_load(void)
 {
     wmgr_top(load_frame);
     xv_set(load_frame, WIN_MAP, TRUE, 0);
 }
 
-void save_proc()
+void save_proc(void)
 {
     if (post_changes())
 	set_frame_title();
 }
 
-void print_setup_proc(item, event)
-Panel_item item;
-Event *event;
+void print_setup_proc(Panel_item item, Event *event)
 {
     strncpy(psprint, (char *)xv_get(psprint_item, PANEL_VALUE),
 	    sizeof(psprint)-1);
@@ -168,9 +162,9 @@ Event *event;
 	    sizeof(textprint)-1);
 }
 
-static void create_print_setup_panel()
+static void create_print_setup_panel(void)
 {
-    char *p, *printer, *getenv();
+    char *p, *printer;
     Icon icon;
 
     if ((p = getenv("TEXTPRINT")) == NULL || strlen(p) > sizeof(textprint)-1) {
@@ -218,13 +212,13 @@ static void create_print_setup_panel()
     window_fit(print_setup_frame);
 }
 
-void show_print_setup()
+void show_print_setup(void)
 {
     wmgr_top(print_setup_frame);
     xv_set(print_setup_frame, WIN_MAP, TRUE, 0);
 }
 
-static void create_file_menu()
+static void create_file_menu(void)
 {
     create_load_panel();
     create_print_setup_panel();
@@ -268,17 +262,17 @@ static void create_file_menu()
 	0);
 }
 
-static void allow_editing()
+static void allow_editing(void)
 {
     accept_edit = 1;
 }
 
-static void view_only()
+static void view_only(void)
 {
     accept_edit = 0;
 }
 
-static void create_edit_menu()
+static void create_edit_menu(void)
 {
     edit_menu = (Menu)xv_create(XV_NULL, MENU,
 	MENU_ITEM,
@@ -301,7 +295,7 @@ static void create_edit_menu()
 
 static char filename[40], *title;
 
-static void show_print()
+static void show_print(void)
 {
     char print_command[128];
 
@@ -317,7 +311,7 @@ static void show_print()
     }
 }
 
-static void show_file()
+static void show_file(void)
 {
     Frame show_subframe;
     Panel show_subpanel;
@@ -376,7 +370,7 @@ static void show_file()
    Once the file named by filename contains readable data, it waits one
    more second, turns off the timer, invokes show_file, and then deletes
    the file. */
-Notify_value check_file()
+Notify_value check_file(void)
 {
     char tstring[20];
     FILE *tfile;
@@ -404,7 +398,7 @@ Notify_value check_file()
 static struct itimerval timer;
 
 /* This function sets up the timer for check_file. */
-void wait_for_file()
+void wait_for_file(void)
 {
     timer.it_value.tv_sec = timer.it_interval.tv_sec = 1;
     notify_set_itimer_func(prop_menu, check_file, ITIMER_REAL,
@@ -413,7 +407,7 @@ void wait_for_file()
 
 static char command[80];
 
-static void prop_signals()
+static void prop_signals(void)
 {
     sprintf(filename, "/tmp/wave-s.XXXXXX");
     /* The `echo' is to make sure that something gets written to the file,
@@ -426,7 +420,7 @@ static void prop_signals()
     wait_for_file();
 }
 
-static void prop_annotations()
+static void prop_annotations(void)
 {
     post_changes();
     sprintf(filename, "/tmp/wave-a.XXXXXX");
@@ -438,14 +432,14 @@ static void prop_annotations()
     wait_for_file();
 }
 
-static void prop_wave()
+static void prop_wave(void)
 {
     sprintf(filename, "%s/wave/news.hlp", helpdir);
     title = "About WAVE";
     show_file();
 }
 
-static void create_prop_menu()
+static void create_prop_menu(void)
 {
     prop_menu = (Menu)xv_create(XV_NULL, MENU,
 	MENU_ITEM,
@@ -474,7 +468,7 @@ static void create_prop_menu()
 Frame find_frame;
 Panel find_panel;
 
-static void create_find_panel()
+static void create_find_panel(void)
 {
     Icon icon;
 
@@ -527,14 +521,14 @@ static void create_find_panel()
     window_fit(find_frame);
 }
 
-void show_find()
+void show_find(void)
 {
     wmgr_top(find_frame);
     xv_set(find_frame, WIN_MAP, TRUE, 0);
 }
 
 /* Set up control/status panel at top of frame. */
-Panel create_main_panel()
+Panel create_main_panel(void)
 {
     int dx;
 
@@ -634,8 +628,7 @@ Panel create_main_panel()
 
 /* This function converts a noise mnemonic string into a noise subtype.  It
    returns -2 if the input string is not a noise mnemonic string. */
-static int noise_strsub(s)
-char *s;
+static int noise_strsub(char *s)
 {
     int i, imax, n = 0;
 
@@ -659,18 +652,14 @@ char *s;
     return (n);
 }
 
-void view_menu_proc(menu, menu_item)
-Menu menu;
-Menu_item menu_item;
+void view_menu_proc(Menu menu, Menu_item menu_item)
 {
     char *p = (char *)xv_get(menu_item, MENU_STRING);
 
     printf("View menu item: %s\n", p);
 }
 
-void prop_menu_proc(menu, menu_item)
-Menu menu;
-Menu_item menu_item;
+void prop_menu_proc(Menu menu, Menu_item menu_item)
 {
     char *p = (char *)xv_get(menu_item, MENU_STRING);
 
@@ -678,20 +667,18 @@ Menu_item menu_item;
 }
 
 static int reload_signals, reload_annotations;
-void reinitialize()
+void reinitialize(void)
 {
     reload_annotations = reload_signals = 1;
     disp_proc((Panel_item)NULL, (Event *)'.');
 }
 
 /* Handle a display request. */
-void disp_proc(item, event)
-Panel_item item;
-Event *event;
+void disp_proc(Panel_item item, Event *event)
 {
     int etype, i;
-    WFDB_Time cache_time, next_match(), previous_match();
-    void set_frame_footer();
+    WFDB_Time cache_time;
+    void set_frame_footer(void);
 
     /* Reset display modes if necessary. */
     set_modes();
@@ -928,32 +915,27 @@ Event *event;
     if (cache_time >= 0) (void)find_display_list(cache_time);
 }
 
-void set_record_item(s)
-char *s;
+void set_record_item(char *s)
 {
     xv_set(record_item, PANEL_VALUE, s, NULL);
 }
 
-void set_annot_item(s)
-char *s;
+void set_annot_item(char *s)
 {
     xv_set(annot_item, PANEL_VALUE, s, NULL);
 }
 
-void set_start_time(s)
-char *s;
+void set_start_time(char *s)
 {
     xv_set(time_item, PANEL_VALUE, s, NULL);
 }
 
-void set_end_time(s)
-char *s;
+void set_end_time(char *s)
 {
     xv_set(time2_item, PANEL_VALUE, s, NULL);
 }
 
-void set_find_item(s)
-char *s;
+void set_find_item(char *s)
 {
     xv_set(find_item, PANEL_VALUE, s, NULL);
     xv_set(findsig_item, PANEL_VALUE, s, NULL);

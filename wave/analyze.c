@@ -65,7 +65,7 @@ static char *menudir;
 char *print_command = NULL;
 int menu_read = 0;
 
-void print_proc()
+void print_proc(void)
 {
     char default_print_command[256];
     void read_menu();
@@ -82,7 +82,7 @@ void print_proc()
 
 char *open_url_command = NULL;
 
-void open_url()
+void open_url(void)
 {
     char default_open_url_command[256];
     void read_menu();
@@ -96,9 +96,9 @@ void open_url()
     do_command(open_url_command);
 }
 
-void read_menu()
+void read_menu(void)
 {
-    char linebuf[MAXLL+1], *p, *p2, *getenv(), *strtok();
+    char linebuf[MAXLL+1], *p, *p2;
     int l;
     FILE *ifile = NULL;
 
@@ -255,7 +255,7 @@ void read_menu()
 int xaf = -1, yaf = -1;
 
 /* Set up analyze menu and terminal emulator windows. */
-void create_analyze_popup()
+void create_analyze_popup(void)
 {
     int i;
     Icon menu_icon, tty_icon;
@@ -419,7 +419,7 @@ void create_analyze_popup()
 }
 
 /* Recreate analyze popup (if reread menu button was selected). */
-void recreate_analyze_popup()
+void recreate_analyze_popup(void)
 {
     if (analyze_frame) {
 	xaf = (int)xv_get(analyze_frame, XV_X);
@@ -443,7 +443,7 @@ void recreate_analyze_popup()
 }
 
 /* Make the analysis menu window appear. */
-void analyze_proc()
+void analyze_proc(void)
 {
     if (analyze_popup_active < 0) create_analyze_popup();
     wmgr_top(tty_frame);
@@ -454,9 +454,9 @@ void analyze_proc()
 }
 
 /* Edit the menu file. */
-void edit_menu_file()
+void edit_menu_file(void)
 {
-    char *edit_command, *editor, *menu_filename, *getenv();
+    char *edit_command, *editor, *menu_filename;
     int clen, elen, result;
 
     if ((editor = getenv("EDITOR")) == NULL)
@@ -508,22 +508,21 @@ void edit_menu_file()
 }
     
 /* Make the analysis command window appear. */
-void show_command_window()
+void show_command_window(void)
 {
     wmgr_top(tty_frame);
     xv_set(tty_frame, WIN_MAP, TRUE, 0);
 }
 
 /* Set variables needed for analysis routines. */
-void set_signal()
+void set_signal(void)
 {
     signal_choice = (int)xv_get(signal_item, PANEL_VALUE);
     xv_set(signal_name_item, PANEL_LABEL_STRING, signame[signal_choice], 0);
     sig_highlight(signal_choice);
 }
 
-void set_signal_choice(i)
-int i;
+void set_signal_choice(int i)
 {
     int j;
 
@@ -542,13 +541,12 @@ int i;
     }
 }
 
-void set_siglist()
+void set_siglist(void)
 {
     set_siglist_from_string((char *)xv_get(siglist_item, PANEL_VALUE));
 }
 
-void set_siglist_from_string(s)
-char *s;
+void set_siglist_from_string(char *s)
 {
     char *p;
 
@@ -578,9 +576,7 @@ char *s;
     reset_siglist();
 }
 
-void set_start(item, event)
-Panel_item item;
-Event *event;
+void set_start(Panel_item item, Event *event)
 {
     struct ap *a;
     char *start_string, *astart_string, *dstart_string, *p, buf[30];
@@ -654,9 +650,7 @@ Event *event;
     }
 }
 
-void set_stop(item, event)
-Panel_item item;
-Event *event;
+void set_stop(Panel_item item, Event *event)
 {
     struct ap *a;
     char *end_string, *aend_string, *dend_string, *p, buf[30];
@@ -730,7 +724,7 @@ Event *event;
     }
 }
 
-void set_back()
+void set_back(void)
 {
     WFDB_Time step = end_analysis_time - begin_analysis_time, t0, t1;
 
@@ -743,7 +737,7 @@ void set_back()
     set_stop(end_item, (Event *)NULL);
 }
 
-void set_ahead()
+void set_ahead(void)
 {
     WFDB_Time step = end_analysis_time - begin_analysis_time, t0, t1,
         te = strtim("e");
@@ -758,7 +752,7 @@ void set_ahead()
 }
 
 
-void reset_start()
+void reset_start(void)
 {
     if (analyze_popup_active >= 0) {
 	char *p;
@@ -780,7 +774,7 @@ void reset_start()
     }
 }
 
-void reset_stop()
+void reset_stop(void)
 {
     if (analyze_popup_active >= 0) {
 	char *p;
@@ -802,7 +796,7 @@ void reset_stop()
     }
 }
 
-void reset_siglist()
+void reset_siglist(void)
 {
     if (analyze_popup_active >= 0) {
         char *p;
@@ -826,7 +820,7 @@ void reset_siglist()
 	set_baselines();
 }
 
-void reset_maxsig()
+void reset_maxsig(void)
 {
     if (analyze_popup_active >= 0) {
 	xv_set(signal_item, PANEL_INACTIVE, nsig > 0 ? FALSE : TRUE, 0);
@@ -839,8 +833,7 @@ void reset_maxsig()
 }
 
 /* Signal-list manipulation. */
-void add_to_siglist(i)
-int i;
+void add_to_siglist(int i)
 {
     if (0 <= i && i < nsig) {
 	if (++siglistlen >= maxsiglistlen) {
@@ -854,8 +847,7 @@ int i;
     reset_siglist();
 }
 
-void delete_from_siglist(i)
-int i;
+void delete_from_siglist(int i)
 {
     int nsl;
 
@@ -869,12 +861,12 @@ int i;
     }
 }
 
-void add_signal_choice()
+void add_signal_choice(void)
 {
     add_to_siglist(signal_choice);
 }
 
-void delete_signal_choice()
+void delete_signal_choice(void)
 {
     delete_from_siglist(signal_choice);
 }
@@ -882,8 +874,7 @@ void delete_signal_choice()
 /* This function executes the command string provided as its argument, after
    substituting for WAVE's internal variables (RECORD, ANNOTATOR, etc.). */
 
-void do_command(p1)
-char *p1;
+void do_command(char *p1)
 {
     char *p2, *tp;
 
@@ -1036,9 +1027,7 @@ char *p1;
     ttysw_input(tty, p1, p2-p1);
 }
 
-void do_analysis(item, event)
-Panel_item item;
-Event *event;
+void do_analysis(Panel_item item, Event *event)
 {
     char *p1, *p2, *tp;
     int i, j;
@@ -1056,7 +1045,7 @@ static char fname[20];
    Once the temporary file named by fname contains readable data, it
    waits one more second, turns off the timer, and then deletes the file. */
 
-Notify_value check_if_done()
+Notify_value check_if_done(void)
 {
     FILE *tfile;
     static int file_ready;
@@ -1079,7 +1068,7 @@ Notify_value check_if_done()
     return (NOTIFY_DONE);
 }
 
-void reload()
+void reload(void)
 {
   static char command[80];
     static struct itimerval timer;

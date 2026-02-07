@@ -40,21 +40,18 @@ _______________________________________________________________________________
 #define MAXSPEED  (SQRTMAXSPEED*SQRTMAXSPEED)
 
 static int scope_use_overlays, use_color, grey;
-static void scan(), create_scope_panel(), set_dt();
+static void scan(int speed), create_scope_panel(void), set_dt(int x);
 static void scope_proc(Panel_item item, Event *event);
 
-void save_scope_params(a, b, c)
-int a, b, c;
+void save_scope_params(int a, int b, int c)
 {
     scope_use_overlays = a;
     use_color = b;
     grey = c;
 }
 
-static void scope_repaint(canvas, paint_window, repaint_area)
-Canvas canvas;
-Xv_Window paint_window;
-Rectlist *repaint_area;
+static void scope_repaint(Canvas canvas, Xv_Window paint_window,
+			  Rectlist *repaint_area)
 {
     ;
 }
@@ -67,9 +64,7 @@ static Display *scope_display;
 static XID scope_xid;
 static GC clear_plane[4], plot_sig;
 
-static void scope_resize(canvas, w, h)
-Canvas canvas;
-int w, h;
+static void scope_resize(Canvas canvas, int w, int h)
 {
     int i;
 
@@ -149,10 +144,7 @@ int w, h;
 }
 
 /* Handle events in the scope window. */
-void scope_window_event_proc(window, event, arg)
-Xv_Window window;
-Event *event;
-Notify_arg arg;
+void scope_window_event_proc(Xv_Window window, Event *event, Notify_arg arg)
 {
     int e, x, y;
     static int handling_event;
@@ -209,8 +201,7 @@ static Panel scope_panel;
 extern Server_image cursor_image;
 #endif
 
-void create_scope_popup(overlay_flag, use_color, grey)
-int overlay_flag, use_color, grey;
+void create_scope_popup(int overlay_flag, int use_color, int grey)
 {
     char *bgcname, *fgcname;
     int i, ncolors;
@@ -476,7 +467,7 @@ int overlay_flag, use_color, grey;
 		         (int)xv_get(canvas, CANVAS_HEIGHT));
 }
 
-static int show_this_frame()
+static int show_this_frame(void)
 {
     static char plane = 3, first_frame = 1;
     int i, i0, tt, tt0 = 0, v0;
@@ -549,7 +540,7 @@ static int show_this_frame()
     return (1);
 }
 
-static void refresh_time()
+static void refresh_time(void)
 {
     char *tp;
     int i, ytt;
@@ -566,7 +557,7 @@ static void refresh_time()
     }
 }
 
-static int show_next_frame()
+static int show_next_frame(void)
 {
     if (scope_annp == NULL) {
 	scan(0);
@@ -595,7 +586,7 @@ static int show_next_frame()
     return (show_this_frame());
 }
 
-static int show_prev_frame()
+static int show_prev_frame(void)
 {
     if (scope_annp == NULL) {
 	scan(0);
@@ -626,7 +617,7 @@ static int show_prev_frame()
 
 static int speed = MAXSPEED;
 
-static Notify_value show_next_n_frames()
+static Notify_value show_next_n_frames(void)
 {
     int i;
 
@@ -636,7 +627,7 @@ static Notify_value show_next_n_frames()
     return (NOTIFY_DONE);
 }
 
-static Notify_value show_prev_n_frames()
+static Notify_value show_prev_n_frames(void)
 {
     int i;
 
@@ -648,8 +639,7 @@ static Notify_value show_prev_n_frames()
 
 static struct itimerval sc_timer;
 
-static void scan(speed)
-int speed;
+static void scan(int speed)
 {
     if (speed > 0) {
 	if (speed > MAXSPEED) speed = MAXSPEED;
@@ -762,16 +752,13 @@ static void scope_proc(Panel_item item, Event *event)
     }
 }
 
-static void adjust_speed(item, value)
-Panel_item item;
-int value;
+static void adjust_speed(Panel_item item, int value)
 {
     speed = value*value;
     if (scan_active) scan(scan_active*speed);
 }
 
-static char *lmstimstr(t)
-WFDB_Time t;
+static char *lmstimstr(WFDB_Time t)
 {
     char *p, *p0;
 
@@ -791,9 +778,7 @@ WFDB_Time t;
 
 Panel_item dt_item;
 
-static void adjust_dt(item, value)
-Panel_item item;
-int value;
+static void adjust_dt(Panel_item item, int value)
 {
     char *dt_string = (char *) xv_get(item, PANEL_VALUE);
 
@@ -806,15 +791,14 @@ int value;
     xv_set(item, PANEL_VALUE, lmstimstr(scope_dt));
 }
 
-static void set_dt(x)
-int x;
+static void set_dt(int x)
 {
     scope_dt = x;
     scope_dt /= tscale;
     xv_set(dt_item, PANEL_VALUE, lmstimstr(scope_dt));
 }
 
-static void create_scope_panel()
+static void create_scope_panel(void)
 {
     scope_panel = xv_create(scope_frame, PANEL,
 			    XV_X, 0,
@@ -871,7 +855,7 @@ static void create_scope_panel()
 
 static int scope_popup_active = -1;
 
-void show_scope_window()
+void show_scope_window(void)
 {
     if (scope_popup_active < 0)
 	create_scope_popup(scope_use_overlays, use_color, grey);

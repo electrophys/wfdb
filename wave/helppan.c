@@ -37,7 +37,7 @@ _______________________________________________________________________________
    is *(helpdir)/wave/HELPFILE. */
 #define HELPFILE	"wave.hlp"
 
-void find_user_guide()
+void find_user_guide(void)
 {
     FILE *ifile;
 
@@ -51,7 +51,7 @@ void find_user_guide()
 	strcpy(url, "http://www.physionet.org/physiotools/wug/");
 }
 
-void find_faq()
+void find_faq(void)
 {
     FILE *ifile;
 
@@ -65,7 +65,7 @@ void find_faq()
 	strcpy(url, "http://www.physionet.org/physiotools/wug/wave-faq.htm");
 }
 
-void help()
+void help(void)
 {
     find_user_guide();
     fprintf(stderr, "WAVE version %s (%s)\n %s", WAVEVERSION, __DATE__,
@@ -105,7 +105,7 @@ Frame help_frame;
 Panel help_panel;
 char *topic;
 
-static void help_print()
+static void help_print(void)
 {
     char *print_command;
 
@@ -121,26 +121,20 @@ static void help_print()
 
 
 /* Open the WAVE User's Guide in a web browser. */
-static void help_user_guide(item, event)
-Panel_item item;
-Event *event;
+static void help_user_guide(Panel_item item, Event *event)
 {
     find_user_guide();
     open_url();
 }
 /* Open the WAVE FAQ in a web browser. */
-static void help_faq(item, event)
-Panel_item item;
-Event *event;
+static void help_faq(Panel_item item, Event *event)
 {
     find_faq();
     open_url();
 }
 
 /* Create a text subwindow and display help on selected topic. */
-static void help_select(item, event)
-Panel_item item;
-Event *event;
+static void help_select(Panel_item item, Event *event)
 {
     char *filename;
     Frame help_subframe;
@@ -215,7 +209,7 @@ Event *event;
 }
 
 /* Set up popup window for help. */
-void create_help_popup()
+void create_help_popup(void)
 {
     Icon icon;
 
@@ -314,7 +308,7 @@ void create_help_popup()
 int help_popup_active = -1;
 
 /* Make the help popup window appear. */
-void show_help()
+void show_help(void)
 {
     if (help_popup_active < 0) create_help_popup();
     wmgr_top(help_frame);
@@ -323,7 +317,7 @@ void show_help()
 }
 
 /* Make the help popup window disappear. */
-void dismiss_help()
+void dismiss_help(void)
 {
     if (help_popup_active > 0) {
 	xv_set(help_frame, WIN_MAP, FALSE, 0);

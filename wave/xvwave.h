@@ -123,20 +123,11 @@ COMMON struct display_list *first_list;
 COMMON Panel_item *level_name, *level_value, *level_units;  /* see edit.c */
 COMMON XSegment *level;
 
-/* Function prototypes for ANSI C and C++ compilers.  (Most of these are in
-   wave.h;  those below are only for functions that use X or XView objects
-   in their argument lists.) */
-#if defined(__STDC__) || defined(__cplusplus) || defined(c_plusplus)
+/* Function prototypes.  (Most of these are in wave.h;  those below are only
+   for functions that use X or XView objects in their argument lists.) */
 extern Panel create_main_panel(void);		/* in mainpan.c */
 extern void disp_proc(Panel_item i, Event *e);	/* in mainpan.c */
 extern void window_event_proc(Xv_Window w,	/* in edit.c */
 			      Event *e, Notify_arg a);
 extern struct display_list *find_display_list(	/* in signal.c */
 					      WFDB_Time time);
-
-/* Function return types for K&R C compilers. */
-#else
-extern Panel create_main_panel();
-extern void disp_proc(), window_event_proc();
-extern struct display_list *find_display_list();
-#endif

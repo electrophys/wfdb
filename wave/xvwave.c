@@ -60,10 +60,7 @@ static int restore_all = 1;
 static GC bg_fill;
 
 /* Handle exposures in the signal window. */
-void repaint(canvas, paint_window, repaint_area)
-Canvas canvas;
-Xv_Window paint_window;
-Rectlist *repaint_area;
+void repaint(Canvas canvas, Xv_Window paint_window, Rectlist *repaint_area)
 {
     if (!in_xv_main_loop) return;
     if (restore_all) {
@@ -76,10 +73,7 @@ Rectlist *repaint_area;
     restore_cursor();
 }
 
-static void do_resize(canvas, width, height)
-Canvas canvas;
-int width;
-int height;
+static void do_resize(Canvas canvas, int width, int height)
 {
     int canvas_width_mm, u;
     Pixmap old_osb;
@@ -129,10 +123,7 @@ int height;
 }
 
 /* Handle resize events. */
-static void resize(canvas, width, height)
-Canvas canvas;
-int width;
-int height;
+static void resize(Canvas canvas, int width, int height)
 {
     if (in_xv_main_loop) do_resize(canvas, width, height);
 }
@@ -165,12 +156,10 @@ int height;
    -xrm, since (depending on the resource files) they may or may not have the
    desired effect.
 */
-void strip_x_args(pargc, argv)
-int *pargc;
-char *argv[];
+void strip_x_args(int *pargc, char *argv[])
 {
     struct rlimit limit;
-    char dfname[256], *resdir, *tmp, *getenv();
+    char dfname[256], *resdir, *tmp;
     extern int fullscreendebug;
 
     /* work around an xview bug (debian bug #784918) */
@@ -227,9 +216,9 @@ static int allowdottedlines;
 static int graphicsmode;
 
 /* Save current settings as new defaults. */
-void save_defaults()
+void save_defaults(void)
 {
-    char tstring[256], *getenv();
+    char tstring[256];
 
     sprintf(tstring, "%gx%g", 25.4*dpmmx, 25.4*dpmmy);
     defaults_set_boolean("Wave.AllowDottedLines", allowdottedlines);
@@ -267,9 +256,7 @@ void save_defaults()
 
 static char sentinel[30];
 
-Notify_value destroy_func(client, status)
-Notify_client client;
-Destroy_status status;
+Notify_value destroy_func(Notify_client client, Destroy_status status)
 {
     if (status == DESTROY_CHECKING) {
 	int result;
@@ -291,15 +278,13 @@ Destroy_status status;
     return NOTIFY_DONE;
 }
 
-Notify_value accept_remote_command(client, sig, when)
-Notify_client client;
-int sig;
-Notify_signal_mode when;
+Notify_value accept_remote_command(Notify_client client, int sig,
+				   Notify_signal_mode when)
 {
     char buf[80], new_annotator[30], new_time[30], new_record[70],
 	new_siglist[70];
     FILE *sfile;
-    extern void wfdb_addtopath();
+    extern void wfdb_addtopath(const char *);
 
     sfile = fopen(sentinel, "r");
     new_annotator[0] = new_time[0] = new_record[0] = new_siglist[0] = '\0';
@@ -385,7 +370,7 @@ Notify_signal_mode when;
     return NOTIFY_DONE;
 }
 
-void sync_other_wave_processes()
+void sync_other_wave_processes(void)
 {
     char buf[80];
 
@@ -493,8 +478,7 @@ static int background_color, grid_color, cursor_color, annotation_color,
 Server_image cursor_image;
 #endif
 
-int initialize_graphics(mode)
-int mode;
+int initialize_graphics(int mode)
 {
     char *annfontname, *cname, *rstring;
     int i, j;
@@ -1062,7 +1046,7 @@ int mode;
 
 /* Hide_grid() makes the grid invisible by modifying the color map so that the
    color used for the grid is identical to that used for the background. */
-void hide_grid()
+void hide_grid(void)
 {
     if (use_overlays) {
 	color[background_color].pixel = pixel_table[grid_color];
@@ -1073,14 +1057,14 @@ void hide_grid()
 
 /* Unhide_grid() reverses the action of hide_grid to make the grid visible
    again. */
-void unhide_grid()
+void unhide_grid(void)
 {
     if (use_overlays)
 	XStoreColor(display, colormap, &color[grid_color]);
 }
 
 
-void display_and_process_events()
+void display_and_process_events(void)
 {
     in_xv_main_loop = 1;
 
@@ -1090,7 +1074,7 @@ void display_and_process_events()
 /* Exit from the program unless the annotation list was edited and the
    changes can't be saved (in such cases, the user may be able to recover
    by changing permissions or freeing additional file space). */
-void quit_proc()
+void quit_proc(void)
 {
     if (post_changes()) {
 	finish_log();

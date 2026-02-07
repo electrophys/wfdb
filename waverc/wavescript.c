@@ -86,23 +86,9 @@ WAVE unconditionally (though it's unclear why this would be useful).
 #include <sys/types.h>
 #include <dirent.h>
 
-#ifdef __STDC__
 #include <stdlib.h>
-#else
-extern void exit();
-# ifdef HAVE_MALLOC_H
-# include <malloc.h>
-# else
-extern char *malloc(), *calloc(), *realloc();
-# endif
-#endif
-
-#ifndef BSD
-# include <string.h>
-#else           /* for Berkeley UNIX only */
-# include <strings.h>
-# define strchr index
-#endif
+#include <string.h>
+#include <unistd.h>
 
 char *pname;
 
@@ -139,15 +125,15 @@ int find_wave_pid()
     return (imax);
 }
 
-char **environ;
+extern char **environ;
 #ifndef BINDIR
 #define BINDIR /usr/bin
 #endif
 #define STRING(A)	#A
 #define PATH(A,B)	STRING(A) "/" #B
 
-int start_new_wave(record, annotator, ptime, siglist, path)
-char *record, *annotator, *ptime, **siglist, *path;
+int start_new_wave(char *record, char *annotator, char *ptime,
+		   char **siglist, char *path)
 {
     if (*record) {
 	char **arg;
@@ -203,9 +189,7 @@ char *record, *annotator, *ptime, **siglist, *path;
     }
 }
 
-main(argc, argv, env)
-int argc;
-char **argv, **env;
+int main(int argc, char **argv)
 {
     char fname[30], *p, *q;
     FILE *ofile = NULL, *script;
@@ -214,7 +198,6 @@ char **argv, **env;
     static char **siglist, sigstrings[80];
 
     pname = argv[0];
-    environ = env;
     if (argc < 2 || (script = fopen(argv[1], "r")) == NULL) {
 	help();
 	exit(1);
