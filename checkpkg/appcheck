@@ -17,7 +17,7 @@ then
     cp -p input/237s* data/www/
     DBURL=file://`pwd`/data/www
 else
-    DBURL=http://www.physionet.org/physiobank/database
+    DBURL=https://physionet.org/files/
 fi
 WFDB=". data $DBURL"
 export WFDB

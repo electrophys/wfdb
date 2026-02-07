@@ -1,3 +1,2 @@
-WFDB=". ${HOME}/database /usr/local/database /cdrom http://www.physionet.org/physiobank/database"; export WFDB
-: Change www.physionet.org above to your favorite mirror if you wish
+WFDB=". ${HOME}/database /usr/local/database https://physionet.org/files/"; export WFDB
 WFDBCAL=wfdbcal; export WFDBCAL

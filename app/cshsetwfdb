@@ -1,3 +1,2 @@
-setenv WFDB ". ${HOME}/database /usr/local/database /cdrom http://www.physionet.org/physiobank/database"
-# Change www.physionet.org above to your favorite mirror if you wish
+setenv WFDB ". ${HOME}/database /usr/local/database https://physionet.org/files/"
 setenv WFDBCAL wfdbcal

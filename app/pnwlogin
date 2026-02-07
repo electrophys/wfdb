@@ -42,7 +42,7 @@ fi
 rm -f .pnwhome
 if [ -z "${WFDB+xxx}" ]
 then
-    WFDB=". /usr/local/database https://physionet.org/physiobank/database"
+    WFDB=". /usr/local/database https://physionet.org/files/"
 fi
 WFDB="$WFDB https://physionet.org/works/\
  https://physionet.org/users/$PNWUSER/works/"

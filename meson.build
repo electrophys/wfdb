@@ -12,7 +12,7 @@ cc = meson.get_compiler('c')
 m_dep = cc.find_library('m', required: false)
 
 # Optional dependencies
-libcurl_dep = dependency('libcurl', required: get_option('netfiles'))
+libcurl_dep = dependency('libcurl', version: '>=7.55.0', required: get_option('netfiles'))
 libflac_dep = dependency('flac', required: get_option('flac'))
 
 subdir('lib')

@@ -13,9 +13,6 @@
 #ifndef WFDB_NETFILES
 #define WFDB_NETFILES @WFDB_NETFILES@
 #endif
-#ifndef WFDB_NETFILES_LIBCURL
-#define WFDB_NETFILES_LIBCURL @WFDB_NETFILES_LIBCURL@
-#endif
 #ifndef DBDIR
 #define DBDIR "@DBDIR@"
 #endif

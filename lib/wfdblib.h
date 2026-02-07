@@ -39,16 +39,15 @@ symbols reserved to the library begin with the characters "wfdb_".
    restricting the search for WFDB files to the current directory (".")
    followed by DBDIR.
 
-   If WFDB_NETFILES support is enabled, the web-accessible PhysioBank
-   databases are appended to the default path; you may wish to change this
-   to use a nearby PhysioNet mirror (for a list of mirrors, see
-   http://physionet.org/mirrors/).  DEFWFDB must not be NULL, however.
+   If WFDB_NETFILES support is enabled, the web-accessible PhysioNet
+   databases are appended to the default path.  DEFWFDB must not be NULL,
+   however.
 */
 
 #if !WFDB_NETFILES
 # define DEFWFDB	". " DBDIR
 #else
-# define DEFWFDB ". " DBDIR " http://physionet.org/physiobank/database"
+# define DEFWFDB ". " DBDIR " https://physionet.org/files/"
 #endif
 
 /* DEFWFDBCAL is the name of the default WFDB calibration file, used if the
@@ -100,22 +99,17 @@ struct WFDB_FILE {
 
 /* Values for WFDB_FILE 'type' field */
 #define WFDB_LOCAL	0	/* a local file, read via C standard I/O */
-#define WFDB_NET	1	/* a remote file, read via libwww */
+#define WFDB_NET	1	/* a remote file, read via libcurl */
 
 /* Composite data types */
 typedef struct netfile netfile;
 typedef struct WFDB_FILE WFDB_FILE;
 
 /* To enable http and ftp access as well as standard (local file) I/O via the
-   WFDB library, define WFDB_NETFILES=1 and link with libwww (see 'Makefile').
+   WFDB library, define WFDB_NETFILES=1 and link with libcurl.
    Otherwise, the WFDB library uses only the ANSI/ISO standard I/O library. */
 #if WFDB_NETFILES
-#if WFDB_NETFILES_LIBCURL
 # include <curl/curl.h>
-#else
-# include <WWWLib.h>
-# include <WWWInit.h>
-#endif
 #include <errno.h>
 #ifndef EROFS	 /* errno value: attempt to write to a read-only file system */
 # ifdef EINVAL
@@ -124,14 +118,6 @@ typedef struct WFDB_FILE WFDB_FILE;
 #  define EROFS 1
 # endif
 #endif
-
-/* Constants */
-/* #define USEHTCACHE */	/* uncomment to enable caching by libwww */
-
-/* http cache parameters (effective only if USEHTCACHE is defined) */
-#define CACHEDIR	"/tmp"	/* should be world-writable */
-#define CACHESIZE	100	/* max size of the entire http cache in MB */
-#define ENTRYSIZE	20	/* max size of a single cache entry in MB */
 
 #define NF_PAGE_SIZE	32768 	/* default bytes per http range request */
 

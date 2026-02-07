@@ -13,7 +13,6 @@ wfdb_config_data.set('WFDB_MAJOR', wfdb_major.to_int())
 wfdb_config_data.set('WFDB_MINOR', wfdb_minor.to_int())
 wfdb_config_data.set('WFDB_RELEASE', wfdb_release.to_int())
 wfdb_config_data.set('WFDB_NETFILES', libcurl_dep.found() ? 1 : 0)
-wfdb_config_data.set('WFDB_NETFILES_LIBCURL', libcurl_dep.found() ? 1 : 0)
 wfdb_config_data.set('DBDIR', get_option('prefix') / dbdir)
 
 wfdb_config_h = configure_file(
@@ -31,10 +30,7 @@ lib_c_args = [
 ]
 
 if libcurl_dep.found()
-  lib_c_args += [
-    '-DWFDB_NETFILES=1',
-    '-DWFDB_NETFILES_LIBCURL=1',
-  ]
+  lib_c_args += '-DWFDB_NETFILES=1'
 endif
 if libflac_dep.found()
   lib_c_args += '-DWFDB_FLAC_SUPPORT'

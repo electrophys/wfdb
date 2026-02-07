@@ -1215,9 +1215,8 @@ void wfdb_striphea(char *p)
 /* WFDB file I/O functions
 
 The WFDB library normally reads and writes local files.  If libcurl
-(http://curl.haxx.se/) is available, the WFDB library can also read files from
-any accessible World Wide Web (HTTP) or FTP server.  (Writing files to a remote
-WWW or FTP server may be supported in the future.)
+(https://curl.se/) is available, the WFDB library can also read files from
+any accessible World Wide Web (HTTP) or FTP server.
 
 If you do not wish to allow access to remote files, or if libcurl is not
 available, simply define the symbol WFDB_NETFILES as 0 when compiling the WFDB
@@ -1264,7 +1263,6 @@ struct netfile {
   long cont_len;
   long pos;
   long err;
-  int fd;
   char *redirect_url;
   unsigned int redirect_time;
 };
@@ -1308,11 +1306,9 @@ static int curl_try(CURLcode err)
    arbitrary starting point. */
 static unsigned int www_time(void)
 {
-#ifdef HAVE_CLOCK_GETTIME
     struct timespec ts;
     if (!clock_gettime(CLOCK_MONOTONIC, &ts))
 	return ((unsigned int) ts.tv_sec);
-#endif
     return ((unsigned int) time(NULL));
 }
 
@@ -1358,7 +1354,7 @@ end-of-line or tab characters. */
 static void www_parse_passwords(const char *str)
 {
     static char sep[] = "\t\n\r";
-    char *xstr = NULL, *p, *q;
+    char *xstr = NULL, *p, *q, *saveptr;
     int n;
 
     SSTRCPY(xstr, str);
@@ -1368,7 +1364,7 @@ static void www_parse_passwords(const char *str)
 
     SALLOC(passwords, 1, sizeof(char *));
     n = 0;
-    for (p = strtok(xstr, sep); p; p = strtok(NULL, sep)) {
+    for (p = strtok_r(xstr, sep, &saveptr); p; p = strtok_r(NULL, sep, &saveptr)) {
 	if (!(q = strchr(p, ' ')) || !strchr(q, ':'))
 	    continue;
 	SREALLOC(passwords, n + 2, sizeof(char *));
@@ -1435,10 +1431,6 @@ static void www_init(void)
 	curl_easy_setopt(curl_ua, CURLOPT_ERRORBUFFER, curl_error_buf);
 	/* String to send as a User-Agent header */
 	curl_easy_setopt(curl_ua, CURLOPT_USERAGENT, curl_get_ua_string());
-#ifdef USE_NETRC
-	/* Search $HOME/.netrc for passwords */
-	curl_easy_setopt(curl_ua, CURLOPT_NETRC, CURL_NETRC_OPTIONAL);
-#endif
 	/* Get password information from the environment if available */
 	if ((p = getenv("WFDBPASSWORD")) && *p)
             www_parse_passwords(p);
@@ -1453,6 +1445,11 @@ static void www_init(void)
 	/* Follow up to 5 redirections */
 	curl_easy_setopt(curl_ua, CURLOPT_FOLLOWLOCATION, 1L);
 	curl_easy_setopt(curl_ua, CURLOPT_MAXREDIRS, 5L);
+
+	/* Timeout protection */
+	curl_easy_setopt(curl_ua, CURLOPT_CONNECTTIMEOUT, 10L);
+	curl_easy_setopt(curl_ua, CURLOPT_LOW_SPEED_LIMIT, 1L);
+	curl_easy_setopt(curl_ua, CURLOPT_LOW_SPEED_TIME, 30L);
 
 	/* Show details of URL requests if WFDB_NET_DEBUG is set */
 	if ((p = getenv("WFDB_NET_DEBUG")) && *p)
@@ -1470,16 +1467,15 @@ static int www_perform_request(CURL *c)
     long code;
     if (curl_easy_perform(c))
 	return (-1);
-    if (curl_easy_getinfo(c, CURLINFO_HTTP_CODE, &code))
+    if (curl_easy_getinfo(c, CURLINFO_RESPONSE_CODE, &code))
 	return (0);
     return (code < 400 ? 0 : -1);
 }
 
 static long www_get_cont_len(const char *url)
 {
-    double length;
+    curl_off_t length = 0;
 
-    length = 0;
     if (/* We just want the content length; NOBODY means we want to
 	   send a HEAD request rather than GET */
 	curl_try(curl_easy_setopt(curl_ua, CURLOPT_NOBODY, 1L))
@@ -1499,7 +1495,7 @@ static long www_get_cont_len(const char *url)
 	|| www_perform_request(curl_ua))
 	return (0);
 
-    if (curl_easy_getinfo(curl_ua, CURLINFO_CONTENT_LENGTH_DOWNLOAD, &length))
+    if (curl_easy_getinfo(curl_ua, CURLINFO_CONTENT_LENGTH_DOWNLOAD_T, &length))
 	return (0);
 
     return ((long) length);
@@ -1579,7 +1575,7 @@ static size_t curl_chunk_write(void *ptr, size_t size, size_t nmemb,
     return (count);
 }
 
-/* This function emulates the libwww function HTChunk_putb. */
+/* Append data to a chunk. */
 static void curl_chunk_putb(struct chunk *chunk, char *data, size_t len)
 {
     curl_chunk_write(data, 1, len, chunk);
@@ -1618,7 +1614,7 @@ static CHUNK *www_get_url_range_chunk(const char *url, long startb, long len)
 	    || curl_try(curl_easy_setopt(curl_ua, CURLOPT_HEADERFUNCTION,
 					 curl_chunk_header_write))
 	    /* The pointer to pass to the header function */
-	    || curl_try(curl_easy_setopt(curl_ua, CURLOPT_WRITEHEADER, chunk))
+	    || curl_try(curl_easy_setopt(curl_ua, CURLOPT_HEADERDATA, chunk))
 	    /* Perform the request */
 	    || www_perform_request(curl_ua)) {
 
@@ -1726,10 +1722,6 @@ static CHUNK *nf_get_url_range_chunk(netfile *nf, long startb, long len)
    it allocates, fills in, and returns a pointer to a netfile structure that
    can be used by nf_fread, etc., to obtain the contents of the file.
 
-   It would be useful to be able to copy a file that cannot be read in segments
-   to a local file, but this operation is not currently implemented.  The way
-   to do this would be to invoke
-      HTLoadToFile(url, request, filename);
 */
 static netfile *nf_new(const char* url)
 {
@@ -1743,7 +1735,6 @@ static netfile *nf_new(const char* url)
 	nf->pos = 0;
 	nf->data = NULL;
 	nf->err = NF_NO_ERR;
-	nf->fd = -1;
 	nf->redirect_url = NULL;
 
 	if (page_size > 0L)
@@ -1944,7 +1935,6 @@ static size_t nf_fread(void *ptr, size_t size, size_t nmemb, netfile *nf)
     if (nf == NULL || ptr == NULL || bytes_requested == 0) return ((size_t)0);
     bytes_available = nf->cont_len - nf->pos;
     if (bytes_requested > bytes_available) bytes_requested = bytes_available;
-    if (bytes_requested > page_size && page_size) bytes_requested = page_size;
     nf->pos += bytes_read = nf_get_range(nf, nf->pos, bytes_requested, ptr);
     return ((size_t)(bytes_read / size));
 }

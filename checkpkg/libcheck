@@ -32,7 +32,7 @@ esac
 DBDIR=$1
 LIBDIR=$2
 LCHECK_PATH=$3
-DBURL=http://physionet.org/physiobank/database
+DBURL=https://physionet.org/files/
 
 # If not using DESTDIR, test the built-in path used by the WFDB library.
 # If using DESTDIR or WFDB_NO_NET_CHECK, set the WFDB path explicitly.
@@ -95,11 +95,11 @@ then
   cp ../data/100s.atr expected/udb/100s.chk
   cp ../data/100s.dat expected/udb/100z.dat
   sed "s|/usr/database|$DBDIR|" <expected/lcheck.log-NETFILES | \
-    sed "s|http://physionet.org/physiobank/database|$DBURL|" \
+    sed "s|https://physionet.org/files/|$DBURL|" \
       >expected/lcheck.log
 else
   sed "s|/usr/database|$DBDIR|" <expected/lcheck.log-no-NETFILES | \
-    sed "s|http://physionet.org/physiobank/database|$DBURL|" \
+    sed "s|https://physionet.org/files/|$DBURL|" \
       >expected/lcheck.log
 fi
 

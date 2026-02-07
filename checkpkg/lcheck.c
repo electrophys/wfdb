@@ -189,7 +189,7 @@ int main(int argc, char *argv[])
     if (strstr(defpath, "://") == NULL) {
       fprintf(stderr,
        "\nWarning: default WFDB path does not include an http:// component\n");
-      setwfdb(". http://www.physionet.org/physiobank/database");
+      setwfdb(". https://physionet.org/files/");
       printf("WFDB path has been set to: %s\n", getwfdb());
     }
     else if (vflag) {
