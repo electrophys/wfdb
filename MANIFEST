@@ -450,11 +450,6 @@ examples/README
 examples/refhr.c
 examples/stdev.c
 examples/wfdbversion.c
-fortran
-fortran/example.f
-fortran/fsamples.f
-fortran/README
-fortran/wfdbf.c
 .gitignore
 INSTALL
 install-wave32
