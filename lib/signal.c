@@ -122,10 +122,7 @@ library functions defined elsewhere:
  wfdb_freeinfo [10.5.11] (releases resources allocated for info string handling)
 
 The function setbasetime() uses the C library functions localtime() and time(),
-and definitions from <time.h>.  If these are not available, either find a
-replacement or define the symbol NOTIME when compiling this module;  taking the
-latter step will cause setbasetime() to leave the base time unchanged if it is
-passed a NULL or empty argument, rather than setting it to the current time.
+and definitions from <time.h>.
 
 Beginning with version 6.1, header files are written by newheader() and
 setheader() with \r\n line separators (earlier versions used \n only).  Earlier
@@ -148,40 +145,9 @@ of arrays of WFDB_Samples passed into getvec and getframe.  Newly-written
 applications should use the methods illustrated immediately below instead.
 */
 
-#if 0
-/* This is sample code to show how to allocate signal information and sample
-   vector arrays in an application -- it is *not* compiled into this module! */
-void example(void)
-{
-    int n, nsig, i, framelen;
-    WFDB_Siginfo *si;
-    WFDB_Sample *vector;
-
-    /* Get the number of signals without opening any signal files. */
-    n = isigopen("record", NULL, 0);
-    if (n < 1) { /* no signals -- quit or try another record, etc. */ }
-	
-    /* Allocate WFDB_Siginfo structures before calling isigopen again. */
-    SUALLOC(si, n, sizeof(WFDB_Siginfo));
-    nsig = isigopen("record", si, n);
-    /* Note that nsig equals n only if all signals were readable. */
-
-    /* Get the number of samples per frame. */
-    for (i = framelen = 0; i < nsig; i++)
-        framelen += si[i].spf;
-    /* Allocate WFDB_Samples before calling getframe. */
-    SUALLOC(vector, framelen, sizeof(WFDB_Sample));
-    getframe(vector);
-}
-#endif
-
 #include "signal_internal.h"
 
-#ifndef NOTIME
 #include <time.h>
-#endif
-
-#define strtotime strtoll
 
 /* Local functions. */
 

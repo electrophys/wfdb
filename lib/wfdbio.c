@@ -93,7 +93,6 @@ visible outside of this file):
  nf_new			(associate a netfile with a url)
  nf_get_range		(get a block of data from a netfile)
  nf_feof		(emulates feof, for netfiles)
- nf_eof			(TRUE if netfile pointer points to EOF)
  nf_fopen		(emulate fopen, for netfiles; read-only access)
  nf_fclose		(emulates fclose, for netfiles)
  nf_fgetc		(emulates fgetc, for netfiles)
@@ -415,60 +414,6 @@ void wfdb_free_path_list(void)
     ctx->wfdb_path_list = NULL;
 }
 
-/* Operating system and compiler dependent code
-
-All of the operating system and compiler dependencies in the WFDB library are
-contained within the following section of this file.  There are three
-significant types of platforms addressed here:
-
-   UNIX and variants
-     This includes GNU/Linux, FreeBSD, Solaris, HP-UX, IRIX, AIX, and other
-     versions of UNIX, as well as Mac OS/X and Cygwin/MS-Windows.
-   MS-DOS and variants
-     This group includes MS-DOS, DR-DOS, OS/2, and all versions of MS-Windows
-     when using the native MS-Windows libraries (as when compiling with MinGW
-     gcc).
-   MacOS 9 and earlier
-     "Classic" MacOS.
-
-Differences among these platforms:
-
-1. Directory separators vary:
-     UNIX and variants (including Mac OS/X and Cygwin) use '/'.
-     MS-DOS and OS/2 use '\'.
-     MacOS 9 and earlier uses ':'.
-
-2. Path component separators also vary:
-     UNIX and variants use ':' (as in the PATH environment variable)
-     MS-DOS and OS/2 use ';' (also as in the PATH environment variable;
-       ':' within a path component follows a drive letter)
-     MacOS uses ';' (':' is a directory separator, as noted above)
-   See the notes above wfdb_open for details about path separators and how
-   WFDB file names are constructed.
-
-3. By default, MS-DOS files are opened in "text" mode.  Since WFDB files are
-   binary, they must be opened in binary mode.  To accomplish this, ANSI C
-   libraries, and those supplied with non-ANSI C compilers under MS-DOS, define
-   argument strings "rb" and "wb" to be supplied to fopen(); unfortunately,
-   most other non-ANSI C versions of fopen do not recognize these as legal.
-   The "rb" and "wb" forms are used here for ANSI and MS-DOS C compilers only,
-   and the older "r" and "w" forms are used in all other cases.
-
-4. Before the ANSI/ISO C standard was adopted, there were at least two
-   (commonly used but incompatible) ways of declaring functions with variable
-   numbers of arguments (such as printf).  The ANSI/ISO C standard defined
-   a third way, incompatible with the other two.  For this reason, the only two
-   functions in the WFDB library (wfdb_error and wfdb_fprintf) that need to use
-   variable argument lists are included below in three different versions (with
-   additional minor variations noted below).
-
-OS-dependent definitions: */
-#define DSEP	'/'
-#define PSEP	':'
-#define AB	"ab"
-#define RB	"rb"
-#define WB	"wb"
-
 /* wfdb_parse_path constructs a linked list of path components by splitting
 its string input (usually the value of WFDB). */
 
@@ -505,17 +450,13 @@ int wfdb_parse_path(const char *p)
 	slashes = 0;
 	do {
 	    switch (*++q) {
-	    case ':':	/* might be a component delimiter, part of '://',
-			   a drive suffix (MS-DOS), or a directory separator
-			   (Mac) */
+	    case ':':	/* component delimiter or part of '://' */
 		if (*(q+1) == '/' && *(q+2) == '/') current_type = WFDB_NET;
-#if PSEP == ':'
 		/* Allow colons within the authority portion of the URL.
 		   For example, "http://[::1]:8080/database:/usr/database"
 		   is a database path with two components. */
 		else if (current_type != WFDB_NET || slashes > 2)
 		    found_end = 1;
-#endif
 		break;
 	    case ';':	/* definitely a component delimiter */
 	    case ' ':
@@ -555,10 +496,6 @@ functions rather than their wfdb_* counterparts).  This limitation is
 intentional, since the alternative (to allow remote files to determine the
 contents of the WFDB path) seems an unnecessary security risk. */
 
-#ifndef SEEK_END
-#define SEEK_END 2
-#endif
-
 static const char *wfdb_getiwfdb(char **p)
 {
     FILE *wfdbpfile;
@@ -566,7 +503,7 @@ static const char *wfdb_getiwfdb(char **p)
     long len;
 
     for (i = 0; i < 10 && *p != NULL && **p == '@'; i++) {
-	if ((wfdbpfile = fopen((*p) + 1, RB)) == NULL) **p = 0;
+	if ((wfdbpfile = fopen((*p) + 1, "rb")) == NULL) **p = 0;
 	else {
 	    if (fseek(wfdbpfile, 0L, SEEK_END) == 0)
 		len = ftell(wfdbpfile);
@@ -592,10 +529,6 @@ static const char *wfdb_getiwfdb(char **p)
 
 /* wfdb_export_config is invoked from setwfdb to place the configuration
    variables into the environment if possible. */
-
-#ifndef HAS_PUTENV
-#define wfdb_export_config()
-#else
 
 /* wfdb_free_config frees all memory allocated by wfdb_export_config.
    This function must be invoked before exiting to avoid a memory leak.
@@ -662,7 +595,6 @@ void wfdb_export_config(void)
 	}
     }
 }
-#endif
 
 /* wfdb_addtopath adds the path component of its string argument (i.e.
 everything except the file name itself) to the WFDB path, inserting it
@@ -872,16 +804,10 @@ void wfdb_error(const char *format, ...)
     wfdb_vasprintf(&ctx->error_message, format, arguments);
     va_end(arguments);
 
-#if 1				/* standard variant: use stderr output */
     if (ctx->error_print) {
 	(void)fprintf(stderr, "%s", wfdberror());
 	(void)fflush(stderr);
     }
-#else				/* MS Windows variant: use message box */
-    if (ctx->error_print)
-	MessageBox(GetFocus(), wfdberror(), "WFDB Library Error",
-		   MB_ICONASTERISK | MB_OK);
-#endif
 }
 
 /* The wfdb_fprintf function handles all formatted output to files.  It is
@@ -1034,12 +960,12 @@ WFDB_FILE *wfdb_open(const char *s, const char *record, int mode)
     if (mode == WFDB_WRITE) {
 	spr1(&ctx->wfdb_filename, r, s);
 	SFREE(r);
-	return (wfdb_fopen(ctx->wfdb_filename, WB));
+	return (wfdb_fopen(ctx->wfdb_filename, "wb"));
     }
     else if (mode == WFDB_APPEND) {
 	spr1(&ctx->wfdb_filename, r, s);
 	SFREE(r);
-	return (wfdb_fopen(ctx->wfdb_filename, AB));
+	return (wfdb_fopen(ctx->wfdb_filename, "ab"));
     }
 
     /* Parse the WFDB path if not done previously. */
@@ -1050,7 +976,7 @@ WFDB_FILE *wfdb_open(const char *s, const char *record, int mode)
        to the path if the file can be read. */
     if (strncmp(r, "http://", 7) == 0 || strncmp(r, "https://", 8) == 0) {
 	spr1(&ctx->wfdb_filename, r, s);
-	if ((ifile = wfdb_fopen(ctx->wfdb_filename, RB)) != NULL) {
+	if ((ifile = wfdb_fopen(ctx->wfdb_filename, "rb")) != NULL) {
 	    /* Found it! Add its path info to the WFDB path. */
 	    wfdb_addtopath(ctx->wfdb_filename);
 	    SFREE(r);
@@ -1115,8 +1041,8 @@ WFDB_FILE *wfdb_open(const char *s, const char *record, int mode)
 	    if (c0->type == WFDB_NET) {
 		if (buf[len-1] != '/') buf[len++] = '/';
 	    }
-	    else if (buf[len-1] != DSEP)
-		buf[len++] = DSEP;
+	    else if (buf[len-1] != '/')
+		buf[len++] = '/';
 	}
 	buf[len] = 0;
 	wfdb_asprintf(&buf, "%s%s", buf, r);
@@ -1124,7 +1050,7 @@ WFDB_FILE *wfdb_open(const char *s, const char *record, int mode)
 	    continue;
 
 	spr1(&ctx->wfdb_filename, buf, s);
-	if ((ifile = wfdb_fopen(ctx->wfdb_filename, RB)) != NULL) {
+	if ((ifile = wfdb_fopen(ctx->wfdb_filename, "rb")) != NULL) {
 	    /* Found it! Add its path info to the WFDB path. */
 	    wfdb_addtopath(ctx->wfdb_filename);
 	    SFREE(buf);
@@ -1136,7 +1062,7 @@ WFDB_FILE *wfdb_open(const char *s, const char *record, int mode)
 	SSTRCPY(long_filename, ctx->wfdb_filename);
 	spr2(&ctx->wfdb_filename, buf, s);
 	if (strcmp(ctx->wfdb_filename, long_filename) &&
-	    (ifile = wfdb_fopen(ctx->wfdb_filename, RB)) != NULL) {
+	    (ifile = wfdb_fopen(ctx->wfdb_filename, "rb")) != NULL) {
 	    wfdb_addtopath(ctx->wfdb_filename);
 	    SFREE(long_filename);
 	    SFREE(buf);
@@ -1160,7 +1086,7 @@ int wfdb_checkname(const char *p, const char *s)
 {
     do {
 	if (('0' <= *p && *p <= '9') || *p == '_' || *p == '~' || *p== '-' ||
-	    *p == DSEP ||
+	    *p == '/' ||
 	    ('a' <= *p && *p <= 'z') || ('A' <= *p && *p <= 'Z'))
 	    p++;
 	else {
@@ -1184,7 +1110,7 @@ void wfdb_setirec(const char *p)
     int len;
 
     for (r = p; *r; r++)
-	if (*r == DSEP) p = r+1;	/* strip off any path information */
+	if (*r == '/') p = r+1;	/* strip off any path information */
     len = strlen(p);
     if (len > WFDB_MAXRNL)
 	len = WFDB_MAXRNL;
@@ -1876,12 +1802,6 @@ static int nf_feof(netfile *nf)
     return ((nf->err == NF_EOF_ERR) ? TRUE : FALSE);
 }
 
-/* nf_eof returns true if the file pointer is at the EOF. */
-static int nf_eof(netfile *nf)
-{
-    return (nf->pos >= nf->cont_len) ? TRUE : FALSE;
-}
-
 static netfile* nf_fopen(WFDB_Context *ctx, const char *url, const char *mode)
 {
     netfile* nf = NULL;
@@ -2145,7 +2065,7 @@ WFDB_FILE *wfdb_fopen(char *fname, const char *mode)
 	wp->type = WFDB_LOCAL;
 	return (wp);
     }
-    if (strcmp(mode, WB) == 0 || strcmp(mode, AB) == 0) {
+    if (strcmp(mode, "wb") == 0 || strcmp(mode, "ab") == 0) {
         int stat = 1;
 
 	/* An attempt to create an output file failed.  Check to see if all

@@ -77,18 +77,10 @@ symbols reserved to the library begin with the characters "wfdb_".
    is not set, the value of DEFWFDBMODE determines the mode. */
 #define DEFWFDBGVMODE WFDB_LOWRES
 
-#define HAS_PUTENV
-
-#ifndef FILE
 #include <stdio.h>
-#endif
 
-#ifndef TRUE
 #define TRUE 1
-#endif
-#ifndef FALSE
 #define FALSE 0
-#endif
 
 /* Structures used by internal WFDB library functions only */
 struct WFDB_FILE {
@@ -111,13 +103,6 @@ typedef struct WFDB_FILE WFDB_FILE;
 #if WFDB_NETFILES
 # include <curl/curl.h>
 #include <errno.h>
-#ifndef EROFS	 /* errno value: attempt to write to a read-only file system */
-# ifdef EINVAL
-#  define EROFS EINVAL
-# else
-#  define EROFS 1
-# endif
-#endif
 
 #define NF_PAGE_SIZE	32768 	/* default bytes per http range request */
 

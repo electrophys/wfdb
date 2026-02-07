@@ -50,9 +50,7 @@ These functions were previously part of signal.c.
 
 #include "signal_internal.h"
 
-#ifndef NOTIME
 #include <time.h>
-#endif
 
 #define strtotime strtoll
 
@@ -106,7 +104,6 @@ int setbasetime_ctx(WFDB_Context *ctx, char *string)
 
     pdays = -1;
     if (string == NULL || *string == '\0') {
-#ifndef NOTIME
 	struct tm *now;
 	time_t t;
 
@@ -118,7 +115,6 @@ int setbasetime_ctx(WFDB_Context *ctx, char *string)
 	(void)sprintf(time_string, "%d:%d:%d",
 		now->tm_hour, now->tm_min, now->tm_sec);
 	btime = fstrtim(time_string, 1000.0);
-#endif
 	return (0);
     }
     while (*string == ' ') string++;
