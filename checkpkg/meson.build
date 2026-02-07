@@ -1,5 +1,11 @@
 # Build lcheck test executable
+lcheck_c_args = []
+if libcurl_dep.found()
+  lcheck_c_args += '-DWFDB_NETFILES=1'
+endif
+
 lcheck = executable('lcheck', 'lcheck.c',
+  c_args: lcheck_c_args,
   dependencies: wfdb_dep,
   install: false,
 )

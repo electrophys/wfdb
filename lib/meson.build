@@ -5,23 +5,9 @@ else
   dbdir = get_option('datadir') / 'wfdb'
 endif
 
-# Generate wfdb_config.h with build-time configuration values.
-# wfdb.h includes this file; the library build also uses -D flags which
-# override via #ifndef guards.
-wfdb_config_data = configuration_data()
-wfdb_config_data.set('WFDB_MAJOR', wfdb_major.to_int())
-wfdb_config_data.set('WFDB_MINOR', wfdb_minor.to_int())
-wfdb_config_data.set('WFDB_RELEASE', wfdb_release.to_int())
-wfdb_config_data.set('WFDB_NETFILES', libcurl_dep.found() ? 1 : 0)
-wfdb_config_data.set('DBDIR', get_option('prefix') / dbdir)
-
-wfdb_config_h = configure_file(
-  input: 'wfdb_config.h.meson',
-  output: 'wfdb_config.h',
-  configuration: wfdb_config_data,
-)
-
-# Version and config -D flags override the #ifndef defaults in wfdb_config.h
+# Build-config values passed as -D compiler flags to the library.
+# Version macros are also in wfdb.h for external consumers; the -D flags
+# take precedence during library compilation.
 lib_c_args = [
   '-DWFDB_MAJOR=' + wfdb_major,
   '-DWFDB_MINOR=' + wfdb_minor,
@@ -45,8 +31,7 @@ build_root = meson.project_build_root()
 wfdb_link = build_root / 'wfdb'
 
 # Copy source headers to build/lib/ so the build/wfdb symlink works
-# for apps that #include <wfdb/wfdb.h>.  (wfdb_config.h is already
-# generated in build/lib/ by configure_file above.)
+# for apps that #include <wfdb/wfdb.h>.
 foreach hdr : ['wfdb.h', 'wfdblib.h', 'ecgcodes.h', 'ecgmap.h']
   configure_file(
     input: hdr,
@@ -142,7 +127,6 @@ wfdb_dep = declare_dependency(
 # Install public headers
 install_headers(
   'wfdb.h',
-  wfdb_config_h,
   'ecgcodes.h',
   'ecgmap.h',
   'wfdblib.h',

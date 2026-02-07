@@ -33,21 +33,15 @@ symbols reserved to the library begin with the characters "wfdb_".
 #include "wfdb.h"
 
 /* DEFWFDB is the default value of the WFDB path if the WFDB environment
-   variable is not set.
+   variable is not set.  DBDIR and WFDB_NETFILES are provided by the
+   build system via -D compiler flags. */
 
-   If WFDB_NETFILES support is disabled, the path is ". <DBDIR>",
-   restricting the search for WFDB files to the current directory (".")
-   followed by DBDIR.
-
-   If WFDB_NETFILES support is enabled, the web-accessible PhysioNet
-   databases are appended to the default path.  DEFWFDB must not be NULL,
-   however.
-*/
-
-#if !WFDB_NETFILES
-# define DEFWFDB	". " DBDIR
-#else
-# define DEFWFDB ". " DBDIR " https://physionet.org/files/"
+#ifdef DBDIR
+# if !WFDB_NETFILES
+#  define DEFWFDB	". " DBDIR
+# else
+#  define DEFWFDB	". " DBDIR " https://physionet.org/files/"
+# endif
 #endif
 
 /* DEFWFDBCAL is the name of the default WFDB calibration file, used if the

@@ -526,7 +526,7 @@ do
   TESTS=`expr $TESTS + 1`
 done
 
-if ( grep "WFDB_NETFILES 1" $INCDIR/wfdb/wfdb_config.h $INCDIR/wfdb/wfdb.h >grep.out 2>&1 )
+if ( ldd "$LIBDIR"/libwfdb.so* 2>/dev/null | grep -q libcurl )
 then
   echo "Testing xform (with NETFILES) ..."
   if [ "x$WFDB_NO_NET_CHECK" != x ]
@@ -555,7 +555,6 @@ then
   done 
   rm -f xform-2.out
 fi
-rm -f grep.out
 
 rm -rf data
 
