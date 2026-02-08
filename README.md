@@ -164,7 +164,7 @@ The RPMs are placed under `~/rpmbuild/RPMS/`:
 ### Homebrew (macOS and Linux)
 
 ```sh
-brew install --formula wfdb.rb
+brew install --formula ./wfdb.rb
 ```
 
 The formula works on both macOS and Linux.  It builds WAVE (via GTK 3
