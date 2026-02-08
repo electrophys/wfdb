@@ -1,0 +1,17 @@
+{
+    "name": "WFDB",
+    "build": {
+        "dockerfile": "Dockerfile"
+    },
+    "postCreateCommand": "rm -rf build && meson setup build && ninja -C build && ninja -C build install",
+    "remoteEnv": {
+        "WFDB_NO_NET_CHECK": "1"
+    },
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "ms-vscode.cpptools"
+            ]
+        }
+    }
+}

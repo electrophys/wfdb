@@ -48,6 +48,26 @@ Debian/Ubuntu prerequisites inside the WSL distribution.
 Meson and Ninja are also available via pip (`pip install meson ninja`) if
 your system packages are too old.
 
+## Development Container (Optional)
+
+The repository includes a [devcontainer](.devcontainer/) configuration for
+VS Code and GitHub Codespaces that provides a pre-configured development
+environment with all prerequisites installed.
+
+**VS Code with Docker:**
+
+1. Install the [Dev Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers)
+2. Open the repository in VS Code
+3. Click "Reopen in Container" when prompted (or use Command Palette → "Dev Containers: Reopen in Container")
+
+**GitHub Codespaces:**
+
+1. Click "Code" → "Codespaces" → "Create codespace on master" in the GitHub web interface
+2. Wait for the container to build and start
+
+The devcontainer automatically runs the build and install process on creation.
+The built binaries are available immediately in the container environment.
+
 ## Building and Installing
 
 ```sh
