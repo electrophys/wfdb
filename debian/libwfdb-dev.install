@@ -1,0 +1,6 @@
+usr/include/wfdb/
+usr/lib/*/libwfdb.a
+usr/lib/*/libwfdb.so
+usr/lib/*/pkgconfig/wfdb.pc
+usr/share/man/man3/
+usr/share/man/man5/

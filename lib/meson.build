@@ -132,3 +132,11 @@ install_headers(
   'wfdblib.h',
   subdir: 'wfdb',
 )
+
+# Generate pkg-config file
+pkg = import('pkgconfig')
+pkg.generate(libwfdb,
+  description: 'WaveForm Database library for physiologic signals',
+  url: 'https://physionet.org/',
+  subdirs: ['wfdb'],
+)

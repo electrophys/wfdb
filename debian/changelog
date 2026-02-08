@@ -1,0 +1,5 @@
+wfdb (10.7.0-1) unstable; urgency=medium
+
+  * Initial Debian packaging with Meson build system.
+
+ -- PhysioNet <wfdb@physionet.org>  Fri, 07 Feb 2026 00:00:00 +0000

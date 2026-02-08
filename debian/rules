@@ -1,0 +1,15 @@
+#!/usr/bin/make -f
+%:
+	dh $@ --buildsystem=meson
+
+override_dh_auto_configure:
+	dh_auto_configure -- -Dnetfiles=enabled -Dflac=enabled -Dwave=auto -Ddocs=disabled
+
+override_dh_auto_test:
+	WFDB_NO_NET_CHECK=1 dh_auto_test
+
+# wave binary and man page go to the wave package; exclude them from
+# the catch-all wfdb-tools globs so nothing is installed twice.
+override_dh_install:
+	dh_install -pwfdb-tools --exclude=usr/bin/wave --exclude=man1/wave.1
+	dh_install --remaining-packages

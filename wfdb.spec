@@ -1,147 +1,86 @@
-# Note that this is NOT a relocatable package
+Name:           wfdb
+Version:        10.7.0
+Release:        1%{?dist}
+Summary:        WaveForm Database library and tools for physiologic signals
+License:        LGPL-2.0-or-later AND GPL-2.0-or-later
+URL:            https://physionet.org/
+Source0:        https://physionet.org/static/published-projects/wfdb/wfdb-%{version}.tar.gz
 
-Summary: Waveform Database Software Package
-Name: wfdb
-Version: VERSION
-Release: RPMRELEASE
-License: GPL
-Group: Libraries
-Source: http://www.physionet.org/physiotools/archives/wfdb-VERSION.tar.gz
-URL: http://www.physionet.org/physiotools/wfdb.shtml
-Vendor: PhysioNet
-Packager: George Moody <george@mit.edu>
-Requires: curl >= 7.10
-Requires: curl-devel >= 7.10
-Requires: expat-devel
-BuildRoot: /var/tmp/%{name}-root
-
-%changelog
-* Sat Mar 12 2011 George B Moody <george@mit.edu>
-- install to /usr/local, added expat-devel dependency
-
-* Wed Oct 6 2010 George B Moody <george@mit.edu>
-- added annxml, heaxml, xmlann, xmlhea
-
-* Sun May 3 2009 George B Moody <george@mit.edu>
-- moved wfdb-config from devel to apps
-
-* Thu Feb 29 2009 George B Moody <george@mit.edu>
-- added wfdb2mat
-
-* Wed Feb 18 2009 George B Moody <george@mit.edu>
-- added wfdbtime
-
-* Wed Apr 9 2008 George B Moody <george@mit.edu>
-- added rdedfann, signame, signum
-
-* Wed May 11 2006 George B Moody <george@mit.edu>
-- better solution for problems with compiled-in paths
-
-* Wed May 10 2006 George B Moody <george@mit.edu>
-- rewrote install section to solve problems with compiled-in paths
-
-* Wed Aug 3 2005 George B Moody <george@mit.edu>
-- added --dynamic to 'configure' argument list
-
-* Wed Jun 8 2005 George B Moody <george@mit.edu>
-- replaced libwww dependencies with libcurl
-
-* Mon Mar 8 2004 George B Moody <george@mit.edu>
-- added time2sec
-
-* Wed Mar 19 2003 George B Moody <george@mit.edu>
-- added --mandir to build, fixed linking in post
-
-* Wed Dec 18 2002 George B Moody <george@mit.edu>
-- split into wfdb, wfdb-devel, wfdb-app, wfdb-wave, wfdb-doc subpackages
-
-* Sun Dec 8 2002 George B Moody <george@mit.edu>
-- paths now use rpm's variables where possible
-
-# ---- common prep/build/install/clean/post/postun ----------------------------
-
-%prep
-%setup
-
-%build
-# The 'make' commands below create HTML, PDF, and PostScript versions of the
-# WFDB Programmer's Guide, WFDB Applications Guide, and WAVE User's Guide.
-make clean
-PATH=$PATH:/usr/openwin/bin ./configure --prefix=/usr/local --dynamic --mandir=%{_mandir}
-cd doc/wpg-src; make
-cd ../wag-src; make
-cd ../wug-src; make
-
-%install
-rm -rf $RPM_BUILD_ROOT
-make install
-make collect
-cd /tmp/wfdb; cp -pr . $RPM_BUILD_ROOT
-
-%clean
-rm -rf $RPM_BUILD_ROOT
-make clean
-
-%post
-%postun
-
-# ---- wfdb [shared library] package ------------------------------------------
+BuildRequires:  gcc
+BuildRequires:  meson >= 0.61
+BuildRequires:  ninja-build
+BuildRequires:  pkgconfig(libcurl)
+BuildRequires:  pkgconfig(flac)
+BuildRequires:  pkgconfig(gtk+-3.0)
+BuildRequires:  pkgconfig(vte-2.91)
 
 %description
-The WFDB (Waveform Database) library supports creating, reading, and annotating
-digitized signals in a wide variety of formats.  Input can be from local files
-or directly from web or FTP servers (via the W3C's libwww).  WFDB applications
-need not be aware of the source or format of their input, since input files are
-located by searching a path that may include local and remote components, and
-all data are transparently converted on-the-fly into a common format.  Although
-created for use with physiologic signals such as those in PhysioBank
-(http://www.physionet.org/physiobank/), the WFDB library supports a broad
-range of general-purpose signal processing applications.
+The WFDB (WaveForm Database) library supports creating, reading, and
+annotating digitized signals in a wide variety of formats. Input can be
+from local files or directly from web servers via libcurl. WFDB
+applications need not be aware of the source or format of their input,
+since input files are located by searching a configurable path and all
+data are transparently converted on-the-fly into a common format.
 
-%files
-%defattr(-,root,root)
-%{_libdir}/libwfdb.so*
+# ---- wfdb-libs subpackage ---------------------------------------------------
 
-# ---- wfdb-devel package -----------------------------------------------------
+%package libs
+Summary:        WaveForm Database shared library
+License:        LGPL-2.0-or-later
+
+%description libs
+The WFDB shared library for reading and writing physiologic signal data.
+
+%ldconfig_scriptlets libs
+
+# ---- wfdb-devel subpackage ---------------------------------------------------
 
 %package devel
-Summary: WFDB developer's toolkit
-Group: Development/Libraries
-URL: http://www.physionet.org/physiotools/wpg/
-Requires: wfdb = VERSION
+Summary:        WaveForm Database library - development files
+License:        LGPL-2.0-or-later
+Requires:       %{name}-libs%{?_isa} = %{version}-%{release}
 
 %description devel
-This package includes files needed to develop new WFDB applications in C, C++,
-and Fortran, examples in C and in Fortran, and miscellaneous documentation.
+Header files, static library, and pkg-config file for developing
+applications with the WFDB library.
 
-%files devel
-%defattr(-,root,root)
-%{_prefix}/database
-%{_prefix}/include/wfdb
-%doc checkpkg examples fortran lib/COPYING.LIB COPYING INSTALL MANIFEST NEWS README README.NETFILES
+# ---- wave subpackage ---------------------------------------------------------
 
-# ---- wfdb-app package -------------------------------------------------------
+%package -n wave
+Summary:        Waveform Analyzer, Viewer, and Editor
+License:        GPL-2.0-or-later
+Requires:       %{name} = %{version}-%{release}
 
-%package app
-Summary: WFDB applications
-Group: Applications/Scientific
-URL: http://www.physionet.org/physiotools/wag/
-Requires: wfdb >= VERSION
+%description -n wave
+WAVE provides a graphical environment for exploring digitized signals
+and time series. It supports fast, high-quality views of data stored
+locally or on remote servers, flexible control of analysis modules,
+efficient interactive annotation editing, and multiple simultaneous views.
 
-%description app
-About 60 applications for creating, reading, transforming, analyzing,
-annotating, and viewing digitized signals, especially physiologic signals.
-Applications include digital filtering, event detection, signal averaging,
-power spectrum estimation, and many others.
+# ---- prep/build/install/check ------------------------------------------------
 
-%files app
-%defattr(-,root,root)
+%prep
+%autosetup
+
+%build
+%meson -Dnetfiles=enabled -Dflac=enabled -Dwave=auto -Ddocs=disabled
+%meson_build
+
+%install
+%meson_install
+
+%check
+WFDB_NO_NET_CHECK=1 %meson_test
+
+# ---- file lists --------------------------------------------------------------
+
+%files
+%license COPYING
+%doc README.md
 %{_bindir}/a2m
 %{_bindir}/ad2m
-%{_bindir}/ahaconvert
 %{_bindir}/ahaecg2mit
 %{_bindir}/ann2rr
-%{_bindir}/annxml
 %{_bindir}/bxb
 %{_bindir}/calsig
 %{_bindir}/coherence
@@ -151,11 +90,14 @@ power spectrum estimation, and many others.
 %{_bindir}/epicmp
 %{_bindir}/fft
 %{_bindir}/fir
-%{_bindir}/heaxml
+%{_bindir}/gqfuse
+%{_bindir}/gqpost
+%{_bindir}/gqrs
 %{_bindir}/hrfft
 %{_bindir}/hrlomb
 %{_bindir}/hrmem
 %{_bindir}/hrplot
+%{_bindir}/hrstats
 %{_bindir}/ihr
 %{_bindir}/log10
 %{_bindir}/lomb
@@ -170,9 +112,11 @@ power spectrum estimation, and many others.
 %{_bindir}/mxm
 %{_bindir}/nguess
 %{_bindir}/nst
+%{_bindir}/parsescp
 %{_bindir}/plot2d
 %{_bindir}/plot3d
 %{_bindir}/plotstm
+%{_bindir}/pnwlogin
 %{_bindir}/pscgen
 %{_bindir}/pschart
 %{_bindir}/psfd
@@ -194,11 +138,11 @@ power spectrum estimation, and many others.
 %{_bindir}/sortann
 %{_bindir}/sqrs
 %{_bindir}/sqrs125
+%{_bindir}/stepdet
 %{_bindir}/sumann
 %{_bindir}/sumstats
 %{_bindir}/tach
 %{_bindir}/time2sec
-%{_bindir}/url_view
 %{_bindir}/wabp
 %{_bindir}/wav2mit
 %{_bindir}/wfdb-config
@@ -206,60 +150,36 @@ power spectrum estimation, and many others.
 %{_bindir}/wfdbcat
 %{_bindir}/wfdbcollate
 %{_bindir}/wfdbdesc
+%{_bindir}/wfdbmap
+%{_bindir}/wfdbsignals
 %{_bindir}/wfdbtime
 %{_bindir}/wfdbwhich
 %{_bindir}/wqrs
 %{_bindir}/wrann
 %{_bindir}/wrsamp
 %{_bindir}/xform
-%{_bindir}/xmlann
-%{_bindir}/xmlhea
-%{_libdir}/ps
-%{_mandir}
+%{_datadir}/wfdb/
+%exclude %{_mandir}/man1/wave.1*
+%{_mandir}/man1/
 
-# ---- wfdb-wave package ------------------------------------------------------
+%files libs
+%license lib/COPYING.LIB
+%{_libdir}/libwfdb.so.10{,.*}
 
-%package wave
-Summary: Waveform Analyzer, Viewer, and Editor.
-Group: X11/Applications/Science
-URL: http://www.physionet.org/physiotools/wug/
-Requires: wfdb >= VERSION
-Requires: wfdb-app
-Requires: xview >= 3.2
-Requires: xview-devel >= 3.2
+%files devel
+%{_includedir}/wfdb/
+%{_libdir}/libwfdb.a
+%{_libdir}/libwfdb.so
+%{_libdir}/pkgconfig/wfdb.pc
+%{_mandir}/man3/
+%{_mandir}/man5/
 
-%description wave
-WAVE provides an environment for exploring digitized signals and time series.
-It provides fast, high-quality views of data stored locally or on remote
-web or FTP servers, flexible control of standard and user-provided analysis
-modules, efficient interactive annotation editing, and support for multiple
-views on the same or different displays to support collaborative analysis and
-annotation projects.  WAVE has been used to develop annotations for most of
-the PhysioBank databases (http://www.physionet.org/physiobank/).
-
-WAVE uses the XView graphical user interface.
-
-%files wave
-%defattr(-,root,root)
+%files -n wave
 %{_bindir}/wave
-%{_bindir}/wave-remote
-%{_bindir}/wavescript
-%{_prefix}/help/
-%config %{_prefix}/lib/wavemenu.def
-%config %{_prefix}/lib/X11/app-defaults/Wave
-%doc wave/anntab
+%{_mandir}/man1/wave.1*
 
-# ---- wfdb-doc package -------------------------------------------------------
-
-%package doc
-Summary: WFDB documentation.
-Group: Documentation
-URL: http://www.physionet.org/physiotools/manuals.shtml
-
-%description doc
-This package includes HTML, PostScript, and PDF versions of the WFDB
-Programmer's Guide, the WFDB Applications Guide, and the WAVE User's Guide.
-
-%files doc
-%defattr(-,root,root)
-%doc doc/wag doc/wpg doc/wug
+%changelog
+* Fri Feb 07 2026 PhysioNet <wfdb@physionet.org> - 10.7.0-1
+- Rewrite spec for Meson build system
+- Split into wfdb, wfdb-libs, wfdb-devel, and wave subpackages
+- Add pkg-config support
