@@ -1,62 +1,189 @@
-file: README			G. Moody	5 May 1999
-				Last revised: 22 October 1999
+# WFDB Software Package
 
-For installation instructions, see `INSTALL' in this directory.
-_______________________________________________________________________________
-WFDB Software Package:  software for working with annotated signals
-Copyright (C) 1999 George B. Moody
+Software for working with annotated physiologic signals.
 
-The WFDB library (within the lib subdirectory) is free software; you can
-redistribute it and/or modify it under the terms of the GNU Library General
-Public License as published by the Free Software Foundation; either version 2
-of the License, or (at your option) any later version.
+The WFDB (WaveForm Database) library supports creating, reading, and
+annotating digitized signals in a wide variety of formats.  Input can be
+from local files or directly from web servers via libcurl.  WFDB
+applications need not be aware of the source or format of their input,
+since input files are located by searching a configurable path and all
+data are transparently converted on-the-fly into a common format.
 
-The programs in the other subdirectories of this one are also free software;
-you can redistribute them and/or modify them under the terms of the GNU General
-Public License as published by the Free Software Foundation; either version 2
-of the License, or (at your option) any later version.
+## Prerequisites
 
-This software is distributed in the hope that it will be useful, but
-WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
-FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License, or the
-GNU Library General Public License, for more details.
+The following are required for a complete build.  All are free, open-source
+software available for all popular platforms:
 
-You should have received a copy of the GNU General Public License along with
-these programs (see 'COPYING' in this directory).  You should also have
-received a copy of the GNU Library General Public License along with the WFDB
-library (see 'COPYING.LIB' in the lib subdirectory).  If you did not receive
-copies of both of these licenses, see <http://www.gnu.org/licenses/>.
+- GCC (or another C11 compiler), Meson, and Ninja
+- [libcurl](https://curl.se/) (including development headers)
+- [libFLAC](https://xiph.org/flac/) (including development headers)
+- [expat](https://libexpat.github.io/) (including development headers) --
+  needed for the XML tools (`xmlann`, `xmlhea`); `annxml` and `heaxml`
+  are built without it
 
-You may contact the author by e-mail (wfdb@physionet.org) or postal mail
-(MIT Room E25-505A, Cambridge, MA 02139 USA).  For updates to this software,
-please visit http://www.physionet.org/physiotools/.
-_______________________________________________________________________________
+**Debian / Ubuntu:**
 
-A note on the licenses for this software:  
+```sh
+sudo apt-get install gcc meson ninja-build \
+  libcurl4-gnutls-dev libflac-dev libexpat1-dev
+```
 
-You may use (link, incorporate, etc.) the WFDB library with your own programs
-and distribute those programs under any terms you wish.  You may also copy and
-redistribute unmodified WFDB library sources without restriction.  If you
-modify the WFDB library itself, some restrictions apply to how you may
-distribute your modified versions.  See the GNU Library General Public License
-('COPYING.LIB', in the lib directory) for details.
+**Fedora / RHEL:**
 
-The intent of these requirements is to encourage the widest possible use of the
-WFDB library, by making it possible for you to use the WFDB library in your own
-(free or commercial, open source or proprietary) software without payment of
-royalties or other "nuisance" restrictions.  Your software is yours; the WFDB
-library is a gift with no strings attached, except that, in accordance with the
-LGPL, you may not make the library itself proprietary and then attempt to sell
-it back to the community that has given it to you.
+```sh
+sudo dnf install gcc meson ninja-build \
+  libcurl-devel flac-devel expat-devel
+```
 
-You may use, copy, and redistribute the WFDB applications, but you must provide
-sources for any binaries that you distribute, whether modified or not.  You may
-charge a fee to cover the cost of copying and distributing sources and
-binaries.  See the GNU General Public License ('COPYING', in this directory)
-for details.
+**macOS** (via [Homebrew](https://brew.sh/)):
 
-Since the WFDB applications are intended to be generally useful to the research
-community, the intent is that if you improve them, your improvements should
-benefit the community that has given them to you.  You do not have to give away
-your improvements; but you may not distribute them at all unless you are
-willing to play by the rules spelled out by the GPL.
+```sh
+brew install meson flac curl expat
+```
+
+**Windows:** Install [WSL](https://learn.microsoft.com/en-us/windows/wsl/install)
+(`wsl --install` in an administrator PowerShell), then install the
+Debian/Ubuntu prerequisites inside the WSL distribution.
+
+Meson and Ninja are also available via pip (`pip install meson ninja`) if
+your system packages are too old.
+
+## Building and Installing
+
+```sh
+meson setup build
+ninja -C build install
+```
+
+To install to a non-default location (no root needed):
+
+```sh
+meson setup build --prefix=$HOME/wfdb-local
+ninja -C build install
+```
+
+Run the test suite:
+
+```sh
+meson test -C build
+```
+
+Uninstall:
+
+```sh
+ninja -C build uninstall
+```
+
+## Build Options
+
+Customize the build with `-Doption=value` at configure time:
+
+| Option | Values | Description |
+|--------|--------|-------------|
+| `netfiles` | `auto` / `enabled` / `disabled` | HTTP/FTP support via libcurl |
+| `flac` | `auto` / `enabled` / `disabled` | FLAC signal compression |
+| `expat` | `auto` / `enabled` / `disabled` | XML tools (requires expat) |
+| `wave` | `auto` / `enabled` / `disabled` | WAVE viewer (requires GTK 3 and VTE) |
+| `docs` | `auto` / `enabled` / `disabled` | HTML documentation (requires mandoc / asciidoctor) |
+| `dbdir` | path | Database directory (default: `datadir/wfdb`) |
+
+Options set to `auto` (the default) are enabled when the required libraries
+are found and silently disabled otherwise.  Set to `enabled` to make a
+missing library a hard error.
+
+Example:
+
+```sh
+meson setup build -Dnetfiles=enabled -Dflac=enabled -Dwave=disabled
+```
+
+## Building Packages
+
+The source tree includes packaging metadata for Debian/Ubuntu, Fedora/RHEL,
+and macOS Homebrew.
+
+### Debian / Ubuntu (.deb)
+
+Install the build dependencies:
+
+```sh
+sudo apt-get install build-essential debhelper-compat meson ninja-build \
+  pkg-config libcurl4-gnutls-dev libexpat1-dev libflac-dev \
+  libgtk-3-dev libvte-2.91-dev
+```
+
+Build the packages:
+
+```sh
+dpkg-buildpackage -us -uc
+```
+
+The `.deb` files are created in the parent directory:
+
+| Package | Contents |
+|---------|----------|
+| `libwfdb10` | Shared library |
+| `libwfdb-dev` | Headers, static library, pkg-config file |
+| `wfdb-tools` | Command-line applications |
+| `wave` | WAVE viewer and companion tools |
+
+Install them:
+
+```sh
+sudo dpkg -i ../libwfdb10_*.deb ../libwfdb-dev_*.deb \
+  ../wfdb-tools_*.deb ../wave_*.deb
+```
+
+### Fedora / RHEL (.rpm)
+
+Install the build dependencies:
+
+```sh
+sudo dnf install gcc meson ninja-build \
+  libcurl-devel expat-devel flac-devel \
+  gtk3-devel vte291-devel rpm-build
+```
+
+Create a source tarball and build RPMs:
+
+```sh
+tar czf wfdb-10.7.0.tar.gz --transform='s,^,wfdb-10.7.0/,' \
+  --exclude=build --exclude=.git .
+rpmbuild -ta wfdb-10.7.0.tar.gz
+```
+
+The RPMs are placed under `~/rpmbuild/RPMS/`:
+
+| Package | Contents |
+|---------|----------|
+| `wfdb` | Command-line applications and data files |
+| `wfdb-libs` | Shared library |
+| `wfdb-devel` | Headers, static library, pkg-config file |
+| `wave` | WAVE viewer and companion tools |
+
+### macOS Homebrew
+
+```sh
+brew install --formula wfdb.rb
+```
+
+The formula builds without WAVE (which requires GTK 3) and without
+documentation.  It enables libcurl, FLAC, and expat support.
+
+## License
+
+The WFDB library (`lib/`) is free software under the
+[GNU Lesser General Public License v2](lib/COPYING.LIB) (or later).
+You may link the library into your own programs (free or commercial,
+open-source or proprietary) without restriction.  If you modify the
+library itself, some restrictions apply to how you may distribute your
+modified versions; see the LGPL for details.
+
+The applications and tools in the other subdirectories are free software
+under the [GNU General Public License v2](COPYING) (or later).
+
+## Further Reading
+
+- [PhysioNet](https://physionet.org/) -- home of the WFDB project
+- [WFDB manuals](https://physionet.org/physiotools/manuals.shtml)
+- [PhysioNet FAQ](https://physionet.org/faq.shtml)
