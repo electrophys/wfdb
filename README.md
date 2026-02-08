@@ -163,12 +163,17 @@ The RPMs are placed under `~/rpmbuild/RPMS/`:
 
 ### Homebrew (macOS and Linux)
 
+Install the dependencies, then build and install with Meson:
+
 ```sh
-brew install --formula ./wfdb.rb
+brew install meson flac curl expat gtk+3 vte3
+meson setup build --prefix=$(brew --prefix) \
+  -Dnetfiles=enabled -Dflac=enabled -Dexpat=enabled -Dwave=enabled -Ddocs=disabled
+ninja -C build install
 ```
 
-The formula works on both macOS and Linux.  It builds WAVE (via GTK 3
-and VTE), and enables libcurl, FLAC, and expat support.
+A `wfdb.rb` formula is also provided for maintainers setting up a
+[Homebrew tap](https://docs.brew.sh/How-to-Create-and-Maintain-a-Tap).
 
 ## License
 
