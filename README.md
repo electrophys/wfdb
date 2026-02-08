@@ -174,6 +174,10 @@ brew tap electrophys/wfdb
 brew install wfdb
 ```
 
+This installs the library, command-line tools, and XML converters.
+WAVE is not included; on Linux, use the deb or rpm packages for WAVE
+support.
+
 ## License
 
 The WFDB library (`lib/`) is free software under the
