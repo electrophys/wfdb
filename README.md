@@ -100,7 +100,7 @@ meson setup build -Dnetfiles=enabled -Dflac=enabled -Dwave=disabled
 ## Building Packages
 
 The source tree includes packaging metadata for Debian/Ubuntu, Fedora/RHEL,
-and macOS Homebrew.
+and Homebrew (macOS and Linux).
 
 ### Debian / Ubuntu (.deb)
 
@@ -161,14 +161,15 @@ The RPMs are placed under `~/rpmbuild/RPMS/`:
 | `wfdb-devel` | Headers, static library, pkg-config file |
 | `wave` | WAVE viewer and companion tools |
 
-### macOS Homebrew
+### Homebrew (macOS and Linux)
 
 ```sh
 brew install --formula wfdb.rb
 ```
 
-The formula builds without WAVE (which requires GTK 3) and without
-documentation.  It enables libcurl, FLAC, and expat support.
+The formula works on both macOS and Linux.  It builds without WAVE
+(which requires GTK 3) and without documentation.  It enables libcurl,
+FLAC, and expat support.
 
 ## License
 

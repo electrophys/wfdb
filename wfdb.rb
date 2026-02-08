@@ -8,6 +8,7 @@ class Wfdb < Formula
   depends_on "meson" => :build
   depends_on "ninja" => :build
   depends_on "pkg-config" => :build
+  depends_on "gcc" => :build unless OS.mac?
   depends_on "curl"
   depends_on "expat"
   depends_on "flac"
