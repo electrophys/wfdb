@@ -10,6 +10,7 @@ BuildRequires:  gcc
 BuildRequires:  meson >= 0.61
 BuildRequires:  ninja-build
 BuildRequires:  pkgconfig(libcurl)
+BuildRequires:  pkgconfig(expat)
 BuildRequires:  pkgconfig(flac)
 BuildRequires:  pkgconfig(gtk+-3.0)
 BuildRequires:  pkgconfig(vte-2.91)
@@ -63,7 +64,7 @@ efficient interactive annotation editing, and multiple simultaneous views.
 %autosetup
 
 %build
-%meson -Dnetfiles=enabled -Dflac=enabled -Dwave=auto -Ddocs=disabled
+%meson -Dnetfiles=enabled -Dflac=enabled -Dexpat=enabled -Dwave=auto -Ddocs=disabled
 %meson_build
 
 %install
@@ -79,8 +80,10 @@ WFDB_NO_NET_CHECK=1 %meson_test
 %doc README.md
 %{_bindir}/a2m
 %{_bindir}/ad2m
+%{_bindir}/ahaconvert
 %{_bindir}/ahaecg2mit
 %{_bindir}/ann2rr
+%{_bindir}/annxml
 %{_bindir}/bxb
 %{_bindir}/calsig
 %{_bindir}/coherence
@@ -90,6 +93,7 @@ WFDB_NO_NET_CHECK=1 %meson_test
 %{_bindir}/epicmp
 %{_bindir}/fft
 %{_bindir}/fir
+%{_bindir}/heaxml
 %{_bindir}/gqfuse
 %{_bindir}/gqpost
 %{_bindir}/gqrs
@@ -158,6 +162,8 @@ WFDB_NO_NET_CHECK=1 %meson_test
 %{_bindir}/wrann
 %{_bindir}/wrsamp
 %{_bindir}/xform
+%{_bindir}/xmlann
+%{_bindir}/xmlhea
 %{_datadir}/wfdb/
 %exclude %{_mandir}/man1/wave.1*
 %{_mandir}/man1/
@@ -175,7 +181,10 @@ WFDB_NO_NET_CHECK=1 %meson_test
 %{_mandir}/man5/
 
 %files -n wave
+%{_bindir}/url_view
 %{_bindir}/wave
+%{_bindir}/wave-remote
+%{_bindir}/wavescript
 %{_mandir}/man1/wave.1*
 
 %changelog

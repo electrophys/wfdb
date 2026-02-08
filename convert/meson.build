@@ -23,3 +23,8 @@ foreach app : converters
     install: true,
   )
 endforeach
+
+install_data('ahaconvert',
+  install_dir: get_option('bindir'),
+  install_mode: 'rwxr-xr-x',
+)

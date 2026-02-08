@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <wfdb/wfdb.h>
 
-main(int argc, char **argv)
+int main(int argc, char **argv)
 {
     WFDB_Frequency f = (WFDB_Frequency)0;
     WFDB_Sample v[2];

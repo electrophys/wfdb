@@ -1,6 +1,10 @@
 #include <stdio.h>
 #include <wfdb/wfdb.h>
 
+void adinit(void);
+int adget(int i);
+void adquit(void);
+
 int main(void)
 {
     char answer[32], record[8], directory[32];

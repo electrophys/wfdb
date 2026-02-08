@@ -9,12 +9,13 @@ class Wfdb < Formula
   depends_on "ninja" => :build
   depends_on "pkg-config" => :build
   depends_on "curl"
+  depends_on "expat"
   depends_on "flac"
 
   def install
     system "meson", "setup", "build", *std_meson_args,
            "-Dnetfiles=enabled", "-Dflac=enabled",
-           "-Dwave=disabled", "-Ddocs=disabled"
+           "-Dexpat=enabled", "-Dwave=disabled", "-Ddocs=disabled"
     system "meson", "compile", "-C", "build"
     system "meson", "install", "-C", "build"
   end

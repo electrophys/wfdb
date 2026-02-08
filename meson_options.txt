@@ -4,6 +4,8 @@ option('flac', type: 'feature', value: 'auto',
        description: 'FLAC signal compression')
 option('dbdir', type: 'string', value: '',
        description: 'Database directory (default: datadir/wfdb)')
+option('expat', type: 'feature', value: 'auto',
+       description: 'XML tools (requires expat)')
 option('wave', type: 'feature', value: 'auto',
        description: 'WAVE waveform viewer (requires GTK 3 and VTE)')
 option('docs', type: 'feature', value: 'auto',

@@ -31,7 +31,7 @@ measured ST deviation in microvolts.
 #include <wfdb/wfdb.h>
 #include <wfdb/ecgmap.h>
 
-main(int argc, char **argv)
+int main(int argc, char **argv)
 {
     char *from_string = "0", *record = NULL, *to_string = "e";
     WFDB_Siginfo *si;
