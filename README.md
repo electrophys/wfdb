@@ -167,9 +167,8 @@ The RPMs are placed under `~/rpmbuild/RPMS/`:
 brew install --formula wfdb.rb
 ```
 
-The formula works on both macOS and Linux.  It builds without WAVE
-(which requires GTK 3) and without documentation.  It enables libcurl,
-FLAC, and expat support.
+The formula works on both macOS and Linux.  It builds WAVE (via GTK 3
+and VTE), and enables libcurl, FLAC, and expat support.
 
 ## License
 
