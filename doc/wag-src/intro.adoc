@@ -1,0 +1,146 @@
+= Introduction
+:toc:
+
+Most of this guide consists of UNIX *man* pages that describe the
+applications included in the WFDB (Waveform Database) Software
+Package (and related software from PhysioToolkit).  This introduction
+contains important information about how to interpret the material in
+the main sections of the guide, and about common conventions for using
+all of the WFDB applications that are not described in the main sections.
+The link:faq.html[FAQ] contains additional information
+that will be particularly helpful if you are using MS-Windows (but it
+may be of interest even if you are not).
+
+== Using this Guide
+
+The organization follows the traditional arrangement of the UNIX Reference
+Manual:  section 1 contains programs, section 3 contains libraries, and
+section 5 contains file formats.  In the UNIX Reference Manual, sections
+2 and 4 are reserved for system calls and device interfaces respectively;
+these sections do not exist in this guide.  Following convention, a
+citation such as link:rdann.1.html[rdann(1)] refers to the
+page titled *rdann* in section 1 of this guide.
+
+A *man* "`page`" may span more than one physical page, although most
+do not.  Each *man* page in section 1 of this guide documents one or
+more applications, as indicated in the *NAME* section at the top.
+The *SYNOPSIS* appears next; it illustrates the form of the
+command line needed to run the application.  In the synopsis, **bold**
+indicates text to be typed as is, and _italics_ indicate replaceable
+arguments; brackets ([], which are _not_ to be typed) surround
+arguments that may be omitted, and ellipses (\...) follow arguments that
+can be repeated.  The *DESCRIPTION* sections are intentionally terse;
+this is a reference manual and not a tutorial introduction to the software
+described within.  In those cases for which relevant tutorial material
+exists elsewhere, references appear in the *SEE ALSO* sections of each
+*man* page.  A unique feature of this guide is the *SOURCE* section
+at the end of each page, which provides a URL where you may find the current
+version of the source(s) for each application.
+
+Under GNU/Linux, Mac OS X, or UNIX, if the WFDB Software Package has been
+installed on your system, you can also access the information contained in the
+main sections of this guide using *man* and related programs.  For
+example, to see the manual page for *rdsamp*, run the command:
+
+----
+man rdsamp
+----
+
+In some cases you may need to add `/usr/local/man` to your `MANPATH`
+environment variable, in order to make these pages accessible to *man*.
+
+== Using WFDB Applications
+
+If you have not used any of these programs before, you may need to set up
+your environment properly so that WFDB applications can find their
+input files.  See link:setwfdb.1.html[setwfdb(1)] for information about
+doing this; a more detailed discussion may be found in the first chapter of
+the link:../wpg/wpg.html[_WFDB Programmer's Guide_].
+Most users will not need to do this, however.
+
+Certain types of command arguments are used by many of the applications
+described in this guide.  These include:
+
+[[record]]
+_record_::
+Substitute the name of a WFDB record.  *A record
+name is _not_ a file name!*  The first part of the name of a
+`.hea` file is the name of the record to which the `.hea` file
+belongs; so the record name corresponding to `100.hea` is `100`.
+For example, MIT-BIH Arrhythmia Database record names are 3-digit numbers, AHA
+Database record names are 4-digit numbers, and European ST-T Database record
+names begin with lowercase `e`, followed by a 4-digit number.
+Record names may contain letters, digits, and underscores.  Case is
+significant in record names that contain letters, even in environments
+such as MS-Windows for which case translation is normally performed by the
+operating system on file names; thus `e0104` is the name of a record
+found in the European ST-T Database, whereas `E0104` is not.
+Once again: a record name is *not* a file name; record names
+never include an extension (`.hea`, `.dat`, etc.).
++
+Wherever a record name can be supplied to a WFDB application, you may include
+path information if necessary.  For example, if the WFDB path includes the
+current directory, and if the current directory includes a subdirectory named
+`my_records`, and if that directory contains a record named
+`record_23`, you can supply `my_records/record_23` as a
+_record_ argument.  See the link:../wpg/wpg.html[_WFDB Programmer's Guide_]
+for further details on record names.
++
+Each PhysioBank database directory includes a text file named *RECORDS*,
+which lists the record names for all records in that directory.
+
+[[annotator]]
+_annotator_::
+Substitute an annotator name.  *Annotator names are
+_not_ file names!*  The suffix (extension) of the name of an annotation
+file is the annotator name for that file; so, for example, the annotator name
+for `e0104.atr` is `atr`.  The special annotator name
+`atr` is used to name the set of _reference annotations_
+supplied by the database developers.  Other annotation sets have annotator
+names that may contain letters, digits, and underscores, as for record names.
++
+Each PhysioBank database directory includes a text file named
+*ANNOTATORS*, which lists the annotator names for all annotation files in
+that directory.
+
+[[time]]
+_time_::
+Substitute a string in _standard time format_.
+_Time_ arguments generally specify elapsed times from the beginning
+of the record.  Examples of standard time format:
++
+[cols="1,3"]
+|===
+|2:14.875   |2 minutes + 14.875 seconds
+|143        |143 seconds (2 minutes + 23 seconds)
+|4:02:01    |4 hours + 2 minutes + 1 second
+|4:2:1      |same as above
+|s12345     |12345 sample intervals
+|e          |time of the end of the record
+|===
+
+[[signal]]
+_signal_::
+Substitute a signal number or (in most cases) a signal
+name.  Signal numbers are integers; the first signal in each record is signal 0.
+In printed documentation for the databases, signals always appear with signal 0
+at the top, signal 1 beneath, etc.  Signal names are the strings printed by
+link:signame.1.html[signame(1)].
+
+[[signal-list]]
+_signal-list_::
+Where this (or _signal ..._) appears, you may specify more than one
+signal number in any desired order; separate the signal numbers or names using
+spaces.  Unless otherwise noted, a signal may appear more than once, or not at
+all, in a signal list.  In most cases, the end of the signal list is
+unambiguous (since signal numbers are never negative, and signal names rarely
+if ever begin with `-`, an option argument beginning with `-` is a reliable
+indicator).  In unusual cases, you may need to arrange options so that the
+signal list is at the end of the command, or so that it is followed by an
+argument that cannot be interpreted as a signal number.
+
+'''
+
+Your comments on this guide, and on the software that it documents, are
+welcome.  Please send them to
+https://github.com/bemoody/wfdb[the WFDB project on GitHub].

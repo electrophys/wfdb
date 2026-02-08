@@ -6,3 +6,5 @@ option('dbdir', type: 'string', value: '',
        description: 'Database directory (default: datadir/wfdb)')
 option('wave', type: 'feature', value: 'auto',
        description: 'WAVE waveform viewer (requires GTK 3 and VTE)')
+option('docs', type: 'feature', value: 'auto',
+       description: 'Build HTML documentation (requires mandoc and/or asciidoctor)')

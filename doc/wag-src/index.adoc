@@ -1,0 +1,96 @@
+= WFDB Applications Guide
+:toc: left
+:toclevels: 2
+
+link:intro.html[Introduction] | link:faq.html[FAQ]
+
+== Section 1: Applications
+
+link:a2m.1.html[a2m(1)] -- AHA-format annotation file translator +
+link:ann2rr.1.html[ann2rr(1)] -- extract RR intervals from annotation file +
+link:bxb.1.html[bxb(1)] -- beat-by-beat annotation comparator +
+link:calsig.1.html[calsig(1)] -- calibrate signals of a WFDB record +
+link:coherence.1.html[coherence(1)] -- estimate coherence +
+link:dfa.1.html[dfa(1)] -- detrended fluctuation analysis +
+link:ecgeval.1.html[ecgeval(1)] -- evaluate ECG analyzer +
+link:ecgpuwave.1.html[ecgpuwave(1)] -- QRS detector and delineator +
+link:edf2mit.1.html[edf2mit(1)] -- convert EDF to MIT format +
+link:edr.1.html[edr(1)] -- derive respiration from ECG +
+link:epicmp.1.html[epicmp(1)] -- episode-by-episode annotation comparator +
+link:fft.1.html[fft(1)] -- fast Fourier transform +
+link:fir.1.html[fir(1)] -- general-purpose FIR filter +
+link:gqfuse.1.html[gqfuse(1)] -- combine gqrs annotations +
+link:gqrs.1.html[gqrs(1)] -- QRS detector +
+link:hrfft.1.html[hrfft(1)] -- heart rate power spectrum +
+link:hrstats.1.html[hrstats(1)] -- heart rate statistics +
+link:ihr.1.html[ihr(1)] -- instantaneous heart rate +
+link:imageplt.1.html[imageplt(1)] -- produce a greyscale image +
+link:log10.1.html[log10(1)] -- common logarithm +
+link:lomb.1.html[lomb(1)] -- Lomb periodogram +
+link:lwcat.1.html[lwcat(1)] -- concatenate PostScript output +
+link:memse.1.html[memse(1)] -- maximum entropy spectral estimation +
+link:mfilt.1.html[mfilt(1)] -- general-purpose median filter +
+link:mrgann.1.html[mrgann(1)] -- merge annotation files +
+link:mxm.1.html[mxm(1)] -- measurement-by-measurement comparator +
+link:nguess.1.html[nguess(1)] -- guess normal beats +
+link:nst.1.html[nst(1)] -- noise stress test +
+link:parsescp.1.html[parsescp(1)] -- parse SCP-ECG files +
+link:plot2d.1.html[plot2d(1)] -- make 2-D plots +
+link:plotstm.1.html[plotstm(1)] -- plot ST measurements +
+link:plt.1.html[plt(1)] -- make 2-D plots +
+link:pltf.1.html[pltf(1)] -- plot features +
+link:pnnlist.1.html[pnnlist(1)] -- list pNN statistics +
+link:pnwlogin.1.html[pnwlogin(1)] -- PhysioNetWorks login +
+link:pschart.1.html[pschart(1)] -- produce PostScript charts +
+link:psfd.1.html[psfd(1)] -- produce PostScript full disclosure +
+link:rdann.1.html[rdann(1)] -- read annotations +
+link:rdedfann.1.html[rdedfann(1)] -- read EDF+ annotations +
+link:rdsamp.1.html[rdsamp(1)] -- read samples +
+link:rxr.1.html[rxr(1)] -- run-by-run annotation comparator +
+link:sampfreq.1.html[sampfreq(1)] -- print sampling frequency +
+link:setwfdb.1.html[setwfdb(1)] -- set WFDB environment +
+link:sigamp.1.html[sigamp(1)] -- measure signal amplitudes +
+link:sigavg.1.html[sigavg(1)] -- signal averager +
+link:signame.1.html[signame(1)] -- print signal names +
+link:signum.1.html[signum(1)] -- print signal numbers +
+link:skewedit.1.html[skewedit(1)] -- edit skew values +
+link:snip.1.html[snip(1)] -- extract segments +
+link:sortann.1.html[sortann(1)] -- sort annotations +
+link:sqrs.1.html[sqrs(1)] -- single-channel QRS detector +
+link:stepdet.1.html[stepdet(1)] -- step change detector +
+link:sumann.1.html[sumann(1)] -- summarize annotations +
+link:sumstats.1.html[sumstats(1)] -- summarize statistics +
+link:tach.1.html[tach(1)] -- heart rate from annotations +
+link:time2sec.1.html[time2sec(1)] -- convert time to seconds +
+link:wabp.1.html[wabp(1)] -- arterial BP waveform analyzer +
+link:wav2mit.1.html[wav2mit(1)] -- convert WAV to MIT format +
+link:wave.1.html[wave(1)] -- waveform viewer and editor +
+link:wfdb2mat.1.html[wfdb2mat(1)] -- convert to MATLAB format +
+link:wfdbcat.1.html[wfdbcat(1)] -- concatenate WFDB files +
+link:wfdbcollate.1.html[wfdbcollate(1)] -- collate WFDB records +
+link:wfdb-config.1.html[wfdb-config(1)] -- print WFDB configuration +
+link:wfdbdesc.1.html[wfdbdesc(1)] -- describe a record +
+link:wfdbmap.1.html[wfdbmap(1)] -- map record +
+link:wfdbtime.1.html[wfdbtime(1)] -- convert times +
+link:wfdbwhich.1.html[wfdbwhich(1)] -- find WFDB files +
+link:wqrs.1.html[wqrs(1)] -- QRS detector +
+link:wrann.1.html[wrann(1)] -- write annotations +
+link:wrsamp.1.html[wrsamp(1)] -- write samples +
+link:xform.1.html[xform(1)] -- transform signals +
+
+== Section 3: Libraries
+
+link:wfdb.3.html[wfdb(3)] -- WFDB library +
+link:wfdbf.3.html[wfdbf(3)] -- WFDB Fortran wrapper +
+
+== Section 5: File Formats
+
+link:annot.5.html[annot(5)] -- annotation file format +
+link:header.5.html[header(5)] -- header file format +
+link:signal.5.html[signal(5)] -- signal file format +
+link:wfdbcal.5.html[wfdbcal(5)] -- calibration file format +
+
+== Appendices
+
+link:install.html[Installing the WFDB Software Package] +
+link:eval.html[Evaluating ECG Analyzers]

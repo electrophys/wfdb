@@ -1,0 +1,38 @@
+= WFDB Software Package Documentation
+:toc:
+
+The WFDB (WaveForm DataBase) Software Package is a set of tools and a
+library for reading, writing, and processing physiologic signals and
+time-series data.
+
+== Guides
+
+link:wag/index.html[WFDB Applications Guide]::
+  Reference manual for the command-line applications included in the WFDB
+  Software Package.  Includes man pages for all programs and library
+  functions, an installation guide, a FAQ, and an ECG analyzer evaluation
+  guide.
+
+link:wpg/wpg.html[WFDB Programmer's Guide]::
+  Guide to programming with the WFDB library.  Covers all library functions,
+  data types, file formats, and the thread-safe context API.
+
+link:wug/wug.html[WAVE User's Guide]::
+  Guide to WAVE, the interactive waveform viewer and annotation editor.
+  Covers the GTK 3 interface, annotation editing, data analysis, and
+  customization.
+
+== Quick Links
+
+* link:wag/wfdb.3.html[wfdb(3)] -- overview of the WFDB library
+* link:wag/header.5.html[header(5)] -- header file format
+* link:wag/signal.5.html[signal(5)] -- signal file formats
+* link:wag/annot.5.html[annot(5)] -- annotation file format
+* link:wag/rdsamp.1.html[rdsamp(1)] -- read and display signal data
+* link:wag/rdann.1.html[rdann(1)] -- read and display annotations
+* link:wag/wave.1.html[wave(1)] -- WAVE waveform viewer
+
+== Resources
+
+* https://physionet.org/[PhysioNet] -- physiologic signal archives and tools
+* https://github.com/bemoody/wfdb[WFDB on GitHub] -- source code repository

@@ -85,11 +85,7 @@ man5_pages = files(
   'wag-src/wfdbcal.5',
 )
 
-man7_pages = files(
-  'wag-src/xview.7',
-)
-
-install_man(man1_pages, man3_pages, man5_pages, man7_pages)
+install_man(man1_pages, man3_pages, man5_pages)
 
 # Symlinks for aliased commands.
 # Meson's install_symlink requires Meson >= 0.61.
@@ -116,3 +112,99 @@ foreach target, links : aliases
     )
   endforeach
 endforeach
+
+# ---------- Optional HTML documentation ----------
+
+docs_opt = get_option('docs')
+docdir = get_option('datadir') / 'doc' / 'wfdb'
+
+mandoc = find_program('mandoc', required: docs_opt)
+asciidoctor = find_program('asciidoctor', required: docs_opt)
+
+# Man page names for mandoc HTML conversion
+man_page_names = [
+  'a2m.1', 'ann2rr.1', 'bxb.1', 'calsig.1', 'coherence.1', 'dfa.1',
+  'ecgeval.1', 'ecgpuwave.1', 'edf2mit.1', 'edr.1', 'epicmp.1',
+  'fft.1', 'fir.1', 'gqfuse.1', 'gqrs.1', 'hrfft.1', 'hrstats.1',
+  'ihr.1', 'imageplt.1', 'log10.1', 'lomb.1', 'lwcat.1', 'memse.1',
+  'mfilt.1', 'mrgann.1', 'mxm.1', 'nguess.1', 'nst.1', 'parsescp.1',
+  'plot2d.1', 'plotstm.1', 'plt.1', 'pltf.1', 'pnnlist.1',
+  'pnwlogin.1', 'pschart.1', 'psfd.1', 'rdann.1', 'rdedfann.1',
+  'rdsamp.1', 'rxr.1', 'sampfreq.1', 'setwfdb.1', 'sigamp.1',
+  'sigavg.1', 'signame.1', 'signum.1', 'skewedit.1', 'snip.1',
+  'sortann.1', 'sqrs.1', 'stepdet.1', 'sumann.1', 'sumstats.1',
+  'tach.1', 'time2sec.1', 'wabp.1', 'wav2mit.1', 'wave.1',
+  'wfdb2mat.1', 'wfdbcat.1', 'wfdbcollate.1', 'wfdb-config.1',
+  'wfdbdesc.1', 'wfdbmap.1', 'wfdbtime.1', 'wfdbwhich.1', 'wqrs.1',
+  'wrann.1', 'wrsamp.1', 'xform.1',
+  'wfdb.3', 'wfdbf.3',
+  'annot.5', 'header.5', 'signal.5', 'wfdbcal.5',
+]
+
+# Convert man pages to HTML using mandoc
+if mandoc.found()
+  foreach page : man_page_names
+    html_name = page + '.html'
+    custom_target('html-' + page.replace('.', '-'),
+      input: 'wag-src' / page,
+      output: html_name,
+      command: [mandoc, '-T', 'html',
+                '-O', 'style=mandoc.css,man=%N.%S.html',
+                '@INPUT@'],
+      capture: true,
+      install: true,
+      install_dir: docdir / 'wag',
+    )
+  endforeach
+endif
+
+# Build AsciiDoc pages
+if asciidoctor.found()
+  wag_adoc_pages = ['intro', 'faq', 'install', 'eval', 'index']
+  foreach page : wag_adoc_pages
+    custom_target('wag-' + page,
+      input: 'wag-src' / page + '.adoc',
+      output: page + '.html',
+      command: [asciidoctor, '-b', 'html5', '-D', '@OUTDIR@',
+                '-o', '@OUTPUT@', '@INPUT@'],
+      install: true,
+      install_dir: docdir / 'wag',
+    )
+  endforeach
+
+  # WPG (Programmer's Guide)
+  if fs.is_file('wpg-src/wpg.adoc')
+    custom_target('wpg',
+      input: 'wpg-src/wpg.adoc',
+      output: 'wpg.html',
+      command: [asciidoctor, '-b', 'html5', '-D', '@OUTDIR@',
+                '-o', '@OUTPUT@', '@INPUT@'],
+      install: true,
+      install_dir: docdir / 'wpg',
+    )
+  endif
+
+  # WUG (WAVE User's Guide)
+  if fs.is_file('wug-src/wug.adoc')
+    custom_target('wug',
+      input: 'wug-src/wug.adoc',
+      output: 'wug.html',
+      command: [asciidoctor, '-b', 'html5', '-D', '@OUTDIR@',
+                '-o', '@OUTPUT@', '@INPUT@'],
+      install: true,
+      install_dir: docdir / 'wug',
+    )
+  endif
+
+  # Top-level index
+  if fs.is_file('index.adoc')
+    custom_target('doc-index',
+      input: 'index.adoc',
+      output: 'index.html',
+      command: [asciidoctor, '-b', 'html5', '-D', '@OUTDIR@',
+                '-o', '@OUTPUT@', '@INPUT@'],
+      install: true,
+      install_dir: docdir,
+    )
+  endif
+endif

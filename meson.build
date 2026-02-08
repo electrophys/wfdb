@@ -9,6 +9,7 @@ wfdb_minor = wfdb_version[1]
 wfdb_release = wfdb_version[2]
 
 cc = meson.get_compiler('c')
+fs = import('fs')
 m_dep = cc.find_library('m', required: false)
 
 # Optional dependencies
