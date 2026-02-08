@@ -32,17 +32,22 @@ software available for all popular platforms:
 
  * Software development tools (gcc, meson, ninja, standard C header files)
 
+ * The libcurl library (including *.h files)
+
  * The libFLAC library (including *.h files)
 
- * The libcurl library (including *.h files)
+ * The expat XML parser library (including *.h files) -- needed for the
+   XML tools (xmlann, xmlhea); annxml and heaxml are built without it
 
 On Debian, Ubuntu, or similar operating systems, open a terminal and run the
 command:
-	sudo apt-get install gcc meson ninja-build libflac-dev libcurl4-gnutls-dev
+	sudo apt-get install gcc meson ninja-build \
+	  libcurl4-gnutls-dev libflac-dev libexpat1-dev
 
 On Fedora, Red Hat, or similar operating systems, open a terminal and run the
 command:
-	sudo dnf install gcc meson ninja-build flac-devel libcurl-devel
+	sudo dnf install gcc meson ninja-build \
+	  libcurl-devel flac-devel expat-devel
 
 On Mac OS X, install Homebrew (https://brew.sh/), and run the command:
 	brew install flac
@@ -84,6 +89,82 @@ process is the same on all platforms:
 4. Test the installation by typing:
 	meson test -C build
    If there are any errors, look in the build/meson-logs directory for details.
+
+
+MESON OPTIONS
+
+The build can be customized with Meson options:
+
+	meson setup build -Doption=value
+
+Available WFDB options:
+
+  netfiles=auto|enabled|disabled  HTTP/FTP support via libcurl
+  flac=auto|enabled|disabled      FLAC signal compression
+  expat=auto|enabled|disabled     XML tools (annxml, heaxml, xmlann, xmlhea)
+  wave=auto|enabled|disabled      WAVE viewer (requires GTK 3 and VTE)
+  docs=auto|enabled|disabled      HTML documentation (requires mandoc/asciidoctor)
+  dbdir=PATH                      Database directory (default: datadir/wfdb)
+
+Options set to "auto" (the default) are enabled when the required libraries
+are found and silently disabled otherwise.  Set to "enabled" to make a
+missing library a hard error.
+
+
+BUILDING PACKAGES
+
+The source tree includes packaging metadata for Debian/Ubuntu, Fedora/RHEL,
+and macOS Homebrew.  These produce installable system packages rather than
+a bare "make install".
+
+Debian / Ubuntu (.deb)
+
+  Install the build dependencies:
+	sudo apt-get install build-essential debhelper-compat meson ninja-build \
+	  pkg-config libcurl4-gnutls-dev libexpat1-dev libflac-dev \
+	  libgtk-3-dev libvte-2.91-dev
+
+  Build the packages from the source directory:
+	dpkg-buildpackage -us -uc
+
+  The .deb files are created in the parent directory.  The build produces
+  four packages:
+    libwfdb10       shared library
+    libwfdb-dev     headers, static library, pkg-config file
+    wfdb-tools      command-line applications
+    wave            WAVE viewer and companion tools
+
+  Install them with:
+	sudo dpkg -i ../libwfdb10_*.deb ../libwfdb-dev_*.deb \
+	  ../wfdb-tools_*.deb ../wave_*.deb
+
+Fedora / RHEL (.rpm)
+
+  Install the build dependencies:
+	sudo dnf install gcc meson ninja-build \
+	  libcurl-devel expat-devel flac-devel \
+	  gtk3-devel vte291-devel rpm-build
+
+  Create a source tarball and build RPMs:
+	tar czf wfdb-10.7.0.tar.gz --transform='s,^,wfdb-10.7.0/,' \
+	  --exclude=build --exclude=.git .
+	rpmbuild -ta wfdb-10.7.0.tar.gz
+
+  The RPMs are placed under ~/rpmbuild/RPMS/.  The build produces four
+  subpackages:
+    wfdb            command-line applications and data files
+    wfdb-libs       shared library
+    wfdb-devel      headers, static library, pkg-config file
+    wave            WAVE viewer and companion tools
+
+macOS Homebrew
+
+  A Homebrew formula is provided in wfdb.rb.  To install from a local
+  copy of the source tree:
+	brew install --formula wfdb.rb
+
+  The formula builds without WAVE (which requires GTK 3) and without
+  documentation.  It enables libcurl, FLAC, and expat support.
 
 
 FURTHER READING
