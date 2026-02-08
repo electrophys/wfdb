@@ -163,17 +163,16 @@ The RPMs are placed under `~/rpmbuild/RPMS/`:
 
 ### Homebrew (macOS and Linux)
 
-Install the dependencies, then build and install with Meson:
-
 ```sh
-brew install meson flac curl expat gtk+3 vte3
-meson setup build --prefix=$(brew --prefix) \
-  -Dnetfiles=enabled -Dflac=enabled -Dexpat=enabled -Dwave=enabled -Ddocs=disabled
-ninja -C build install
+brew install electrophys/wfdb/wfdb
 ```
 
-A `wfdb.rb` formula is also provided for maintainers setting up a
-[Homebrew tap](https://docs.brew.sh/How-to-Create-and-Maintain-a-Tap).
+Or equivalently:
+
+```sh
+brew tap electrophys/wfdb
+brew install wfdb
+```
 
 ## License
 
