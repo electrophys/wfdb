@@ -14,4 +14,5 @@ RUN apt-get update \
         git \
         gdb \
         valgrind \
+        openssh-client \
     && rm -rf /var/lib/apt/lists/*

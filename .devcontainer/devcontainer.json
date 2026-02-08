@@ -7,6 +7,9 @@
     "remoteEnv": {
         "WFDB_NO_NET_CHECK": "1"
     },
+    "mounts": [
+        "source=${localEnv:HOME}${localEnv:USERPROFILE}/.ssh,target=/root/.ssh,type=bind,readonly"
+    ],
     "customizations": {
         "vscode": {
             "extensions": [
