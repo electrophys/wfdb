@@ -39,7 +39,7 @@ You must have installed the WFDB library, available at
 gcc is standard with GNU/Linux and is available for other platforms from:
 	http://www.gnu.org/		(sources and Unix binaries)
 	http://fink.sourceforge.net	(Mac OS/X only)
-	http://www.cygwin.com/   	(MS-Windows only)
+On MS-Windows, use WSL (Windows Subsystem for Linux).
 	
 For a usage summary, see the help text at the end of this file.  The input
 record may be in any of the formats readable by the WFDB library, and it may

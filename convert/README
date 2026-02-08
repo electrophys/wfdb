@@ -64,8 +64,8 @@ Once you have installed 'a2m' and 'ad2m', the shell script 'ahaconvert' can be
 used to create a set of AHA DB records in WFDB format from an AHA DB CD-ROM
 (or from a set of AHA DB diskettes).  Run 'ahaconvert' without command-line
 arguments for instructions.  Under MS-DOS or MS-Windows, you will need to
-have a shell utility, such as 'bash' (included with the free Cygwin software
-package from http://www.cygwin.com/) in order to run 'ahaconvert'.
+have a shell utility such as 'bash' (available via WSL on MS-Windows) in
+order to run 'ahaconvert'.
 
 This directory also contains the program `revise', which converts obsolete MIT
 header files into new-format WFDB header files.  (Unless you have very old

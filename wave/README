@@ -33,10 +33,9 @@ or see `wave.1' in '../doc'.  Read `Makefile' in this directory for information
 about compiling and installing `wave'.
 
 WAVE was originally developed under SunOS;  since 1994, its development has
-been continued under GNU/Linux.  WAVE currently runs on FreeBSD, Mac OS X,
-MS-Windows (with Cygwin), and Solaris, in addition to GNU/Linux.  It has
-proven very easy to port (typically just a recompile is required) to any
-platform for which the XView toolkit is available.
+been continued under GNU/Linux.  WAVE uses GTK 3, Cairo, and VTE, and runs
+on GNU/Linux, FreeBSD, and macOS.  On MS-Windows, WAVE can be run under
+WSL (Windows Subsystem for Linux).
 
 The following files will be found in this directory:
 

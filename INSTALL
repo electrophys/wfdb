@@ -30,7 +30,7 @@ PREPARATION
 The following are required for a complete build.  All are free, open-source
 software available for all popular platforms:
 
- * Software development tools (make, gcc, standard C header files, etc.)
+ * Software development tools (gcc, meson, ninja, standard C header files)
 
  * The libFLAC library (including *.h files)
 
@@ -38,19 +38,19 @@ software available for all popular platforms:
 
 On Debian, Ubuntu, or similar operating systems, open a terminal and run the
 command:
-	sudo apt-get install gcc make libflac-dev libcurl4-gnutls-dev
+	sudo apt-get install gcc meson ninja-build libflac-dev libcurl4-gnutls-dev
 
 On Fedora, Red Hat, or similar operating systems, open a terminal and run the
 command:
-	sudo dnf install gcc make flac-devel libcurl-devel
+	sudo dnf install gcc meson ninja-build flac-devel libcurl-devel
 
 On Mac OS X, install Homebrew (https://brew.sh/), and run the command:
 	brew install flac
 
-On MS-Windows, install Cygwin (https://cygwin.com/), including (at least) the
-following optional packages: diffutils, flac-devel, gcc, libcurl-devel, make.
-(Other required packages will be installed automatically if those listed are
-selected.)
+On MS-Windows, install WSL (Windows Subsystem for Linux) by running
+"wsl --install" in an administrator PowerShell or Command Prompt.  Then
+install the build prerequisites within the WSL distribution (e.g. Ubuntu)
+using the apt-get command shown above.
 
 On other GNU/Linux or Unix-like operating systems, if these packages are not
 included in your distribution's package manager, you may need to compile and
@@ -60,7 +60,8 @@ install them yourself:
 
 Detailed instructions for obtaining and installing these prerequisites are
 included in the WFDB quick-start guides for the popular platforms (see above).
-Brief notes about other platforms are at the end of this file.
+Meson and Ninja are also available via pip (`pip install meson ninja`)
+if your system packages are too old.
 
 
 BUILDING AND INSTALLING
@@ -72,19 +73,17 @@ process is the same on all platforms:
    of the WFDB sources (the directory that contains this file).
 
 2. Configure the package by typing:
-	./configure
-   You will normally need root permissions (on MS-Windows, administrator
-   permissions) to run 'make install'.  If you don't have root/administrator
-   permissions, use configure's --prefix option to specify a directory
-   in which you have permission to write, like this:
-        ./configure --prefix=/some/writable/directory
+	meson setup build
+   To install to a non-default location (if you don't have root permissions),
+   use the --prefix option:
+	meson setup build --prefix=/some/writable/directory
 
 3. Build and install the WFDB library and applications by typing:
-	make install
+	ninja -C build install
 
 4. Test the installation by typing:
-	make check
-   If there are any errors, look in the checkpkg directory for details.
+	meson test -C build
+   If there are any errors, look in the build/meson-logs directory for details.
 
 
 FURTHER READING
@@ -100,34 +99,6 @@ PhysioNet FAQ (http://physionet.org/faq.shtml).
 UNINSTALLING
 
 If for any reason you wish to uninstall the WFDB Software Package, type:
-	make uninstall
+	ninja -C build uninstall
 from this directory.  You will need root permissions to uninstall unless
-you changed WFDBROOT before installing the package.
-
-_______________________________________________________________________________
-
-Under MS-DOS, MacOS 9 and earlier, or other operating systems
-
-Sorry, but you are on your own here.  Previous versions of the WFDB library
-and some of the applications have been compiled successfully by MS-DOS and
-Macintosh users (and on OS/2 and VMS, among other environments).  The sources
-are written in highly portable C and should not be difficult to port to any
-environment where an ANSI/ISO or K&R C compiler and the standard C library are
-available.
-
-Often vendors of proprietary compilers and operating systems provide little or
-no documentation about how to build libraries (especially shared/dynamically
-linked libraries), although there may be clear and simple instructions for
-compiling C programs that use the vendor's own libraries only.  If this
-describes your situation, you may find it easiest to compile the WFDB library
-sources as ordinary source files together with the programs that use the WFDB
-library functions.  This approach won't yield the benefits of reduced
-compilation time and reduced executable size available on platforms that
-support shared libraries, but it should allow you to compile and run the WFDB
-software (except for WAVE) with a minimum of difficulty.
-
-If you find that changes are necessary in order to compile this software
-successfully on your platform, please send details to the author
-(wfdb@physionet.org) so that others can benefit from your experience.
-Contributions of working binaries are welcome, but please write first before
-sending them to me. Thanks!
+you used a --prefix within your home directory.

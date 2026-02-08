@@ -60,7 +60,7 @@ else
 fi
 export DYLD_LIBRARY_PATH
 
-## Windows (Cygwin/MinGW) and Wine
+## Windows (WSL) and Wine
 PATH=.:$LIBDIR/../bin:$PATH
 export PATH
 WINEPATH=$LIBDIR/../bin\;$WINEPATH

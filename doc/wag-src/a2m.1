@@ -104,9 +104,9 @@ Use \fBahaconvert\fR to convert one or more records from an AHA DB CD-ROM
 into WFDB format.  Run \fBahaconvert\fR without any command-line arguments
 for instructions, or see the examples below.  Note: \fBahaconvert\fR is
 a shell script;  to use it successfully, you will need to have a shell
-(standard with all versions of Unix, and included in the free Cygwin package
-for MS-Windows) as well as \fBad2m\fR and \fBa2m\fR, which perform the
-actual work of the conversion.
+(standard with all versions of Unix; on MS-Windows, available via WSL) as
+well as \fBad2m\fR and \fBa2m\fR, which perform the actual work of the
+conversion.
 
 .SS a2m
 .PP
@@ -188,12 +188,12 @@ or (for DVDs written in the older format):
 .br
 makes a complete set of short-version records in the current directory.
 (Omit the \fB-s\fR to make a set of long-version records instead.)
-Under Windows, within a Cygwin window, the DVD is accessible as
-\fB/cygdrive/d/\fR (or \fB/cygdrive/e/\fR, etc., depending on the
+Under Windows with WSL, the DVD is accessible as
+\fB/mnt/d/\fR (or \fB/mnt/e/\fR, etc., depending on the
 drive letter that Windows has assigned), so the same task can be done
-under Windows by
+under WSL by
 .br
-         \fBahaecg2mit -s /cygdrive/d/*.txt\fR
+         \fBahaecg2mit -s /mnt/d/*.txt\fR
 
 .SS "AHA Database CD"
 AHA DB CDs contain both long and short versions of each record.  In

@@ -6,8 +6,8 @@ WAVE is an extensible interactive graphical environment for manipulating sets
 of digitized signals with optional annotations.  WAVE is built using the WFDB
 library developed for physiologic signal processing, so it can be applied to
 any of a wide variety of data formats supported by the WFDB library.  WAVE can
-run on FreeBSD, GNU/Linux, Mac OS X, MS-Windows with Cygwin, Solaris, and
-other platforms that support the X Window System and the free XView toolkit.
+run on GNU/Linux, FreeBSD, and macOS.  On MS-Windows, WAVE can be run under
+WSL (Windows Subsystem for Linux).
 
 Among WAVE's capabilities are:
  - fast display of waveforms and annotations at various calibrated scales

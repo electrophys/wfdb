@@ -35,8 +35,8 @@ contains documentation for these programs and scripts in the form of Unix man
 pages.
 
 These programs were written for SunOS, Solaris, and GNU/Linux;  they are also
-portable to and have been tested with other versions of Unix, as well as
-MacOS X and MS-Windows (with the free Cygwin toolkit, http://www.cygwin.com/).
+portable to and have been tested with other versions of Unix and macOS.  On
+MS-Windows, use WSL (Windows Subsystem for Linux).
 
 Follow the instructions in `Makefile' to install these applications and their
 man pages on your system.

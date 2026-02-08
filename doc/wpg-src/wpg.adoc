@@ -487,20 +487,11 @@ functions that the program needs (in this case, `isigopen` and
 corresponding `-l` options can usually be given before or after the
 `wfdb-config` command.
 
-Under MS-Windows, `gcc` is included in the freely available Cygwin
-software development system (link:http://www.cygwin.com/[http://www.cygwin.com/]), and also in
-the freely available MinGW package (link:http://www.mingw.org/[http://www.mingw.org/]).  An
-MS-DOS version of `gcc` is available in the free djgpp package
-(link:http://www.delorie.com/djgpp/[http://www.delorie.com/djgpp/]). These are used within a Cygwin
-terminal emulator window or an MS-DOS box in exactly the same way as described
-above for C compilers on all other platforms.  For most purposes, Cygwin is
-recommended, since it provides a Unix-compatible standard C library
-(`cygwin1.dll`), so that applications behave exactly as they do on all
-other platforms.  WAVE can only be built under Windows in this way.  When
-building WFDB-based plugins for use with .NET applications or others such as
-Matlab that rely on the native Windows C library, however, the WFDB library
-must be recompiled to use the native library.  This can be done using either
-MinGW gcc, or Cygwin gcc with its `-mno-cygwin` option.
+On MS-Windows, the recommended approach is to install WSL (Windows Subsystem
+for Linux).  WSL provides a full GNU/Linux environment, including `gcc` and
+all other build tools, and the WFDB Software Package can be built and used
+exactly as on any other Linux system.  To install WSL, run `wsl --install`
+in an administrator PowerShell or Command Prompt.
 
 If you choose to use an incompatible proprietary compiler, you are on
 your own!  You may be able to create a linkable version of the WFDB
@@ -8001,36 +7992,14 @@ Compilers and software development systems::
   certainly possible, with fewer and less severe restrictions than you
   will encounter if using a commercial compiler.
 
-Cygwin::
+WSL (Windows Subsystem for Linux)::
 
-  WWW: link:http://www.cygwin.com/[http://www.cygwin.com/]
-
-  This is a freely available software development platform for MS-Windows
-  9x/NT/2000/ME/XP, based on GNU `gcc` and a large set of Unix
-  utilities developed by the GNU project and ported to MS-Windows by
-  Cygnus Software (now part of Red Hat, see above).  Cygwin itself is
-  open-source software and is highly recommended in preference to
-  commercial C/C++ compilers if you must work in the MS-Windows
-  environment.  The WFDB Software Package binaries available via PhysioNet
-  are created using Cygwin.
-
-MinGW::
-
-  WWW: link:http://www.mingw.org/[http://www.mingw.org/]
-
-  This is another freely available software development platform for MS-Windows,
-  also based on `gcc` and many of the same utilities as Cygwin.  The
-  difference is that applications built by MinGW gcc use the native MS-Windows C
-  library, while those built by Cygwin gcc generally use Cygwin's Unix-compatible
-  standard C library.  
-
-djgpp::
-
-  WWW: link:http://www.delorie.com/djgpp/[http://www.delorie.com/djgpp/]
-
-  A freely available software development platform for MS-DOS, including
-`gcc`, a free 32-bit DOS extender, and many of the same utilties
-  as Cygwin and MinGW.
+  To install, run `wsl --install` in an administrator PowerShell or
+  Command Prompt.  WSL provides a full GNU/Linux environment (typically
+  Ubuntu) on MS-Windows, including `gcc` and all standard development
+  tools.  The WFDB Software Package can be built and used under WSL
+  exactly as on any other Linux system.  This is the recommended way to
+  use WFDB on MS-Windows.
 
 Microstar DAP analog interface boards for PCs::
 
