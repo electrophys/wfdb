@@ -1,0 +1,55 @@
+# NETFILES Support
+
+**File:** README.NETFILES
+**Author:** G. Moody
+**Date:** 14 September 1999
+**Last revised:** 13 August 2012
+
+## Overview
+
+WFDB software reads its input from files that can be located on local disks or (if NETFILES support is present) on remote web and FTP servers.
+
+This version of the WFDB software package contains NETFILES support in the WFDB library, which is compiled if you have previously installed `libcurl` (see <https://curl.se/>). NETFILES support is known to work well under FreeBSD, GNU/Linux, Mac OS X, MS-Windows, and Solaris.
+
+## Usage
+
+To use NETFILES once this software has been compiled and installed, the WFDB path should contain one or more components that refer to remote files available via HTTP or FTP. If NETFILES support is included, the default WFDB path (defined in `lib/wfdblib.h`) is:
+
+```
+. /usr/database https://physionet.org/files/
+```
+
+This means:
+- The first component is the current (local) directory
+- The second is `/usr/database` in the local file system
+- The third component is the top-level PhysioNet database directory
+
+You may always override this path by setting the `WFDB` environment variable.
+
+## Examples
+
+Provided that a remote path component (one beginning with `http://` or `ftp://`) is included in the WFDB path, all WFDB applications that read local files will then be able to read remote files with no other changes. Note that the default setting allows access by WFDB applications to any of the PhysioNet records by prefixing the additional path information to the record name, as in these examples:
+
+```bash
+# MIT-BIH Arrhythmia Database, record 100
+rdsamp -r mitdb/100 -t .1
+
+# MIT-BIH Polysomnographic Database, record slp67x
+rdann -r slpdb/slp67x -a st
+
+# MIMIC Database, record 237
+# Note: since each MIMIC record is kept in its own subdirectory of mimicdb,
+# two levels of additional path information are necessary
+wave -r mimicdb/237/237 -a al
+
+# MIMIC Database, record 237 (shortcut syntax, allowed since version 10.5.6)
+wave -r mimicdb/237/ -a al
+```
+
+## History
+
+NETFILES support was originally implemented by Michael Dakin as part of his summer 1999 UROP project at MIT; version 10.0.1 of the WFDB library was the first release to include this feature, in November 1999. In May 2005, Benjamin Moody reimplemented NETFILES using `libcurl` (<https://curl.se/>).
+
+## Password-Protected Files
+
+WFDB applications can read password-protected files, such as those within PhysioNetWorks shared or private projects. The preferred way to do this is to set the `PNWUSER` and `PNWPASS` environment variables as is done by the `pnwlogin` script (see `app/pnwlogin`). This method is usable with WFDB library version 10.5.14 (August 2012) and later.
