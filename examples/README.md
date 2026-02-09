@@ -13,6 +13,22 @@ for details on the programs.
 
 For information about `stdev.c`, see the WAVE User's Guide.
 
+## Thread-Safe Context API Example
+
+The file `parallel_stats.c` demonstrates multi-threaded usage of the WFDB library
+using the thread-safe `_ctx` API variants introduced in version 11.0.0. This
+example processes multiple records in parallel, with each record analyzed by a
+separate thread using its own `WFDB_Context`. This shows how to:
+
+- Create independent contexts with `wfdb_context_new()`
+- Use `_ctx` variants of WFDB functions for thread safety
+- Process multiple records concurrently without interference
+- Properly manage context lifecycle with `wfdb_context_free()`
+
+Usage: `parallel_stats RECORD [RECORD ...]`
+
+Example: `parallel_stats 100s 100s 100s`
+
 ## A Note About refhr.c
 
 The file `refhr.c` is a sample implementation of a program for obtaining

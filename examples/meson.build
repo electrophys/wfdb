@@ -30,3 +30,12 @@ foreach app : examples
     install: false,
   )
 endforeach
+
+# Thread-safe context API example (requires pthread)
+thread_dep = dependency('threads', required: false)
+if thread_dep.found()
+  executable('parallel_stats', 'parallel_stats.c',
+    dependencies: [wfdb_dep, thread_dep],
+    install: false,
+  )
+endif
