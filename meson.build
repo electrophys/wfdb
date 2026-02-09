@@ -1,5 +1,5 @@
 project('wfdb', 'c',
-  version: '10.7.0',
+  version: '11.0.0',
   license: 'LGPL-2.1-or-later',
   default_options: ['c_std=gnu11', 'warning_level=2'])
 

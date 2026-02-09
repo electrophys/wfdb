@@ -1,5 +1,34 @@
 # WFDB Software Package - Release Notes
 
+## Version 11.0.0 (09 February 2026):
+
+- The build system has been migrated from GNU Make to Meson/Ninja, providing
+  faster builds, better dependency management, and improved cross-platform
+  support.
+
+- The WFDB library now provides thread-safe context management through the
+  WFDB_Context API.  All library functions now have _ctx variants that accept
+  an explicit context pointer, enabling safe concurrent usage across multiple
+  threads.
+
+- All documentation has been modernized and converted to Markdown format,
+  including README files, release notes, and licensing information.
+
+- Licensing documentation has been clarified and standardized throughout the
+  package.  The dual-license model is now clearly documented: the WFDB library
+  (lib/) is licensed under LGPL v2.1+, while applications and tools are
+  licensed under GPL v2+.
+
+- Added formal acknowledgment of George B. Moody (1947-2020), the original
+  author and longtime maintainer of the WFDB Software Package, whose pioneering
+  work has benefited researchers and clinicians worldwide for over four decades.
+
+- Copyright notices have been updated to 2024 and modernized with HTTPS URLs
+  throughout the package.
+
+- File manifests in documentation have been updated to accurately reflect
+  current directory contents, including new detector tools and utilities.
+
 ## Version 10.7.0 (10 June 2022):
 
 - The WFDB library now supports storing signals in compressed form, using

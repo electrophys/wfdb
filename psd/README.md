@@ -3,7 +3,7 @@
 **File:** README
 **Author:** G. Moody
 **Date:** 14 June 1995
-**Last revised:** 8 June 2005
+**Last revised:** 9 February 2026
 
 ---
 

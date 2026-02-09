@@ -167,9 +167,9 @@ sudo dnf install gcc meson ninja-build \
 Create a source tarball and build RPMs:
 
 ```sh
-tar czf wfdb-10.7.0.tar.gz --transform='s,^,wfdb-10.7.0/,' \
+tar czf wfdb-11.0.0.tar.gz --transform='s,^,wfdb-11.0.0/,' \
   --exclude=build --exclude=.git .
-rpmbuild -ta wfdb-10.7.0.tar.gz
+rpmbuild -ta wfdb-11.0.0.tar.gz
 ```
 
 The RPMs are placed under `~/rpmbuild/RPMS/`:
