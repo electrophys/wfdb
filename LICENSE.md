@@ -34,12 +34,19 @@ See [COPYING](COPYING) for the full license text.
 
 Both licenses guarantee your freedom to use, study, modify, and share the software.
 
-## Copyright
+## Copyright and Authorship
+
+**Original Author:** George B. Moody (1947-2020)
+
+**Current Maintainer:** Benjamin Moody
 
 Copyright (C) 1983-2024 George B. Moody and contributors
 
+The WFDB Software Package was created by George B. Moody and has been continuously developed and maintained by the PhysioNet team at the MIT Laboratory for Computational Physiology.
+
 ## Contact
 
-- Email: wfdb@physionet.org
-- Website: https://physionet.org/
-- Repository: https://github.com/bemoody/wfdb
+- **Email:** wfdb@physionet.org
+- **Website:** https://physionet.org/
+- **Repository:** https://github.com/bemoody/wfdb
+- **Organization:** PhysioNet / MIT Laboratory for Computational Physiology

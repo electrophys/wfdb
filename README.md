@@ -212,6 +212,12 @@ This allows the library to be linked with proprietary software without restricti
 Both licenses give you the freedom to use, study, share, and modify the software.
 See [LICENSE.md](LICENSE.md) for complete details.
 
+## Acknowledgments
+
+The WFDB Software Package was created and maintained by **George B. Moody** (1947-2020), whose pioneering work in biomedical signal processing and open-source software has benefited researchers and clinicians worldwide for over four decades. His legacy continues through this software and the PhysioNet resource he helped create.
+
+The project is currently maintained by Benjamin Moody and the PhysioNet team at the MIT Laboratory for Computational Physiology.
+
 ## Further Reading
 
 - [PhysioNet](https://physionet.org/) -- home of the WFDB project
