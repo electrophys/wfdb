@@ -119,3 +119,171 @@ Many source files (.c, .h) contain a "Last revised" date in their header comment
 - **DO NOT** update dates on files you haven't actually modified - historical dates should be preserved for files that genuinely haven't been touched
 
 README.md files follow a similar convention with "**Last revised:**" in their frontmatter. Update these when making changes to the documentation.
+
+## Version Bump and Release Process
+
+### Version Bump Checklist
+
+When bumping the version number (e.g., from 10.7.0 to 11.0.0), update the following files:
+
+**Core version files:**
+- `meson.build` - `version:` field in `project()` call
+
+**Release notes and documentation:**
+- `NEWS.md` - Add new release section at the top with date and changelog
+- `README.md` - Update version in example commands (e.g., RPM tarball name on line ~170)
+- All `**/README.md` files - Update "**Last revised:**" date to current date
+
+**Library source files** (update version and date in file headers):
+- `lib/wfdb.h` - Header comment: `Last revised:` date and `wfdblib X.Y.Z`
+- `lib/wfdbio.c` - Header comment
+- `lib/wfdblib.h` - Header comment
+- `lib/wfdbinit.c` - Header comment
+- `lib/annot.c` - Header comment
+- `lib/signal.c` - Header comment
+- `lib/timeconv.c` - Header comment
+- `lib/calib.c` - Header comment
+
+**Application files:**
+- `app/ecgeval.c` - Header comment: `wfdb X.Y.Z`
+
+**Package metadata files:**
+- `wfdb.rb` - Homebrew formula: `version` field (line ~5) and test assertion (line ~36)
+- `wfdb.spec` - RPM spec: `Version:` field and add new `%changelog` entry
+- `debian/changelog` - Add new version entry at top
+
+**Man pages:**
+- `doc/wag-src/wave.1` - `.TH` line: update date and version
+
+### Pre-Release Testing
+
+Before creating a release:
+
+1. **Run the test suite:**
+   ```bash
+   meson test -C build -v
+   ```
+
+2. **Test with network disabled:**
+   ```bash
+   WFDB_NO_NET_CHECK=1 meson test -C build
+   ```
+
+3. **Verify package builds:**
+   - Test Debian package build: `dpkg-buildpackage -us -uc`
+   - Test RPM spec syntax: `rpmlint wfdb.spec`
+   - Verify Homebrew formula syntax
+
+4. **Check documentation builds:**
+   ```bash
+   # Verify man pages install
+   ninja -C build install
+   man wfdb
+
+   # If asciidoctor available, check HTML docs build
+   ls build/doc/
+   ```
+
+## Package Metadata
+
+WFDB supports three packaging systems:
+
+### Homebrew (macOS and Linux)
+
+- **File:** `wfdb.rb`
+- **Location:** Installable via `brew tap electrophys/wfdb`
+- **Installation:** `brew install electrophys/wfdb/wfdb`
+- **Contents:** Library, command-line tools, XML converters (WAVE excluded)
+- **Dependencies:** Automatically handles meson, ninja, curl, flac, expat
+
+### RPM (Fedora/RHEL)
+
+- **File:** `wfdb.spec`
+- **Build command:** `rpmbuild -ta wfdb-X.Y.Z.tar.gz`
+- **Packages produced:**
+  - `wfdb` - Command-line applications and data files
+  - `wfdb-libs` - Shared library
+  - `wfdb-devel` - Headers, static library, pkg-config
+  - `wave` - WAVE viewer (if GTK3/VTE available)
+
+### Debian/Ubuntu
+
+- **Directory:** `debian/`
+- **Build command:** `dpkg-buildpackage -us -uc`
+- **Key files:**
+  - `debian/changelog` - Version history (must be updated for each release)
+  - `debian/control` - Package metadata and dependencies
+  - `debian/rules` - Build instructions (Meson-based)
+- **Packages produced:**
+  - `libwfdb10` - Shared library
+  - `libwfdb-dev` - Development files
+  - `wfdb-tools` - Command-line applications
+  - `wave` - WAVE viewer
+
+## Documentation Structure
+
+The project uses three different documentation formats:
+
+### Man Pages (troff format)
+
+- **Location:** `doc/wag-src/*.1`, `*.3`, `*.5`
+- **Format:** Traditional Unix man page format (troff/groff)
+- **Sections:**
+  - Section 1: Command-line applications (e.g., `rdsamp.1`, `wave.1`)
+  - Section 3: Library functions (e.g., `wfdb.3`)
+  - Section 5: File formats (e.g., `header.5`, `signal.5`)
+- **Installation:** Automatically installed by `ninja -C build install`
+- **Viewing:** `man rdsamp`, `man 3 wfdb`, etc.
+
+### AsciiDoc (.adoc files)
+
+- **Location:** `doc/wag-src/*.adoc`, `doc/wpg-src/wpg.adoc`, `doc/wug-src/wug.adoc`
+- **Purpose:** Generate HTML versions of comprehensive guides
+- **Guides:**
+  - **WFDB Applications Guide** (WAG) - `doc/wag-src/` - User guide for command-line tools
+  - **WFDB Programmer's Guide** (WPG) - `doc/wpg-src/wpg.adoc` - Library API documentation
+  - **WAVE User's Guide** (WUG) - `doc/wug-src/wug.adoc` - Guide for the WAVE viewer
+- **Build requirement:** `asciidoctor` (optional, auto-detected by Meson)
+- **Output:** HTML files in `build/doc/`
+
+### Markdown (.md files)
+
+- **Location:** Throughout the repository (README.md files, LICENSE.md, NEWS.md, etc.)
+- **Purpose:** Modern, readable documentation for GitHub and development
+- **Key files:**
+  - Root: `README.md`, `LICENSE.md`, `NEWS.md`, `CLAUDE.md`
+  - Per-directory: `lib/README.md`, `app/README.md`, `convert/README.md`, etc.
+- **Convention:** Include file metadata header with Author, Date, and "Last revised" fields
+
+## Git Commit Conventions
+
+### Co-Authorship Attribution
+
+When Claude Code assists with commits, use co-authorship attribution:
+
+```bash
+git commit -m "$(cat <<'EOF'
+Brief summary of changes in imperative mood
+
+Optional detailed explanation of what changed and why,
+wrapped at 72 characters.
+
+Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
+EOF
+)"
+```
+
+### Commit Message Style
+
+- **First line:** Brief summary (50-72 chars) in imperative mood ("Add feature" not "Added feature")
+- **Body:** Optional detailed explanation, wrapped at 72 characters
+- **Examples from this project:**
+  - "Add acknowledgment of George B. Moody and clarify current maintainer"
+  - "Bump version to 11.0.0 and update documentation dates"
+  - "Convert documentation to Markdown format"
+
+### Commit Organization
+
+- Group related changes into single commits (e.g., all version bump changes together)
+- Separate concerns: documentation updates separate from code changes
+- Test before committing: ensure builds and tests pass
