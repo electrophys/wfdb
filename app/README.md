@@ -10,11 +10,11 @@
 ## License
 
 WFDB applications: programs for working with annotated signals
-Copyright (C) 1989-2005 George B. Moody
+Copyright (C) 1989-2024 George B. Moody and contributors
 
 These programs are free software; you can redistribute them and/or modify
-them under the terms of the GNU General Public License as published by the
-Free Software Foundation; either version 2 of the License, or (at your
+them under the terms of the GNU General Public License (GPL) as published by
+the Free Software Foundation; either version 2 of the License, or (at your
 option) any later version.
 
 These programs are distributed in the hope that they will be useful, but
@@ -23,11 +23,9 @@ FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
 more details.
 
 You should have received a copy of the GNU General Public License along with
-these programs; if not, see <http://www.gnu.org/licenses/>.
+these programs; if not, see <https://www.gnu.org/licenses/>.
 
-You may contact the author by e-mail (wfdb@physionet.org) or postal mail
-(MIT Room E25-505A, Cambridge, MA 02139 USA). For updates to this software,
-please visit PhysioNet (http://www.physionet.org/).
+For updates to this software, please visit PhysioNet at <https://physionet.org/>.
 
 ---
 

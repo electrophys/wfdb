@@ -200,15 +200,17 @@ support.
 
 ## License
 
-The WFDB library (`lib/`) is free software under the
-[GNU Lesser General Public License v2](lib/COPYING.LIB) (or later).
-You may link the library into your own programs (free or commercial,
-open-source or proprietary) without restriction.  If you modify the
-library itself, some restrictions apply to how you may distribute your
-modified versions; see the LGPL for details.
+The WFDB Software Package is dual-licensed:
 
-The applications and tools in the other subdirectories are free software
-under the [GNU General Public License v2](COPYING) (or later).
+**WFDB Library (`lib/`):** Licensed under the
+[GNU Lesser General Public License (LGPL) v2.1+](lib/COPYING.LIB).
+This allows the library to be linked with proprietary software without restriction.
+
+**Applications and Tools (`app/`, `convert/`, `psd/`, `wave/`, `xml/`):** Licensed under the
+[GNU General Public License (GPL) v2+](COPYING).
+
+Both licenses give you the freedom to use, study, share, and modify the software.
+See [LICENSE.md](LICENSE.md) for complete details.
 
 ## Further Reading
 

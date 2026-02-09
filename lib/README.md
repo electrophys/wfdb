@@ -10,24 +10,21 @@
 ## License
 
 wfdb: a library for reading and writing annotated waveforms (time series data)
-Copyright (C) 1989-2005 George B. Moody
+Copyright (C) 1989-2024 George B. Moody and contributors
 
 This library is free software; you can redistribute it and/or modify it under
-the terms of the GNU Library General Public License as published by the Free
-Software Foundation; either version 2 of the License, or (at your option) any
-later version.
+the terms of the GNU Lesser General Public License (LGPL) as published by the
+Free Software Foundation; either version 2.1 of the License, or (at your option)
+any later version.
 
 This library is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE. See the GNU Library General Public License for more
-details.
+PARTICULAR PURPOSE. See the GNU Lesser General Public License for more details.
 
-You should have received a copy of the GNU Library General Public License along
-with this library; if not, see <http://www.gnu.org/licenses/>.
+You should have received a copy of the GNU Lesser General Public License along
+with this library; if not, see <https://www.gnu.org/licenses/>.
 
-You may contact the author by e-mail (wfdb@physionet.org) or postal mail
-(MIT Room E25-505A, Cambridge, MA 02139 USA). For updates to this software,
-please visit PhysioNet (http://www.physionet.org/).
+For updates to this software, please visit PhysioNet at <https://physionet.org/>.
 
 ---
 
@@ -40,8 +37,8 @@ using Meson; see the top-level README for build instructions.
 
 | File | Description |
 |------|-------------|
-| `COPYING.LIB` | the GNU Library General Public License |
-| `README` | this file |
+| `COPYING.LIB` | the GNU Lesser General Public License (LGPL) |
+| `README.md` | this file |
 | `meson.build` | Meson build description file |
 | `annot.c` | annotation reading/writing |
 | `calib.c` | signal calibration |
