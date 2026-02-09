@@ -1,5 +1,5 @@
 /* file: calib.c	G. Moody	  4 July 1991
-			Last revised:    11 April 2022		wfdblib 10.7.0
+			Last revised:    9 February 2026		wfdblib 11.0.0
 WFDB library functions for signal calibration
 
 _______________________________________________________________________________

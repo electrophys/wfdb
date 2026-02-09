@@ -1,5 +1,5 @@
 /* file: wfdblib.h	G. Moody	13 April 1989
-                        Last revised:   11 April 2022         wfdblib 10.7.0
+                        Last revised:   9 February 2026         wfdblib 11.0.0
 External definitions for WFDB library private functions
 
 _______________________________________________________________________________

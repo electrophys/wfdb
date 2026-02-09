@@ -1,5 +1,5 @@
 /* file: ecgeval.c	G. Moody	22 March 1992
-			Last revised:  4 November 2020		wfdb 10.7.0
+			Last revised:  9 February 2026		wfdb 11.0.0
 
 -------------------------------------------------------------------------------
 ecgeval: Generate and run a script of commands to compare sets of annotations

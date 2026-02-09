@@ -1,5 +1,5 @@
 Name:           wfdb
-Version:        10.7.0
+Version:        11.0.0
 Release:        1%{?dist}
 Summary:        WaveForm Database library and tools for physiologic signals
 License:        LGPL-2.0-or-later AND GPL-2.0-or-later
@@ -188,6 +188,13 @@ WFDB_NO_NET_CHECK=1 %meson_test
 %{_mandir}/man1/wave.1*
 
 %changelog
+* Sun Feb 09 2026 PhysioNet <wfdb@physionet.org> - 11.0.0-1
+- Version 11.0.0 release
+- Add thread-safe context API with _ctx function variants
+- Modernize documentation (convert to Markdown)
+- Clarify dual licensing (LGPL for library, GPL for applications)
+- Add acknowledgment of George B. Moody (1947-2020)
+
 * Fri Feb 07 2026 PhysioNet <wfdb@physionet.org> - 10.7.0-1
 - Rewrite spec for Meson build system
 - Split into wfdb, wfdb-libs, wfdb-devel, and wave subpackages

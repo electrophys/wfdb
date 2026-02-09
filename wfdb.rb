@@ -2,7 +2,7 @@ class Wfdb < Formula
   desc "WaveForm Database library and tools for physiologic signals"
   homepage "https://physionet.org/"
   url "https://github.com/electrophys/wfdb/archive/refs/heads/master.tar.gz"
-  version "10.7.0"
+  version "11.0.0"
   sha256 "620578dec6fd104fa03c6aeea503eebc4e27eae1ee1e949f562f6786426bdc56"
   license "LGPL-2.0-or-later"
 
@@ -33,6 +33,6 @@ class Wfdb < Formula
     C
     system ENV.cc, "test.c", "-o", "test",
            *shell_output("pkg-config --cflags --libs wfdb").chomp.split
-    assert_match "WFDB 10.7.0", shell_output("./test")
+    assert_match "WFDB 11.0.0", shell_output("./test")
   end
 end

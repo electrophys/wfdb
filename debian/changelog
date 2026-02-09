@@ -1,3 +1,13 @@
+wfdb (11.0.0-1) unstable; urgency=medium
+
+  * Version 11.0.0 release
+  * Add thread-safe context API with _ctx function variants
+  * Modernize documentation (convert to Markdown)
+  * Clarify dual licensing (LGPL for library, GPL for applications)
+  * Add acknowledgment of George B. Moody (1947-2020)
+
+ -- PhysioNet <wfdb@physionet.org>  Sun, 09 Feb 2026 00:00:00 +0000
+
 wfdb (10.7.0-1) unstable; urgency=medium
 
   * Initial Debian packaging with Meson build system.
