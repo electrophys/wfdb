@@ -109,3 +109,13 @@ Build configuration values (version, NETFILES, DBDIR) are passed as `-D` compile
 - `WFDB_Time` is unconditionally `long long`
 - WFDB library functions have `_ctx` variants that take an explicit `WFDB_Context*` for thread-safe usage; the original functions are thin wrappers using the default global context
 - `wfdbquit()` resets all state
+
+### File Header Maintenance
+
+Many source files (.c, .h) contain a "Last revised" date in their header comments. **When modifying a file:**
+
+- **DO** update the "Last revised" date to the current date if you make substantive changes to the file
+- **DO** update the version number (e.g., `wfdblib 11.0.0`) in library files when bumping the version
+- **DO NOT** update dates on files you haven't actually modified - historical dates should be preserved for files that genuinely haven't been touched
+
+README.md files follow a similar convention with "**Last revised:**" in their frontmatter. Update these when making changes to the documentation.
