@@ -16,7 +16,7 @@
  * This example demonstrates:
  * - Creating independent WFDB_Context instances for thread safety
  * - Using _ctx variants of WFDB functions (isigopen_ctx, getvec_ctx, etc.)
- * - Proper context lifecycle management (new, use, free)
+ * - Proper context lifecycle management (create, use, destroy)
  * - Concurrent processing of multiple records without interference
  * - Thread synchronization and result aggregation
  *
@@ -27,6 +27,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <limits.h>
 #include <pthread.h>
 #include <wfdb/wfdb.h>
 
@@ -53,7 +54,7 @@ void *process_record(void *arg)
     int i;
 
     /* Create a new, independent WFDB context for this thread */
-    ctx = wfdb_context_new();
+    ctx = wfdb_context_create();
     if (ctx == NULL) {
         fprintf(stderr, "[Thread %d] Failed to create WFDB context\n",
                 args->thread_id);
@@ -70,7 +71,7 @@ void *process_record(void *arg)
         fprintf(stderr, "[Thread %d] Memory allocation failed\n",
                 args->thread_id);
         args->status = -1;
-        wfdb_context_free(ctx);
+        wfdb_context_destroy(ctx);
         return NULL;
     }
 
@@ -81,7 +82,7 @@ void *process_record(void *arg)
                 args->thread_id, args->record_name);
         args->status = -1;
         free(siginfo);
-        wfdb_context_free(ctx);
+        wfdb_context_destroy(ctx);
         return NULL;
     }
 
@@ -104,8 +105,8 @@ void *process_record(void *arg)
 
     /* Initialize min/max arrays */
     for (i = 0; i < args->nsig; i++) {
-        args->signal_mins[i] = WFDB_Sample_MAX;
-        args->signal_maxs[i] = WFDB_Sample_MIN;
+        args->signal_mins[i] = WFDB_SAMPLE_MAX;
+        args->signal_maxs[i] = WFDB_SAMPLE_MIN;
     }
 
     /* Read and process all samples using _ctx variant */
@@ -143,7 +144,7 @@ cleanup:
     free(siginfo);
 
     /* Clean up context - this calls wfdbquit() internally */
-    wfdb_context_free(ctx);
+    wfdb_context_destroy(ctx);
 
     return NULL;
 }
