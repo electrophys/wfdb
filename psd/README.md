@@ -48,17 +48,15 @@ These programs were written for SunOS, Solaris, and GNU/Linux; they are also
 portable to and have been tested with other versions of Unix and macOS. On
 MS-Windows, use WSL (Windows Subsystem for Linux).
 
-Follow the instructions in `Makefile` to install these applications and their
-man pages on your system.
+The WFDB software package uses the Meson build system. See the top-level
+README.md or CLAUDE.md for build instructions.
 
 ## Files in This Directory
 
 | File | Description |
 |------|-------------|
-| `Makefile` | `make` description file for compiling these applications using ANSI/ISO standard C compilers on supported platforms |
-| `Makefile.top` | Used by `../configure` to construct Makefile (comments only) |
-| `Makefile.tpl` | Used by `../configure` to construct Makefile (portable section) |
-| `README` | this file |
+| `README.md` | this file |
+| `meson.build` | Meson build description file |
 | `coherence.c` | Calculate coherence and cross-spectrum of two time series |
 | `fft.c` | Calculate fast Fourier transform (FFT), inverse FFT, etc. |
 | `hrfft` | Plot heart rate power spectrum (using tach and fft) |

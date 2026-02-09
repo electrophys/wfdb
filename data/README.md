@@ -23,10 +23,8 @@ directory of the MIT-BIH Arrhythmia Database CD-ROM.
 
 | File | Description |
 |------|-------------|
-| `Makefile` | `make` description file for installing these files |
-| `Makefile.top` | Used by `../configure` to construct Makefile (comments only) |
-| `Makefile.tpl` | Used by `../configure` to construct Makefile (portable section) |
-| `README` | this file |
+| `README.md` | this file |
+| `meson.build` | Meson build description file |
 | | |
 | `100s.hea` | header file for record `100s` |
 | `100s.dat` | signal file for record `100s` |

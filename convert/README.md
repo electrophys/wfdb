@@ -99,10 +99,8 @@ output that you do.)
 
 ## Building
 
-If a `make` utility is available, follow the instructions in `Makefile` to
-compile and install these applications on your system. If you do not have a
-`make` utility, you will have to perform the installation manually; the
-comments in `Makefile` may be helpful in determining how to proceed.
+The WFDB software package uses the Meson build system. See the top-level
+README.md or CLAUDE.md for build instructions.
 
 For information about using these applications, see the WFDB Applications
 Guide (in the `doc` directory at the same level as this one), or look in the
@@ -118,10 +116,8 @@ this one.
 
 | File | Description |
 |------|-------------|
-| `Makefile` | `make` description file for compiling these applications using ANSI/ISO standard C compilers on supported platforms |
-| `Makefile.top` | Used by `../configure` to construct Makefile (comments only) |
-| `Makefile.tpl` | Used by `../configure` to construct Makefile (portable section) |
-| `README` | this file |
+| `README.md` | this file |
+| `meson.build` | Meson build description file |
 | | |
 | `edf2mit.c` | Converts an EDF file to a WFDB record |
 | `mit2edf.c` | Converts a WFDB record into an EDF file |
@@ -129,6 +125,7 @@ this one.
 | `wfdb2mat.c` | Converts a WFDB record into a `.mat` file |
 | `wav2mit.c` | Makes `.hea` file so that a `.wav` file is readable as a WFDB record |
 | `mit2wav.c` | Converts a WFDB record into a `.wav` file |
+| `parsescp.c` | Parse an SCP-ECG file (reads from standard input) |
 | `ahaecg2mit.c` | Converts an AHA DB DVD file to a WFDB record |
 | | |
 | `a2m.c` | Converts an AHA format annotation file to WFDB format |
