@@ -20,10 +20,10 @@ using the thread-safe `_ctx` API variants introduced in version 11.0.0. This
 example processes multiple records in parallel, with each record analyzed by a
 separate thread using its own `WFDB_Context`. This shows how to:
 
-- Create independent contexts with `wfdb_context_new()`
+- Create independent contexts with `wfdb_context_create()`
 - Use `_ctx` variants of WFDB functions for thread safety
 - Process multiple records concurrently without interference
-- Properly manage context lifecycle with `wfdb_context_free()`
+- Properly manage context lifecycle with `wfdb_context_destroy()`
 
 Usage: `parallel_stats RECORD [RECORD ...]`
 
